@@ -1,0 +1,56 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Recuperar contraseña</title>
+<link rel="stylesheet" href="css/styles.css" />
+
+<div class="contenedor-auth">
+  <div class="tarjeta">
+    <h1>Recuperar contraseña</h1>
+    <p class="subtitulo">Te mandamos un link a tu email para elegir una nueva.</p>
+
+    <p class="mensaje-error" id="error" hidden></p>
+    <p class="mensaje-exito" id="exito" hidden></p>
+
+    <form id="form-recuperar">
+      <div class="campo">
+        <label for="email">Email</label>
+        <input type="email" id="email" required autocomplete="username" />
+      </div>
+      <button type="submit" class="boton-primario" id="btn-submit">Enviar link</button>
+    </form>
+
+    <div class="enlaces">
+      <a href="index.html">Volver a iniciar sesión</a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { solicitarRecuperacion } from './js/auth.js';
+  import { mostrarError, mostrarCargando, traducirError } from './js/utils.js';
+
+  const form = document.getElementById('form-recuperar');
+  const errorEl = document.getElementById('error');
+  const exitoEl = document.getElementById('exito');
+  const btnSubmit = document.getElementById('btn-submit');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    mostrarError(errorEl, '');
+    mostrarCargando(btnSubmit, true, 'Enviar link');
+
+    const email = document.getElementById('email').value.trim();
+    const { error } = await solicitarRecuperacion(email);
+
+    mostrarCargando(btnSubmit, false, 'Enviar link');
+
+    if (error) {
+      mostrarError(errorEl, traducirError(error));
+      return;
+    }
+
+    form.hidden = true;
+    exitoEl.hidden = false;
+    exitoEl.textContent = `Si ${email} está registrado, te llegó un email con el link para restablecer tu contraseña.`;
+  });
+</script>

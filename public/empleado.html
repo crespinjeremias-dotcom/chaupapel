@@ -1,0 +1,72 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Registrarme como empleado</title>
+<link rel="stylesheet" href="css/styles.css" />
+
+<div class="contenedor-auth">
+  <div class="tarjeta">
+    <h1>Registrarme como empleado</h1>
+    <p class="subtitulo">Pedile a tu admin el código de invitación del local.</p>
+
+    <p class="mensaje-error" id="error" hidden></p>
+
+    <form id="form-empleado">
+      <div class="campo">
+        <label for="codigo">Código de invitación</label>
+        <input type="text" id="codigo" required style="text-transform: uppercase" maxlength="8" />
+      </div>
+      <div class="campo">
+        <label for="nombre">Tu nombre</label>
+        <input type="text" id="nombre" required />
+      </div>
+      <div class="campo">
+        <label for="email">Email</label>
+        <input type="email" id="email" required autocomplete="username" />
+      </div>
+      <div class="campo">
+        <label for="telefono">Teléfono (opcional)</label>
+        <input type="tel" id="telefono" />
+      </div>
+      <div class="campo">
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" required minlength="6" autocomplete="new-password" />
+      </div>
+      <button type="submit" class="boton-primario" id="btn-submit">Enviar solicitud</button>
+    </form>
+
+    <div class="enlaces">
+      <a href="index.html">Ya tengo cuenta, iniciar sesión</a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { redimirInvitacion } from './js/auth.js';
+  import { mostrarError, mostrarCargando, traducirError } from './js/utils.js';
+
+  const form = document.getElementById('form-empleado');
+  const errorEl = document.getElementById('error');
+  const btnSubmit = document.getElementById('btn-submit');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    mostrarError(errorEl, '');
+    mostrarCargando(btnSubmit, true, 'Enviar solicitud');
+
+    const { error } = await redimirInvitacion({
+      codigo: document.getElementById('codigo').value.trim(),
+      nombre: document.getElementById('nombre').value.trim(),
+      email: document.getElementById('email').value.trim(),
+      telefono: document.getElementById('telefono').value.trim(),
+      password: document.getElementById('password').value,
+    });
+
+    if (error) {
+      mostrarError(errorEl, traducirError(error));
+      mostrarCargando(btnSubmit, false, 'Enviar solicitud');
+      return;
+    }
+
+    window.location.href = 'panel.html';
+  });
+</script>

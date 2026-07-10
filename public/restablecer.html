@@ -1,0 +1,71 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Elegir nueva contraseña</title>
+<link rel="stylesheet" href="css/styles.css" />
+
+<div class="contenedor-auth">
+  <div class="tarjeta">
+    <h1>Elegir nueva contraseña</h1>
+    <p class="subtitulo" id="subtitulo">Verificando el link...</p>
+
+    <p class="mensaje-error" id="error" hidden></p>
+
+    <form id="form-restablecer" hidden>
+      <div class="campo">
+        <label for="password">Nueva contraseña</label>
+        <input type="password" id="password" required minlength="6" autocomplete="new-password" />
+      </div>
+      <button type="submit" class="boton-primario" id="btn-submit">Guardar contraseña</button>
+    </form>
+
+    <div class="enlaces">
+      <a href="index.html">Volver a iniciar sesión</a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { supabase } from './js/supabaseClient.js';
+  import { actualizarPassword } from './js/auth.js';
+  import { mostrarError, mostrarCargando, traducirError } from './js/utils.js';
+
+  const subtitulo = document.getElementById('subtitulo');
+  const form = document.getElementById('form-restablecer');
+  const errorEl = document.getElementById('error');
+  const btnSubmit = document.getElementById('btn-submit');
+
+  let linkValido = false;
+
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      linkValido = true;
+      subtitulo.textContent = 'Elegí tu nueva contraseña.';
+      form.hidden = false;
+    }
+  });
+
+  // Si a los pocos segundos no llego el evento de recuperacion, el link no
+  // era valido (vencido, ya usado, o se entro directo a esta pagina).
+  setTimeout(() => {
+    if (!linkValido) {
+      subtitulo.textContent = '';
+      mostrarError(errorEl, 'Este link no es válido o ya venció. Pedí uno nuevo desde "Olvidé mi contraseña".');
+    }
+  }, 3000);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    mostrarError(errorEl, '');
+    mostrarCargando(btnSubmit, true, 'Guardar contraseña');
+
+    const { error } = await actualizarPassword(document.getElementById('password').value);
+
+    if (error) {
+      mostrarError(errorEl, traducirError(error));
+      mostrarCargando(btnSubmit, false, 'Guardar contraseña');
+      return;
+    }
+
+    window.location.href = 'panel.html';
+  });
+</script>

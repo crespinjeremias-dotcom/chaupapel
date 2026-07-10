@@ -1,0 +1,206 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Panel</title>
+<link rel="stylesheet" href="css/styles.css" />
+
+<header class="app-header" id="header" hidden>
+  <div class="identidad">
+    <h1 id="nombre-local"></h1>
+    <p id="usuario-info"></p>
+  </div>
+  <button class="boton-secundario" id="btn-logout" style="width: auto">Cerrar sesión</button>
+</header>
+
+<main class="app-main">
+  <div class="panel-seccion" id="seccion-suspendida" hidden>
+    <h2>Cuenta suspendida</h2>
+    <p class="texto-suave">
+      El acceso de esta organización está temporalmente suspendido. Contactá al administrador del sistema para
+      regularizar la suscripción.
+    </p>
+  </div>
+
+  <div class="aviso" id="aviso-pendiente" hidden>
+    Tu cuenta está pendiente de aprobación del administrador. Vas a poder ingresar en cuanto te aprueben.
+  </div>
+
+  <div class="panel-seccion" id="seccion-empleado" hidden>
+    <h2>Todo listo</h2>
+    <p class="texto-suave">
+      Tu cuenta está activa. Los módulos de productos, ventas y caja se habilitan en las próximas fases.
+    </p>
+  </div>
+
+  <div class="panel-seccion" id="seccion-invitar" hidden>
+    <h2>Invitar empleado</h2>
+    <div class="campo" id="campo-local-invitar" hidden>
+      <label for="select-local-invitar">Local</label>
+      <select id="select-local-invitar"></select>
+    </div>
+    <button class="boton-primario" id="btn-generar-codigo">Generar código de invitación</button>
+    <p class="mensaje-error" id="error-invitar" hidden></p>
+    <div class="codigo-generado" id="codigo-generado" hidden></div>
+    <p class="texto-suave" id="codigo-info" hidden></p>
+  </div>
+
+  <div class="panel-seccion" id="seccion-pendientes" hidden>
+    <h2>Empleados pendientes de aprobación</h2>
+    <p class="mensaje-error" id="error-pendientes" hidden></p>
+    <ul class="lista-usuarios" id="lista-pendientes"></ul>
+  </div>
+
+  <div class="panel-seccion" id="seccion-equipo" hidden>
+    <h2>Equipo</h2>
+    <ul class="lista-usuarios" id="lista-equipo"></ul>
+  </div>
+</main>
+
+<script type="module">
+  import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
+  import { listarLocales, listarUsuariosOrganizacion, generarInvitacion, aprobarEmpleado } from './js/empleados.js';
+  import { mostrarError } from './js/utils.js';
+
+  const ROL_LABEL = { admin: 'Administrador', empleado: 'Empleado' };
+
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await logout();
+    window.location.href = 'index.html';
+  });
+
+  async function iniciar() {
+    const session = await requireSession();
+    if (!session) return;
+
+    const usuario = await obtenerUsuarioActual();
+    if (!usuario) {
+      window.location.href = 'index.html';
+      return;
+    }
+
+    if (usuario.organizations && usuario.organizations.is_active === false) {
+      document.getElementById('seccion-suspendida').hidden = false;
+      document.getElementById('header').hidden = false;
+      document.getElementById('nombre-local').textContent = usuario.organizations.nombre;
+      return;
+    }
+
+    document.getElementById('header').hidden = false;
+    document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+    document.getElementById('usuario-info').textContent = `${usuario.nombre} · ${ROL_LABEL[usuario.role]}`;
+
+    if (usuario.status === 'pending') {
+      document.getElementById('aviso-pendiente').hidden = false;
+      return;
+    }
+
+    if (usuario.role === 'empleado') {
+      document.getElementById('seccion-empleado').hidden = false;
+      return;
+    }
+
+    if (usuario.role === 'admin') {
+      await iniciarPanelAdmin(usuario);
+    }
+  }
+
+  async function iniciarPanelAdmin(usuario) {
+    const locales = await listarLocales();
+
+    document.getElementById('seccion-invitar').hidden = false;
+    document.getElementById('seccion-pendientes').hidden = false;
+    document.getElementById('seccion-equipo').hidden = false;
+
+    const selectInvitar = document.getElementById('select-local-invitar');
+    const campoLocalInvitar = document.getElementById('campo-local-invitar');
+    if (locales.length > 1) {
+      selectInvitar.innerHTML = locales.map((l) => `<option value="${l.id}">${l.nombre}</option>`).join('');
+      campoLocalInvitar.hidden = false;
+    }
+
+    document.getElementById('btn-generar-codigo').addEventListener('click', async () => {
+      const errorEl = document.getElementById('error-invitar');
+      mostrarError(errorEl, '');
+      try {
+        const localId = locales.length > 1 ? selectInvitar.value : locales[0]?.id;
+        const inv = await generarInvitacion({
+          organizationId: usuario.organization_id,
+          creadoPor: usuario.id,
+          localId,
+        });
+        const codigoEl = document.getElementById('codigo-generado');
+        const infoEl = document.getElementById('codigo-info');
+        codigoEl.textContent = inv.codigo;
+        codigoEl.hidden = false;
+        infoEl.textContent = `Válido hasta ${new Date(inv.expira_at).toLocaleDateString('es-AR')}. Compartilo con el empleado.`;
+        infoEl.hidden = false;
+      } catch (err) {
+        mostrarError(errorEl, err.message);
+      }
+    });
+
+    await cargarListasUsuarios(locales);
+  }
+
+  async function cargarListasUsuarios(locales) {
+    const usuarios = await listarUsuariosOrganizacion();
+    const pendientes = usuarios.filter((u) => u.status === 'pending');
+    const resto = usuarios.filter((u) => u.status !== 'pending');
+
+    const listaPendientes = document.getElementById('lista-pendientes');
+    if (pendientes.length === 0) {
+      listaPendientes.innerHTML = '<li class="texto-suave">No hay solicitudes pendientes.</li>';
+    } else {
+      listaPendientes.innerHTML = pendientes
+        .map((u) => {
+          const necesitaLocal = !u.local_id && locales.length > 1;
+          const selectorLocal = necesitaLocal
+            ? `<select data-select-local="${u.id}">
+                 <option value="">Elegir local...</option>
+                 ${locales.map((l) => `<option value="${l.id}">${l.nombre}</option>`).join('')}
+               </select>`
+            : '';
+          return `
+            <li>
+              <span>${u.nombre} <span class="texto-suave">(${u.email || 'sin email'})</span></span>
+              ${selectorLocal}
+              <button type="button" class="boton-secundario" style="width:auto" data-aprobar="${u.id}">Aprobar</button>
+            </li>`;
+        })
+        .join('');
+
+      const errorPendientesEl = document.getElementById('error-pendientes');
+      listaPendientes.querySelectorAll('[data-aprobar]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          mostrarError(errorPendientesEl, '');
+          const usuarioId = btn.getAttribute('data-aprobar');
+          const select = listaPendientes.querySelector(`[data-select-local="${usuarioId}"]`);
+          if (select && !select.value) {
+            mostrarError(errorPendientesEl, 'Elegí a qué local pertenece este empleado antes de aprobarlo.');
+            return;
+          }
+          btn.disabled = true;
+          try {
+            await aprobarEmpleado(usuarioId, select ? select.value : null);
+            await cargarListasUsuarios(locales);
+          } catch (err) {
+            mostrarError(errorPendientesEl, err.message);
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+
+    const listaEquipo = document.getElementById('lista-equipo');
+    listaEquipo.innerHTML = resto
+      .map(
+        (u) => `
+        <li>
+          <span>${u.nombre} <span class="texto-suave">(${ROL_LABEL[u.role]}${u.locales ? ' · ' + u.locales.nombre : ''})</span></span>
+          <span class="etiqueta aprobado">Aprobado</span>
+        </li>`
+      )
+      .join('');
+  }
+
+  iniciar();
+</script>

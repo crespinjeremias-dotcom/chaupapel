@@ -61,9 +61,17 @@ Ambas funciones bypasean RLS porque corren con privilegios elevados (`security d
 
 Además de las policies, hay un trigger `prevent_privilege_escalation` en `usuarios` que bloquea que un usuario no-admin cambie `role`, `status`, `organization_id` o `local_id` en su propia fila, incluso a través de la policy `usuarios_update_self` (que por diseño permite que cada uno edite datos no sensibles de su propia fila, como nombre o teléfono). Es defensa en profundidad: aunque la policy de RLS ya es razonablemente restrictiva, este trigger asegura que ni un bug futuro en las policies abra esa puerta.
 
+## `organizations.is_active`: protegido con trigger, no solo con policy (Fase 2)
+
+Al probar el flujo de Auth en el navegador encontré que la policy `organizations_update` (que deja al admin editar su propia organización — necesaria para que pueda cambiar de plan, sección 16) también le permitía, sin querer, reactivar o desactivar su propia cuenta escribiendo `is_active`. Eso anula el sentido del corte de acceso manual del super-admin. RLS no puede restringir columna por columna dentro de una misma policy de `update`, así que se resolvió con un trigger (`prevent_is_active_change`, igual patrón que `prevent_privilege_escalation` en `usuarios`): bloquea cualquier cambio a `is_active` salvo que la request se haga con la `service_role` key (`auth.role() = 'service_role'`), que es el único camino que va a usar el panel de super-admin (Fase 15). Verificado en vivo: el admin puede cambiar `plan` pero no `is_active`.
+
 ## Panel de super-admin del SaaS (sección 16)
 
 El panel de super-admin (Fase 15) **no es un rol dentro de RLS** — no hay un `role = 'superadmin'` en `usuarios`. Las operaciones de super-admin (activar/desactivar una organización) se hacen con la **service role key** de Supabase desde una Netlify Function, que bypasea RLS por completo. Es un panel operado por fuera del modelo multi-tenant, no un usuario más de alguna organización.
+
+## GRANT de tabla, además de RLS (Fase 2)
+
+RLS filtra *filas*, pero Postgres exige por separado el permiso de tabla (`GRANT SELECT/INSERT/UPDATE/DELETE`) antes de siquiera evaluar las policies. Al probar el login en el navegador, la primera consulta real a `usuarios` devolvió `403 permission denied for table usuarios` — las migraciones de la Fase 1 se corrieron con un rol que no coincide con el que Supabase usa para aplicar sus grants automáticos del dashboard, así que el rol `authenticated` no tenía el permiso base. Se resolvió en `20260710090500_grants_authenticated.sql`, que además deja un `alter default privileges` para que las tablas que se creen de acá en adelante hereden el grant automáticamente sin tener que acordarse de repetir esto en cada fase.
 
 ## Decisiones que quedan abiertas / a confirmar
 

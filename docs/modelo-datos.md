@@ -81,10 +81,8 @@ Incluye `total_gastos_mercaderia` y `ganancia_bruta` (sección 6 y 10). Al inclu
 
 No hay una tabla `planes` ni `features` separada: `organizations.plan` es un enum (`basico`/`medio`/`completo`) y el mapeo de qué funciones incluye cada plan vive en el código de la aplicación (front y back), no en la base. Es a propósito: la sección 15 pide explícitamente que esto sea una segmentación comercial sobre un único modelo de datos, no tablas ni ramas de código distintas por plan. `plan_overrides` (jsonb) queda disponible para excepciones puntuales por organización si hiciera falta, sin tener que crear un plan nuevo.
 
-## Lo que falta para completar el modelo de negocio (a resolver en fases siguientes, no bloquea Fase 1)
+## Lo que falta para completar el modelo de negocio (a resolver en fases siguientes)
 
-- Función `crear_organizacion(...)` (security definer) para el alta de una organización nueva + su admin fundador en un solo paso atómico (Fase 2).
-- Función `redimir_invitacion(codigo, ...)` (security definer) para el alta de empleado vía código de invitación (Fase 2).
-- Lógica de sesión única por dispositivo usando `usuarios.current_session_id` + Supabase Admin API (Fase 2).
+- ~~Función `crear_organizacion(...)`~~ y ~~`redimir_invitacion(codigo, ...)`~~ y ~~sesión única por dispositivo~~: implementadas en Fase 2, ver `docs/auth-design.md`.
 - Qué pasa con la cuenta corriente al anular una venta fiada que ya tuvo pagos parciales (Fase 6).
 - Cálculo/población de `cierres_diarios` y `cierres_mensuales` (job o acción manual del admin) — las tablas están listas, falta la lógica que las llena (Fase 7).
