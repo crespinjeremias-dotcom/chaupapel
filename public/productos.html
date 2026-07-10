@@ -1,0 +1,618 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Productos</title>
+<link rel="stylesheet" href="css/chaupapel.css" />
+
+<header class="app-header">
+  <div class="identidad">
+    <h1 id="nombre-local"></h1>
+    <p><a href="panel.html">← Volver al panel</a></p>
+  </div>
+  <button class="boton-secundario boton-inline" id="btn-logout">Cerrar sesión</button>
+</header>
+
+<main class="app-main ancho">
+  <div class="panel-seccion">
+    <div class="barra-herramientas">
+      <div class="campo campo-busqueda">
+        <input type="text" id="buscador" placeholder="Buscar por nombre o código de barras..." />
+      </div>
+      <button type="button" class="boton-chico secundario" id="btn-escanear">Escanear código</button>
+      <button type="button" class="boton-chico primario" id="btn-nuevo" hidden>+ Nuevo producto</button>
+      <button type="button" class="boton-chico secundario" id="btn-exportar">Exportar Excel</button>
+      <button type="button" class="boton-chico secundario" id="btn-plantilla" hidden>Plantilla Excel</button>
+      <button type="button" class="boton-chico secundario" id="btn-importar" hidden>Importar Excel</button>
+      <input type="file" id="input-importar" class="input-archivo" accept=".xlsx,.xls" />
+    </div>
+
+    <p class="mensaje-error" id="error-lista" hidden></p>
+    <p class="mensaje-exito" id="exito-importar" hidden></p>
+    <p class="texto-suave" id="cargando">Cargando productos...</p>
+
+    <div class="tabla-contenedor">
+      <table class="tabla" id="tabla-productos" hidden>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Categoría</th>
+            <th>Stock</th>
+            <th>Precio</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody-productos"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="modal-producto" hidden>
+  <div class="modal">
+    <h2 id="modal-producto-titulo">Nuevo producto</h2>
+    <p class="mensaje-error" id="error-producto" hidden></p>
+    <form id="form-producto">
+      <div class="campo">
+        <label for="p-nombre">Nombre</label>
+        <input type="text" id="p-nombre" required />
+      </div>
+      <div class="campos-en-fila">
+        <div class="campo">
+          <label for="p-presentacion">Presentación</label>
+          <input type="text" id="p-presentacion" placeholder="Ej: 1,25L" />
+        </div>
+        <div class="campo">
+          <label for="p-unidad">Unidad de medida</label>
+          <input type="text" id="p-unidad" placeholder="Ej: unidad, kg, litros" />
+        </div>
+      </div>
+      <div class="campo">
+        <label for="p-categoria">Categoría</label>
+        <div class="campo-con-boton">
+          <select id="p-categoria"></select>
+          <button type="button" class="boton-chico secundario" id="btn-nueva-categoria">+ Nueva</button>
+        </div>
+      </div>
+      <div class="campo">
+        <label for="p-codigo-barras">Código de barras (opcional)</label>
+        <div class="campo-con-boton">
+          <input type="text" id="p-codigo-barras" />
+          <button type="button" class="boton-chico secundario" id="btn-escanear-form">Escanear</button>
+        </div>
+      </div>
+      <div class="campos-en-fila">
+        <div class="campo">
+          <label for="p-precio">Precio de venta</label>
+          <input type="number" id="p-precio" min="0" step="0.01" required />
+        </div>
+        <div class="campo">
+          <label for="p-stock-minimo">Stock mínimo</label>
+          <input type="number" id="p-stock-minimo" min="0" step="0.01" required />
+        </div>
+      </div>
+      <div class="campo" id="campo-stock-inicial">
+        <label for="p-stock-inicial">Stock inicial</label>
+        <input type="number" id="p-stock-inicial" min="0" step="0.01" value="0" required />
+      </div>
+      <div class="campo" id="campo-stock-actual-solo-lectura" hidden>
+        <label>Stock actual</label>
+        <p class="campo-valor-solo-lectura" id="p-stock-actual-valor"></p>
+        <p class="texto-ayuda">Para cambiar el stock usá "Ajustar stock" desde la lista.</p>
+      </div>
+      <div class="campo" id="campo-ultimo-costo" hidden>
+        <label>Último precio de costo</label>
+        <p class="campo-valor-solo-lectura" id="p-ultimo-costo-valor"></p>
+      </div>
+      <div class="campo-checkbox">
+        <input type="checkbox" id="p-perecedero" />
+        <label for="p-perecedero">Es perecedero</label>
+      </div>
+      <div class="campos-en-fila" id="campos-vencimiento" hidden>
+        <div class="campo">
+          <label for="p-fecha-vencimiento">Fecha de vencimiento</label>
+          <input type="date" id="p-fecha-vencimiento" />
+        </div>
+        <div class="campo">
+          <label for="p-dias-alerta">Avisar (días antes)</label>
+          <input type="number" id="p-dias-alerta" min="0" placeholder="Sin alerta" />
+        </div>
+      </div>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario" id="btn-cancelar-producto">Cancelar</button>
+        <button type="submit" class="boton-primario" id="btn-guardar-producto">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-categoria" hidden>
+  <div class="modal">
+    <h2>Nueva categoría</h2>
+    <p class="mensaje-error" id="error-categoria" hidden></p>
+    <form id="form-categoria">
+      <div class="campo">
+        <label for="c-nombre">Nombre</label>
+        <input type="text" id="c-nombre" required />
+      </div>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario" id="btn-cancelar-categoria">Cancelar</button>
+        <button type="submit" class="boton-primario">Crear</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-ajuste" hidden>
+  <div class="modal">
+    <h2>Ajustar stock — <span id="ajuste-producto-nombre"></span></h2>
+    <p class="texto-suave">Stock actual: <strong id="ajuste-stock-actual"></strong></p>
+    <p class="mensaje-error" id="error-ajuste" hidden></p>
+    <form id="form-ajuste">
+      <div class="campos-en-fila">
+        <div class="campo">
+          <label for="a-direccion">Tipo</label>
+          <select id="a-direccion">
+            <option value="sumar">Sumar al stock</option>
+            <option value="restar">Restar del stock</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="a-cantidad">Cantidad</label>
+          <input type="number" id="a-cantidad" min="0.01" step="0.01" required />
+        </div>
+      </div>
+      <div class="campo">
+        <label for="a-motivo">Motivo</label>
+        <select id="a-motivo"></select>
+      </div>
+      <div class="campo">
+        <label for="a-comentario">Comentario <span id="a-comentario-obligatorio" hidden>(obligatorio)</span></label>
+        <textarea id="a-comentario"></textarea>
+      </div>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario" id="btn-cancelar-ajuste">Cancelar</button>
+        <button type="submit" class="boton-primario">Guardar ajuste</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-escaner" hidden>
+  <div class="modal">
+    <h2>Escanear código de barras</h2>
+    <p class="mensaje-error" id="error-escaner" hidden></p>
+    <video class="escaner-video" id="video-escaner" autoplay muted playsinline></video>
+    <div class="modal-acciones">
+      <button type="button" class="boton-secundario" id="btn-cerrar-escaner">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
+  import {
+    MOTIVOS_AJUSTE,
+    listarCategorias,
+    crearCategoria,
+    listarProductos,
+    crearProducto,
+    actualizarProducto,
+    establecerActivo,
+    ajustarStock,
+  } from './js/productos.js';
+  import { iniciarEscaneo, detenerEscaneo } from './js/barcode.js';
+  import { listarLocales } from './js/empleados.js';
+  import { exportarProductos, descargarPlantilla, leerArchivoProductos } from './js/excel.js';
+  import { mostrarError, escapeHtml } from './js/utils.js';
+
+  let usuario = null;
+  // El admin no tiene un local propio (ve todos los de su organizacion).
+  // Mientras no exista un selector de local (multi-local es Fase 13), las
+  // altas que haga un admin quedan en el primer local de la organizacion.
+  let localIdActivo = null;
+  let categorias = [];
+  let productos = [];
+  let productoEnEdicion = null;
+  let productoParaAjuste = null;
+  let destinoEscaneo = null; // 'buscador' | 'form'
+
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await logout();
+    window.location.href = 'index.html';
+  });
+
+  async function iniciar() {
+    const session = await requireSession();
+    if (!session) return;
+
+    usuario = await obtenerUsuarioActual();
+    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false) {
+      window.location.href = 'panel.html';
+      return;
+    }
+
+    document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+
+    if (usuario.role === 'admin') {
+      document.getElementById('btn-nuevo').hidden = false;
+      document.getElementById('btn-plantilla').hidden = false;
+      document.getElementById('btn-importar').hidden = false;
+      const locales = await listarLocales();
+      localIdActivo = locales[0]?.id || null;
+    } else {
+      localIdActivo = usuario.local_id;
+    }
+
+    categorias = await listarCategorias();
+    llenarSelectCategorias();
+    llenarSelectMotivos();
+
+    await cargarProductos();
+
+    document.getElementById('buscador').addEventListener('input', debounce(() => cargarProductos(), 300));
+    document.getElementById('btn-nuevo').addEventListener('click', () => abrirModalProducto());
+    document.getElementById('btn-exportar').addEventListener('click', () => exportarProductos(productos));
+    document.getElementById('btn-plantilla').addEventListener('click', () => descargarPlantilla());
+    document.getElementById('btn-importar').addEventListener('click', () => document.getElementById('input-importar').click());
+    document.getElementById('input-importar').addEventListener('change', manejarImportacion);
+
+    document.getElementById('btn-escanear').addEventListener('click', () => abrirEscaner('buscador'));
+    document.getElementById('btn-escanear-form').addEventListener('click', () => abrirEscaner('form'));
+    document.getElementById('btn-cerrar-escaner').addEventListener('click', cerrarEscaner);
+
+    document.getElementById('btn-nueva-categoria').addEventListener('click', () => {
+      document.getElementById('c-nombre').value = '';
+      mostrarError(document.getElementById('error-categoria'), '');
+      document.getElementById('modal-categoria').hidden = false;
+    });
+    document.getElementById('btn-cancelar-categoria').addEventListener('click', () => {
+      document.getElementById('modal-categoria').hidden = true;
+    });
+    document.getElementById('form-categoria').addEventListener('submit', guardarCategoria);
+
+    document.getElementById('p-perecedero').addEventListener('change', (e) => {
+      document.getElementById('campos-vencimiento').hidden = !e.target.checked;
+    });
+    document.getElementById('btn-cancelar-producto').addEventListener('click', () => {
+      document.getElementById('modal-producto').hidden = true;
+    });
+    document.getElementById('form-producto').addEventListener('submit', guardarProducto);
+
+    document.getElementById('btn-cancelar-ajuste').addEventListener('click', () => {
+      document.getElementById('modal-ajuste').hidden = true;
+    });
+    document.getElementById('a-motivo').addEventListener('change', actualizarComentarioObligatorio);
+    document.getElementById('form-ajuste').addEventListener('submit', guardarAjuste);
+  }
+
+  function debounce(fn, ms) {
+    let t;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  }
+
+  function llenarSelectCategorias() {
+    const select = document.getElementById('p-categoria');
+    select.innerHTML =
+      '<option value="">Sin categoría</option>' +
+      categorias.map((c) => `<option value="${c.id}">${escapeHtml(c.nombre)}</option>`).join('');
+  }
+
+  function llenarSelectMotivos() {
+    const select = document.getElementById('a-motivo');
+    select.innerHTML = MOTIVOS_AJUSTE.map((m) => `<option value="${m.value}">${m.label}</option>`).join('');
+  }
+
+  // Fase 3 -----------------------------------------------------------------
+
+  async function cargarProductos() {
+    const errorEl = document.getElementById('error-lista');
+    const cargandoEl = document.getElementById('cargando');
+    const tabla = document.getElementById('tabla-productos');
+    mostrarError(errorEl, '');
+    try {
+      const query = document.getElementById('buscador').value.trim();
+      productos = await listarProductos({ query: query || undefined });
+      renderTabla();
+      cargandoEl.hidden = true;
+      tabla.hidden = false;
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+      cargandoEl.hidden = true;
+    }
+  }
+
+  function estadoProducto(p) {
+    if (!p.activo) return '<span class="etiqueta inactivo">Inactivo</span>';
+    const badges = [];
+    if (p.stock_actual <= p.stock_minimo) badges.push('<span class="etiqueta stock-bajo">Stock bajo</span>');
+    if (p.perecedero && p.fecha_vencimiento && p.alerta_vencimiento_dias != null) {
+      const dias = (new Date(p.fecha_vencimiento) - new Date()) / 86400000;
+      if (dias <= p.alerta_vencimiento_dias) badges.push('<span class="etiqueta por-vencer">Por vencer</span>');
+    }
+    return badges.join(' ') || '<span class="etiqueta">OK</span>';
+  }
+
+  function renderTabla() {
+    const tbody = document.getElementById('tbody-productos');
+    if (productos.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="texto-suave">No se encontraron productos.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = productos
+      .map((p) => {
+        const acciones = [`<button type="button" class="boton-chico secundario" data-ajustar="${p.id}">Ajustar stock</button>`];
+        if (usuario.role === 'admin') {
+          acciones.push(`<button type="button" class="boton-chico secundario" data-editar="${p.id}">Editar</button>`);
+          acciones.push(
+            `<button type="button" class="boton-chico ${p.activo ? 'peligro' : 'primario'}" data-toggle-activo="${p.id}">${
+              p.activo ? 'Desactivar' : 'Reactivar'
+            }</button>`
+          );
+        }
+        return `
+          <tr class="${p.activo ? '' : 'fila-inactiva'}">
+            <td>${escapeHtml(p.nombre)}${p.presentacion ? ' · ' + escapeHtml(p.presentacion) : ''}</td>
+            <td>${escapeHtml(p.categorias?.nombre || '—')}</td>
+            <td>${p.stock_actual} ${escapeHtml(p.unidad_medida || '')}</td>
+            <td>$${Number(p.precio_venta_actual).toLocaleString('es-AR')}</td>
+            <td>${estadoProducto(p)}</td>
+            <td class="celda-acciones">${acciones.join('')}</td>
+          </tr>`;
+      })
+      .join('');
+
+    tbody.querySelectorAll('[data-ajustar]').forEach((btn) =>
+      btn.addEventListener('click', () => abrirModalAjuste(productos.find((p) => p.id === btn.dataset.ajustar)))
+    );
+    tbody.querySelectorAll('[data-editar]').forEach((btn) =>
+      btn.addEventListener('click', () => abrirModalProducto(productos.find((p) => p.id === btn.dataset.editar)))
+    );
+    tbody.querySelectorAll('[data-toggle-activo]').forEach((btn) =>
+      btn.addEventListener('click', () => alternarActivo(productos.find((p) => p.id === btn.dataset.toggleActivo)))
+    );
+  }
+
+  async function alternarActivo(producto) {
+    try {
+      await establecerActivo(producto.id, !producto.activo);
+      await cargarProductos();
+    } catch (err) {
+      mostrarError(document.getElementById('error-lista'), err.message);
+    }
+  }
+
+  // Modal producto -----------------------------------------------------
+
+  function abrirModalProducto(producto = null) {
+    productoEnEdicion = producto;
+    const esEdicion = !!producto;
+
+    document.getElementById('modal-producto-titulo').textContent = esEdicion ? 'Editar producto' : 'Nuevo producto';
+    mostrarError(document.getElementById('error-producto'), '');
+
+    document.getElementById('p-nombre').value = producto?.nombre || '';
+    document.getElementById('p-presentacion').value = producto?.presentacion || '';
+    document.getElementById('p-unidad').value = producto?.unidad_medida || '';
+    document.getElementById('p-categoria').value = producto?.categoria_id || '';
+    document.getElementById('p-codigo-barras').value = producto?.codigo_barras || '';
+    document.getElementById('p-precio').value = producto?.precio_venta_actual ?? '';
+    document.getElementById('p-stock-minimo').value = producto?.stock_minimo ?? '';
+
+    document.getElementById('campo-stock-inicial').hidden = esEdicion;
+    document.getElementById('p-stock-inicial').required = !esEdicion;
+    document.getElementById('campo-stock-actual-solo-lectura').hidden = !esEdicion;
+    if (esEdicion) document.getElementById('p-stock-actual-valor').textContent = `${producto.stock_actual} ${producto.unidad_medida || ''}`;
+
+    document.getElementById('campo-ultimo-costo').hidden = !esEdicion || producto?.ultimo_precio_costo == null;
+    if (producto?.ultimo_precio_costo != null) {
+      document.getElementById('p-ultimo-costo-valor').textContent = `$${Number(producto.ultimo_precio_costo).toLocaleString('es-AR')}`;
+    }
+
+    document.getElementById('p-perecedero').checked = !!producto?.perecedero;
+    document.getElementById('campos-vencimiento').hidden = !producto?.perecedero;
+    document.getElementById('p-fecha-vencimiento').value = producto?.fecha_vencimiento || '';
+    document.getElementById('p-dias-alerta').value = producto?.alerta_vencimiento_dias ?? '';
+
+    document.getElementById('modal-producto').hidden = false;
+  }
+
+  async function guardarProducto(e) {
+    e.preventDefault();
+    const errorEl = document.getElementById('error-producto');
+    mostrarError(errorEl, '');
+
+    const perecedero = document.getElementById('p-perecedero').checked;
+    const diasAlerta = document.getElementById('p-dias-alerta').value;
+
+    const datos = {
+      nombre: document.getElementById('p-nombre').value.trim(),
+      presentacion: document.getElementById('p-presentacion').value.trim() || null,
+      unidad_medida: document.getElementById('p-unidad').value.trim() || null,
+      categoria_id: document.getElementById('p-categoria').value || null,
+      codigo_barras: document.getElementById('p-codigo-barras').value.trim() || null,
+      precio_venta_actual: Number(document.getElementById('p-precio').value),
+      stock_minimo: Number(document.getElementById('p-stock-minimo').value),
+      perecedero,
+      fecha_vencimiento: perecedero ? document.getElementById('p-fecha-vencimiento').value || null : null,
+      alerta_vencimiento_dias: perecedero && diasAlerta !== '' ? Number(diasAlerta) : null,
+    };
+
+    try {
+      if (productoEnEdicion) {
+        await actualizarProducto(productoEnEdicion.id, datos);
+      } else {
+        datos.local_id = localIdActivo;
+        datos.organization_id = usuario.organization_id;
+        datos.stock_actual = Number(document.getElementById('p-stock-inicial').value);
+        await crearProducto(datos);
+      }
+      document.getElementById('modal-producto').hidden = true;
+      await cargarProductos();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Modal categoria ------------------------------------------------------
+
+  async function guardarCategoria(e) {
+    e.preventDefault();
+    const errorEl = document.getElementById('error-categoria');
+    mostrarError(errorEl, '');
+    try {
+      const nueva = await crearCategoria(document.getElementById('c-nombre').value.trim(), localIdActivo, usuario.organization_id);
+      categorias.push(nueva);
+      categorias.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      llenarSelectCategorias();
+      document.getElementById('p-categoria').value = nueva.id;
+      document.getElementById('modal-categoria').hidden = true;
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Modal ajuste de stock --------------------------------------------------
+
+  function actualizarComentarioObligatorio() {
+    const esOtro = document.getElementById('a-motivo').value === 'otro';
+    document.getElementById('a-comentario-obligatorio').hidden = !esOtro;
+    document.getElementById('a-comentario').required = esOtro;
+  }
+
+  function abrirModalAjuste(producto) {
+    productoParaAjuste = producto;
+    mostrarError(document.getElementById('error-ajuste'), '');
+    document.getElementById('ajuste-producto-nombre').textContent = producto.nombre;
+    document.getElementById('ajuste-stock-actual').textContent = `${producto.stock_actual} ${producto.unidad_medida || ''}`;
+    document.getElementById('a-direccion').value = 'sumar';
+    document.getElementById('a-cantidad').value = '';
+    document.getElementById('a-motivo').value = MOTIVOS_AJUSTE[0].value;
+    document.getElementById('a-comentario').value = '';
+    actualizarComentarioObligatorio();
+    document.getElementById('modal-ajuste').hidden = false;
+  }
+
+  async function guardarAjuste(e) {
+    e.preventDefault();
+    const errorEl = document.getElementById('error-ajuste');
+    mostrarError(errorEl, '');
+
+    const direccion = document.getElementById('a-direccion').value;
+    const cantidadBase = Number(document.getElementById('a-cantidad').value);
+    const cantidad = direccion === 'restar' ? -cantidadBase : cantidadBase;
+
+    try {
+      await ajustarStock({
+        productoId: productoParaAjuste.id,
+        localId: productoParaAjuste.local_id,
+        organizationId: productoParaAjuste.organization_id,
+        usuarioId: usuario.id,
+        cantidad,
+        motivo: document.getElementById('a-motivo').value,
+        comentario: document.getElementById('a-comentario').value.trim(),
+      });
+      document.getElementById('modal-ajuste').hidden = true;
+      await cargarProductos();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Escaner de camara -------------------------------------------------------
+
+  async function abrirEscaner(destino) {
+    destinoEscaneo = destino;
+    const errorEl = document.getElementById('error-escaner');
+    mostrarError(errorEl, '');
+    document.getElementById('modal-escaner').hidden = false;
+    try {
+      await iniciarEscaneo(
+        document.getElementById('video-escaner'),
+        (texto) => {
+          if (destinoEscaneo === 'buscador') {
+            document.getElementById('buscador').value = texto;
+            cargarProductos();
+          } else {
+            document.getElementById('p-codigo-barras').value = texto;
+          }
+          cerrarEscaner();
+        },
+        (err) => mostrarError(errorEl, err.message || 'No se pudo leer el código.')
+      );
+    } catch (err) {
+      mostrarError(errorEl, 'No se pudo acceder a la cámara: ' + err.message);
+    }
+  }
+
+  function cerrarEscaner() {
+    detenerEscaneo();
+    document.getElementById('modal-escaner').hidden = true;
+  }
+
+  // Importar Excel -----------------------------------------------------
+
+  async function manejarImportacion(e) {
+    const archivo = e.target.files[0];
+    e.target.value = '';
+    if (!archivo) return;
+
+    const exitoEl = document.getElementById('exito-importar');
+    const errorEl = document.getElementById('error-lista');
+    mostrarError(errorEl, '');
+    exitoEl.hidden = true;
+
+    try {
+      const filas = await leerArchivoProductos(archivo);
+      let creados = 0;
+      let errores = 0;
+
+      for (const fila of filas) {
+        const nombre = String(fila['Nombre'] || '').trim();
+        if (!nombre) continue;
+
+        try {
+          let categoriaId = null;
+          const nombreCategoria = String(fila['Categoría'] || '').trim();
+          if (nombreCategoria) {
+            let cat = categorias.find((c) => c.nombre.toLowerCase() === nombreCategoria.toLowerCase());
+            if (!cat) {
+              cat = await crearCategoria(nombreCategoria, localIdActivo, usuario.organization_id);
+              categorias.push(cat);
+            }
+            categoriaId = cat.id;
+          }
+
+          await crearProducto({
+            local_id: localIdActivo,
+            organization_id: usuario.organization_id,
+            nombre,
+            presentacion: String(fila['Presentación'] || '').trim() || null,
+            unidad_medida: String(fila['Unidad'] || '').trim() || null,
+            categoria_id: categoriaId,
+            codigo_barras: String(fila['Código de barras'] || '').trim() || null,
+            precio_venta_actual: Number(fila['Precio de venta']) || 0,
+            stock_minimo: Number(fila['Stock mínimo']) || 0,
+            stock_actual: Number(fila['Stock actual']) || 0,
+            perecedero: String(fila['Perecedero (SI/NO)'] || '').trim().toUpperCase() === 'SI',
+          });
+          creados++;
+        } catch {
+          errores++;
+        }
+      }
+
+      llenarSelectCategorias();
+      exitoEl.hidden = false;
+      exitoEl.textContent = `Se importaron ${creados} productos.${errores ? ` ${errores} filas con error se saltearon.` : ''}`;
+      await cargarProductos();
+    } catch (err) {
+      mostrarError(errorEl, 'No se pudo leer el archivo: ' + err.message);
+    }
+  }
+
+  iniciar();
+</script>

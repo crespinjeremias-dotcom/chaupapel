@@ -26,9 +26,12 @@
 
   <div class="panel-seccion" id="seccion-empleado" hidden>
     <h2>Todo listo</h2>
-    <p class="texto-suave">
-      Tu cuenta está activa. Los módulos de productos, ventas y caja se habilitan en las próximas fases.
-    </p>
+    <p class="texto-suave">Tu cuenta está activa.</p>
+  </div>
+
+  <div class="panel-seccion" id="seccion-modulos" hidden>
+    <h2>Módulos</h2>
+    <a class="boton-secundario boton-inline" href="productos.html">Productos e inventario</a>
   </div>
 
   <div class="panel-seccion" id="seccion-invitar" hidden>
@@ -58,7 +61,7 @@
 <script type="module">
   import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
   import { listarLocales, listarUsuariosOrganizacion, generarInvitacion, aprobarEmpleado } from './js/empleados.js';
-  import { mostrarError } from './js/utils.js';
+  import { mostrarError, escapeHtml } from './js/utils.js';
 
   const ROL_LABEL = { admin: 'Administrador', empleado: 'Empleado' };
 
@@ -92,6 +95,8 @@
       document.getElementById('aviso-pendiente').hidden = false;
       return;
     }
+
+    document.getElementById('seccion-modulos').hidden = false;
 
     if (usuario.role === 'empleado') {
       document.getElementById('seccion-empleado').hidden = false;
@@ -156,12 +161,12 @@
           const selectorLocal = necesitaLocal
             ? `<select data-select-local="${u.id}">
                  <option value="">Elegir local...</option>
-                 ${locales.map((l) => `<option value="${l.id}">${l.nombre}</option>`).join('')}
+                 ${locales.map((l) => `<option value="${l.id}">${escapeHtml(l.nombre)}</option>`).join('')}
                </select>`
             : '';
           return `
             <li>
-              <span>${u.nombre} <span class="texto-suave">(${u.email || 'sin email'})</span></span>
+              <span>${escapeHtml(u.nombre)} <span class="texto-suave">(${escapeHtml(u.email || 'sin email')})</span></span>
               ${selectorLocal}
               <button type="button" class="boton-secundario boton-inline" data-aprobar="${u.id}">Aprobar</button>
             </li>`;
@@ -195,7 +200,7 @@
       .map(
         (u) => `
         <li>
-          <span>${u.nombre} <span class="texto-suave">(${ROL_LABEL[u.role]}${u.locales ? ' · ' + u.locales.nombre : ''})</span></span>
+          <span>${escapeHtml(u.nombre)} <span class="texto-suave">(${ROL_LABEL[u.role]}${u.locales ? ' · ' + escapeHtml(u.locales.nombre) : ''})</span></span>
           <span class="etiqueta aprobado">Aprobado</span>
         </li>`
       )

@@ -36,6 +36,7 @@ Esto cubre a la vez:
 
 ## Excepciones al patrón general (y por qué)
 
+- **`productos` / `categorias` (insert/update)**: solo admin, no el patrón genérico. La sección 2 es explícita: "Admin: Carga y edita productos, categorías, proveedores" — el empleado no edita el catálogo, solo vende y ajusta stock (`ajustes_stock` sí sigue el patrón genérico, cualquier aprobado del local). Se corrigió en Fase 3 (Fase 1 lo había dejado con el patrón genérico por error).
 - **`organizations`**: el `select` no exige `is_approved()` ni `org_is_active()` — el propio frontend necesita poder leer `is_active` para mostrar la pantalla de "cuenta suspendida" incluso si la organización está cortada.
 - **`usuarios`**: cada usuario siempre puede ver **su propia fila**, independientemente de su `status` — si no, un empleado en estado `pending` no podría ni siquiera consultar que sigue pendiente de aprobación. El admin, además, ve todas las filas de su organización (para poder aprobar altas).
 - **`turnos`**: un empleado solo ve/opera **sus propios turnos**, no los de sus compañeros del mismo local — el conteo de caja y las diferencias de un turno son información sensible sobre el desempeño de esa persona puntual. El admin sí ve todos los turnos del local.

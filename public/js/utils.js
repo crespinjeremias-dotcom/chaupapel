@@ -9,6 +9,14 @@ export function parseJwt(token) {
   return JSON.parse(json);
 }
 
+const ESCAPES_HTML = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+// Los nombres de producto/categoria/cliente/usuario los escribe el usuario y
+// se insertan via innerHTML en varias pantallas -- hay que escaparlos.
+export function escapeHtml(texto) {
+  return String(texto ?? '').replace(/[&<>"']/g, (c) => ESCAPES_HTML[c]);
+}
+
 export function mostrarError(el, mensaje) {
   el.textContent = mensaje;
   el.hidden = !mensaje;
