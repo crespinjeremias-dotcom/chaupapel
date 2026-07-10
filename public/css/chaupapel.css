@@ -82,6 +82,10 @@ body {
   outline-offset: 1px;
 }
 
+.input-codigo-invitacion {
+  text-transform: uppercase;
+}
+
 button {
   cursor: pointer;
   font-family: inherit;
@@ -116,6 +120,11 @@ button {
   border-radius: 8px;
   font-size: 0.95rem;
   font-weight: 600;
+}
+
+.boton-secundario.boton-inline {
+  width: auto;
+  padding: 8px 14px;
 }
 
 .enlaces {

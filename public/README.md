@@ -9,7 +9,7 @@ public/
 ├── service-worker.js       (Fase 14)
 ├── icons/                  (íconos PWA)
 ├── css/
-│   └── styles.css
+│   └── chaupapel.css
 ├── js/
 │   ├── supabaseClient.js   (conexión y utilidades compartidas)
 │   ├── auth.js

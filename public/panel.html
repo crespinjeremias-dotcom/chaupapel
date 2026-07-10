@@ -1,14 +1,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Panel</title>
-<link rel="stylesheet" href="css/styles.css" />
+<link rel="stylesheet" href="css/chaupapel.css" />
 
 <header class="app-header" id="header" hidden>
   <div class="identidad">
     <h1 id="nombre-local"></h1>
     <p id="usuario-info"></p>
   </div>
-  <button class="boton-secundario" id="btn-logout" style="width: auto">Cerrar sesión</button>
+  <button class="boton-secundario boton-inline" id="btn-logout">Cerrar sesión</button>
 </header>
 
 <main class="app-main">
@@ -163,7 +163,7 @@
             <li>
               <span>${u.nombre} <span class="texto-suave">(${u.email || 'sin email'})</span></span>
               ${selectorLocal}
-              <button type="button" class="boton-secundario" style="width:auto" data-aprobar="${u.id}">Aprobar</button>
+              <button type="button" class="boton-secundario boton-inline" data-aprobar="${u.id}">Aprobar</button>
             </li>`;
         })
         .join('');
