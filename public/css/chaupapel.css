@@ -522,12 +522,39 @@ button {
 
 /* Escaner de camara ------------------------------------------------------ */
 
+.escaner-contenedor {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+
 .escaner-video {
   width: 100%;
-  border-radius: 8px;
-  background: #000;
+  display: block;
   max-height: 320px;
   object-fit: cover;
+}
+
+/* Recuadro guia para encuadrar el codigo de barras: envases curvos o con
+   poco contraste (ej. retornables) enfocan mejor si el usuario sabe donde
+   centrar la etiqueta en vez de acercar la camara a ciegas. */
+.escaner-guia {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 78%;
+  height: 34%;
+  border: 3px solid #ffffffcc;
+  border-radius: 6px;
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.texto-centrado {
+  text-align: center;
+  margin: 10px 0 0;
 }
 
 /* Excel ------------------------------------------------------------------ */

@@ -181,7 +181,11 @@
   <div class="modal">
     <h2>Escanear código de barras</h2>
     <p class="mensaje-error" id="error-escaner" hidden></p>
-    <video class="escaner-video" id="video-escaner" autoplay muted playsinline></video>
+    <div class="escaner-contenedor">
+      <video class="escaner-video" id="video-escaner" autoplay muted playsinline></video>
+      <div class="escaner-guia"></div>
+    </div>
+    <p class="texto-suave texto-centrado">Encuadrá el código de barras dentro del recuadro.</p>
     <div class="modal-acciones">
       <button type="button" class="boton-secundario" id="btn-cerrar-escaner">Cancelar</button>
     </div>
@@ -523,11 +527,17 @@
   }
 
   // Escaner de camara -------------------------------------------------------
+  // escaneoCancelado cubre el caso de cerrar el modal mientras iniciarEscaneo
+  // todavia esta esperando el permiso de camara: si no se chequeara esto, la
+  // camara podria arrancar "invisible" (sin modal) justo despues de cancelar.
+  let escaneoCancelado = false;
 
   async function abrirEscaner(destino) {
     destinoEscaneo = destino;
+    escaneoCancelado = false;
     const errorEl = document.getElementById('error-escaner');
     mostrarError(errorEl, '');
+    detenerEscaneo(); // por si quedo algo sin liberar de un intento anterior
     document.getElementById('modal-escaner').hidden = false;
     try {
       await iniciarEscaneo(
@@ -543,14 +553,21 @@
         },
         (err) => mostrarError(errorEl, err.message || 'No se pudo leer el código.')
       );
+      if (escaneoCancelado) {
+        detenerEscaneo();
+      }
     } catch (err) {
       mostrarError(errorEl, 'No se pudo acceder a la cámara: ' + err.message);
     }
   }
 
   function cerrarEscaner() {
-    detenerEscaneo();
+    // Cierra el modal primero: la UI nunca debe quedar trabada esperando a
+    // que la camara se libere bien. detenerEscaneo() ya maneja sus propios
+    // errores (ver barcode.js), pero esto es una segunda red de seguridad.
+    escaneoCancelado = true;
     document.getElementById('modal-escaner').hidden = true;
+    detenerEscaneo();
   }
 
   // Importar Excel -----------------------------------------------------
