@@ -1,0 +1,606 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Proveedores</title>
+<link rel="stylesheet" href="css/chaupapel.css" />
+
+<header class="app-header">
+  <div class="identidad">
+    <h1 id="nombre-local"></h1>
+    <p><a href="panel.html">← Volver al panel</a></p>
+  </div>
+  <button class="boton-secundario boton-inline" id="btn-logout">Cerrar sesión</button>
+</header>
+
+<main class="app-main ancho">
+  <div class="panel-seccion">
+    <div class="barra-herramientas">
+      <div class="campo campo-busqueda">
+        <input type="text" id="buscador" placeholder="Buscar proveedor por nombre..." />
+      </div>
+      <button type="button" class="boton-chico primario" id="btn-nuevo" hidden>+ Nuevo proveedor</button>
+    </div>
+
+    <p class="mensaje-error" id="error-lista" hidden></p>
+    <p class="texto-suave" id="cargando">Cargando proveedores...</p>
+
+    <div class="tabla-contenedor">
+      <table class="tabla" id="tabla-proveedores" hidden>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Teléfono</th>
+            <th>Email</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody-proveedores"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="modal-proveedor" hidden>
+  <div class="modal">
+    <h2 id="modal-proveedor-titulo">Nuevo proveedor</h2>
+    <p class="mensaje-error" id="error-proveedor" hidden></p>
+    <form id="form-proveedor">
+      <div class="campo">
+        <label for="pr-nombre">Nombre</label>
+        <input type="text" id="pr-nombre" required />
+      </div>
+      <div class="campos-en-fila">
+        <div class="campo">
+          <label for="pr-telefono">Teléfono / WhatsApp</label>
+          <input type="tel" id="pr-telefono" />
+        </div>
+        <div class="campo">
+          <label for="pr-email">Email (opcional)</label>
+          <input type="email" id="pr-email" />
+        </div>
+      </div>
+      <div class="campo">
+        <label for="pr-direccion">Dirección (opcional)</label>
+        <input type="text" id="pr-direccion" />
+      </div>
+      <div class="campo">
+        <label for="pr-notas">Notas</label>
+        <textarea id="pr-notas" placeholder="Ej: entrega los martes"></textarea>
+      </div>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario" id="btn-cancelar-proveedor">Cancelar</button>
+        <button type="submit" class="boton-primario">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-ficha" hidden>
+  <div class="modal ancho">
+    <h2 id="ficha-nombre"></h2>
+    <p class="texto-suave" id="ficha-contacto"></p>
+    <p class="texto-suave" id="ficha-notas"></p>
+
+    <div class="ficha-seccion">
+      <h3>Productos que provee</h3>
+      <p class="mensaje-error" id="error-vinculo" hidden></p>
+      <div class="vincular-producto-form" id="form-vincular" hidden>
+        <select id="select-producto-vincular"></select>
+        <button type="button" class="boton-chico primario" id="btn-vincular">Vincular</button>
+      </div>
+      <ul class="lista-vinculos" id="lista-productos-vinculados"></ul>
+    </div>
+
+    <div class="ficha-seccion">
+      <h3>Reclamos y devoluciones</h3>
+      <p class="mensaje-error" id="error-reclamos" hidden></p>
+      <button type="button" class="boton-chico secundario" id="btn-nuevo-reclamo">+ Nuevo reclamo</button>
+      <ul class="lista-vinculos" id="lista-reclamos"></ul>
+    </div>
+
+    <div class="modal-acciones">
+      <button type="button" class="boton-secundario" id="btn-cerrar-ficha">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-reclamo" hidden>
+  <div class="modal">
+    <h2>Nuevo reclamo</h2>
+    <p class="mensaje-error" id="error-nuevo-reclamo" hidden></p>
+    <form id="form-reclamo">
+      <div class="campo">
+        <label for="rc-producto">Producto</label>
+        <select id="rc-producto">
+          <option value="">Lote completo / sin especificar</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="rc-cantidad">Cantidad (opcional)</label>
+        <input type="number" id="rc-cantidad" min="0.01" step="0.01" />
+      </div>
+      <div class="campo">
+        <label for="rc-motivo">Motivo</label>
+        <textarea id="rc-motivo" required></textarea>
+      </div>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario" id="btn-cancelar-reclamo">Cancelar</button>
+        <button type="submit" class="boton-primario">Registrar reclamo</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-reponer" hidden>
+  <div class="modal">
+    <h2>Reponer stock</h2>
+    <p class="texto-suave" id="reponer-contexto"></p>
+    <p class="mensaje-error" id="error-reponer" hidden></p>
+    <form id="form-reponer">
+      <div class="campos-en-fila">
+        <div class="campo">
+          <label for="rp-cantidad">Cantidad que llegó</label>
+          <input type="number" id="rp-cantidad" min="0.01" step="0.01" required />
+        </div>
+        <div class="campo">
+          <label for="rp-precio-costo">Precio de costo pagado</label>
+          <input type="number" id="rp-precio-costo" min="0" step="0.01" required />
+        </div>
+      </div>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario" id="btn-cancelar-reponer">Cancelar</button>
+        <button type="submit" class="boton-primario">Registrar reposición</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-eliminar" hidden>
+  <div class="modal">
+    <h2>Eliminar proveedor</h2>
+    <p id="eliminar-texto"></p>
+    <p class="mensaje-error" id="error-eliminar" hidden></p>
+    <div class="modal-acciones">
+      <button type="button" class="boton-secundario" id="btn-cancelar-eliminar">Cancelar</button>
+      <button type="button" class="boton-peligro" id="btn-confirmar-eliminar">Sí, eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
+  import { listarLocales } from './js/empleados.js';
+  import {
+    listarProveedores,
+    crearProveedor,
+    actualizarProveedor,
+    establecerActivo,
+    eliminarProveedor,
+    listarProductosVinculados,
+    listarProductosNoVinculados,
+    vincularProducto,
+    desvincularProducto,
+    listarReclamos,
+    crearReclamo,
+    marcarReclamoRepuesto,
+  } from './js/proveedores.js';
+  import { registrarReposicion } from './js/reposiciones.js';
+  import { mostrarError, escapeHtml } from './js/utils.js';
+
+  let usuario = null;
+  let localIdActivo = null; // ver misma nota en productos.html: admin sin local propio
+  let proveedores = [];
+  let proveedorEnEdicion = null;
+  let proveedorEnFicha = null;
+  let productoParaReponer = null;
+  let proveedorParaEliminar = null;
+
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await logout();
+    window.location.href = 'index.html';
+  });
+
+  async function iniciar() {
+    const session = await requireSession();
+    if (!session) return;
+
+    usuario = await obtenerUsuarioActual();
+    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false) {
+      window.location.href = 'panel.html';
+      return;
+    }
+
+    document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+
+    if (usuario.role === 'admin') {
+      document.getElementById('btn-nuevo').hidden = false;
+      const locales = await listarLocales();
+      localIdActivo = locales[0]?.id || null;
+    } else {
+      localIdActivo = usuario.local_id;
+    }
+
+    await cargarProveedores();
+
+    document.getElementById('buscador').addEventListener('input', debounce(() => cargarProveedores(), 300));
+    document.getElementById('btn-nuevo').addEventListener('click', () => abrirModalProveedor());
+    document.getElementById('btn-cancelar-proveedor').addEventListener('click', () => {
+      document.getElementById('modal-proveedor').hidden = true;
+    });
+    document.getElementById('form-proveedor').addEventListener('submit', guardarProveedor);
+
+    document.getElementById('btn-cerrar-ficha').addEventListener('click', () => {
+      document.getElementById('modal-ficha').hidden = true;
+    });
+    document.getElementById('btn-vincular').addEventListener('click', vincular);
+    document.getElementById('btn-nuevo-reclamo').addEventListener('click', abrirModalReclamo);
+    document.getElementById('btn-cancelar-reclamo').addEventListener('click', () => {
+      document.getElementById('modal-reclamo').hidden = true;
+    });
+    document.getElementById('form-reclamo').addEventListener('submit', guardarReclamo);
+
+    document.getElementById('btn-cancelar-reponer').addEventListener('click', () => {
+      document.getElementById('modal-reponer').hidden = true;
+    });
+    document.getElementById('form-reponer').addEventListener('submit', guardarReposicion);
+
+    document.getElementById('btn-cancelar-eliminar').addEventListener('click', () => {
+      document.getElementById('modal-eliminar').hidden = true;
+    });
+    document.getElementById('btn-confirmar-eliminar').addEventListener('click', confirmarEliminar);
+  }
+
+  function debounce(fn, ms) {
+    let t;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  }
+
+  // Listado ----------------------------------------------------------------
+
+  async function cargarProveedores() {
+    const errorEl = document.getElementById('error-lista');
+    const cargandoEl = document.getElementById('cargando');
+    const tabla = document.getElementById('tabla-proveedores');
+    mostrarError(errorEl, '');
+    try {
+      const query = document.getElementById('buscador').value.trim();
+      proveedores = await listarProveedores({ query: query || undefined });
+      renderTabla();
+      cargandoEl.hidden = true;
+      tabla.hidden = false;
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+      cargandoEl.hidden = true;
+    }
+  }
+
+  function renderTabla() {
+    const tbody = document.getElementById('tbody-proveedores');
+    if (proveedores.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="texto-suave">No se encontraron proveedores.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = proveedores
+      .map((p) => {
+        const acciones = [`<button type="button" class="boton-chico secundario" data-ficha="${p.id}">Ver ficha</button>`];
+        if (usuario.role === 'admin') {
+          acciones.push(`<button type="button" class="boton-chico secundario" data-editar="${p.id}">Editar</button>`);
+          acciones.push(
+            `<button type="button" class="boton-chico ${p.activo ? 'peligro' : 'primario'}" data-toggle-activo="${p.id}">${
+              p.activo ? 'Desactivar' : 'Reactivar'
+            }</button>`
+          );
+          acciones.push(`<button type="button" class="boton-chico peligro" data-eliminar="${p.id}">Eliminar</button>`);
+        }
+        return `
+          <tr class="${p.activo ? '' : 'fila-inactiva'}">
+            <td>${escapeHtml(p.nombre)}</td>
+            <td>${escapeHtml(p.telefono || '—')}</td>
+            <td>${escapeHtml(p.email || '—')}</td>
+            <td>${p.activo ? '<span class="etiqueta">Activo</span>' : '<span class="etiqueta inactivo">Inactivo</span>'}</td>
+            <td class="celda-acciones">${acciones.join('')}</td>
+          </tr>`;
+      })
+      .join('');
+
+    tbody.querySelectorAll('[data-ficha]').forEach((btn) =>
+      btn.addEventListener('click', () => abrirFicha(proveedores.find((p) => p.id === btn.dataset.ficha)))
+    );
+    tbody.querySelectorAll('[data-editar]').forEach((btn) =>
+      btn.addEventListener('click', () => abrirModalProveedor(proveedores.find((p) => p.id === btn.dataset.editar)))
+    );
+    tbody.querySelectorAll('[data-toggle-activo]').forEach((btn) =>
+      btn.addEventListener('click', () => alternarActivo(proveedores.find((p) => p.id === btn.dataset.toggleActivo)))
+    );
+    tbody.querySelectorAll('[data-eliminar]').forEach((btn) =>
+      btn.addEventListener('click', () => abrirConfirmarEliminar(proveedores.find((p) => p.id === btn.dataset.eliminar)))
+    );
+  }
+
+  async function alternarActivo(proveedor) {
+    try {
+      await establecerActivo(proveedor.id, !proveedor.activo);
+      await cargarProveedores();
+    } catch (err) {
+      mostrarError(document.getElementById('error-lista'), err.message);
+    }
+  }
+
+  // Eliminar (borrado logico) -----------------------------------------
+  // Terminal desde la UI. El historial de reposiciones/reclamos/vinculos
+  // donde aparece este proveedor se conserva -- ver js/proveedores.js
+  // eliminarProveedor().
+  function abrirConfirmarEliminar(proveedor) {
+    proveedorParaEliminar = proveedor;
+    mostrarError(document.getElementById('error-eliminar'), '');
+    document.getElementById('eliminar-texto').textContent =
+      `¿Seguro que querés eliminar "${proveedor.nombre}"? No vas a poder deshacer esto, pero el historial de reposiciones y reclamos donde aparece se va a conservar.`;
+    document.getElementById('modal-eliminar').hidden = false;
+  }
+
+  async function confirmarEliminar() {
+    try {
+      await eliminarProveedor(proveedorParaEliminar.id);
+      document.getElementById('modal-eliminar').hidden = true;
+      await cargarProveedores();
+    } catch (err) {
+      mostrarError(document.getElementById('error-eliminar'), err.message);
+    }
+  }
+
+  // Modal alta/edicion -------------------------------------------------
+
+  function abrirModalProveedor(proveedor = null) {
+    proveedorEnEdicion = proveedor;
+    document.getElementById('modal-proveedor-titulo').textContent = proveedor ? 'Editar proveedor' : 'Nuevo proveedor';
+    mostrarError(document.getElementById('error-proveedor'), '');
+    document.getElementById('pr-nombre').value = proveedor?.nombre || '';
+    document.getElementById('pr-telefono').value = proveedor?.telefono || '';
+    document.getElementById('pr-email').value = proveedor?.email || '';
+    document.getElementById('pr-direccion').value = proveedor?.direccion || '';
+    document.getElementById('pr-notas').value = proveedor?.notas || '';
+    document.getElementById('modal-proveedor').hidden = false;
+  }
+
+  async function guardarProveedor(e) {
+    e.preventDefault();
+    const errorEl = document.getElementById('error-proveedor');
+    mostrarError(errorEl, '');
+
+    const datos = {
+      nombre: document.getElementById('pr-nombre').value.trim(),
+      telefono: document.getElementById('pr-telefono').value.trim() || null,
+      email: document.getElementById('pr-email').value.trim() || null,
+      direccion: document.getElementById('pr-direccion').value.trim() || null,
+      notas: document.getElementById('pr-notas').value.trim() || null,
+    };
+
+    try {
+      if (proveedorEnEdicion) {
+        await actualizarProveedor(proveedorEnEdicion.id, datos);
+      } else {
+        datos.local_id = localIdActivo;
+        datos.organization_id = usuario.organization_id;
+        await crearProveedor(datos);
+      }
+      document.getElementById('modal-proveedor').hidden = true;
+      await cargarProveedores();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Ficha del proveedor --------------------------------------------------
+
+  async function abrirFicha(proveedor) {
+    proveedorEnFicha = proveedor;
+    document.getElementById('ficha-nombre').textContent = proveedor.nombre;
+    document.getElementById('ficha-contacto').textContent = [proveedor.telefono, proveedor.email, proveedor.direccion]
+      .filter(Boolean)
+      .join(' · ') || 'Sin datos de contacto cargados.';
+    document.getElementById('ficha-notas').textContent = proveedor.notas || '';
+    document.getElementById('form-vincular').hidden = usuario.role !== 'admin';
+
+    document.getElementById('modal-ficha').hidden = false;
+    await cargarProductosVinculados();
+    await cargarReclamos();
+  }
+
+  async function cargarProductosVinculados() {
+    const errorEl = document.getElementById('error-vinculo');
+    mostrarError(errorEl, '');
+    try {
+      const vinculados = await listarProductosVinculados(proveedorEnFicha.id);
+      const lista = document.getElementById('lista-productos-vinculados');
+      lista.innerHTML =
+        vinculados.length === 0
+          ? '<li class="texto-suave">Todavía no provee ningún producto vinculado.</li>'
+          : vinculados
+              .map((v) => {
+                const fecha = v.ultimaReposicion
+                  ? new Date(v.ultimaReposicion).toLocaleDateString('es-AR')
+                  : 'Nunca';
+                const acciones = [`<button type="button" class="boton-chico secundario" data-reponer="${v.vinculoId}">Reponer stock</button>`];
+                if (usuario.role === 'admin') {
+                  acciones.push(`<button type="button" class="boton-chico peligro" data-desvincular="${v.vinculoId}">Desvincular</button>`);
+                }
+                return `
+                  <li>
+                    <span class="info-vinculo">
+                      <strong>${escapeHtml(v.producto.nombre)}${v.producto.presentacion ? ' · ' + escapeHtml(v.producto.presentacion) : ''}</strong>
+                      <span class="texto-suave">Stock: ${v.producto.stock_actual} ${escapeHtml(v.producto.unidad_medida || '')} · Última reposición: ${fecha}</span>
+                    </span>
+                    <span class="acciones-vinculo">${acciones.join('')}</span>
+                  </li>`;
+              })
+              .join('');
+
+      lista.querySelectorAll('[data-reponer]').forEach((btn) => {
+        const v = vinculados.find((x) => x.vinculoId === btn.dataset.reponer);
+        btn.addEventListener('click', () => abrirModalReponer(v.producto));
+      });
+      lista.querySelectorAll('[data-desvincular]').forEach((btn) =>
+        btn.addEventListener('click', () => desvincular(btn.dataset.desvincular))
+      );
+
+      if (usuario.role === 'admin') {
+        const noVinculados = await listarProductosNoVinculados(proveedorEnFicha.id, proveedorEnFicha.local_id);
+        const select = document.getElementById('select-producto-vincular');
+        select.innerHTML = noVinculados.length
+          ? noVinculados.map((p) => `<option value="${p.id}">${escapeHtml(p.nombre)}${p.presentacion ? ' · ' + escapeHtml(p.presentacion) : ''}</option>`).join('')
+          : '<option value="">No hay productos para vincular</option>';
+        document.getElementById('btn-vincular').disabled = noVinculados.length === 0;
+      }
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function vincular() {
+    const errorEl = document.getElementById('error-vinculo');
+    mostrarError(errorEl, '');
+    const productoId = document.getElementById('select-producto-vincular').value;
+    if (!productoId) return;
+    try {
+      await vincularProducto({
+        productoId,
+        proveedorId: proveedorEnFicha.id,
+        localId: proveedorEnFicha.local_id,
+        organizationId: proveedorEnFicha.organization_id,
+      });
+      await cargarProductosVinculados();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function desvincular(vinculoId) {
+    try {
+      await desvincularProducto(vinculoId);
+      await cargarProductosVinculados();
+    } catch (err) {
+      mostrarError(document.getElementById('error-vinculo'), err.message);
+    }
+  }
+
+  // Reclamos ------------------------------------------------------------
+
+  async function cargarReclamos() {
+    const errorEl = document.getElementById('error-reclamos');
+    mostrarError(errorEl, '');
+    try {
+      const reclamos = await listarReclamos(proveedorEnFicha.id);
+      const lista = document.getElementById('lista-reclamos');
+      lista.innerHTML =
+        reclamos.length === 0
+          ? '<li class="texto-suave">Sin reclamos registrados.</li>'
+          : reclamos
+              .map((r) => {
+                const etiqueta =
+                  r.estado === 'repuesto'
+                    ? '<span class="etiqueta reclamo-repuesto">Repuesto</span>'
+                    : '<span class="etiqueta reclamo-pendiente">Pendiente de reposición</span>';
+                // reclamos_proveedor sigue el patron generico en RLS (Fase 1):
+                // cualquier aprobado del local puede crear y actualizar
+                // reclamos, no solo el admin -- a diferencia del catalogo.
+                const boton =
+                  r.estado === 'pendiente'
+                    ? `<button type="button" class="boton-chico secundario" data-marcar-repuesto="${r.id}">Marcar repuesto</button>`
+                    : '';
+                return `
+                  <li>
+                    <span class="info-vinculo">
+                      <strong>${escapeHtml(r.productos?.nombre || 'Lote completo')}${r.cantidad ? ' · ' + r.cantidad : ''}</strong>
+                      <span class="texto-suave">${escapeHtml(r.motivo)} · ${new Date(r.fecha).toLocaleDateString('es-AR')}</span>
+                    </span>
+                    <span class="acciones-vinculo">${etiqueta}${boton}</span>
+                  </li>`;
+              })
+              .join('');
+
+      lista.querySelectorAll('[data-marcar-repuesto]').forEach((btn) =>
+        btn.addEventListener('click', () => marcarRepuesto(btn.dataset.marcarRepuesto))
+      );
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function marcarRepuesto(id) {
+    try {
+      await marcarReclamoRepuesto(id);
+      await cargarReclamos();
+    } catch (err) {
+      mostrarError(document.getElementById('error-reclamos'), err.message);
+    }
+  }
+
+  async function abrirModalReclamo() {
+    mostrarError(document.getElementById('error-nuevo-reclamo'), '');
+    document.getElementById('form-reclamo').reset();
+    const vinculados = await listarProductosVinculados(proveedorEnFicha.id);
+    const select = document.getElementById('rc-producto');
+    select.innerHTML =
+      '<option value="">Lote completo / sin especificar</option>' +
+      vinculados.map((v) => `<option value="${v.producto.id}">${escapeHtml(v.producto.nombre)}</option>`).join('');
+    document.getElementById('modal-reclamo').hidden = false;
+  }
+
+  async function guardarReclamo(e) {
+    e.preventDefault();
+    const errorEl = document.getElementById('error-nuevo-reclamo');
+    mostrarError(errorEl, '');
+    try {
+      await crearReclamo({
+        proveedorId: proveedorEnFicha.id,
+        productoId: document.getElementById('rc-producto').value || null,
+        localId: proveedorEnFicha.local_id,
+        organizationId: proveedorEnFicha.organization_id,
+        usuarioId: usuario.id,
+        cantidad: document.getElementById('rc-cantidad').value ? Number(document.getElementById('rc-cantidad').value) : null,
+        motivo: document.getElementById('rc-motivo').value.trim(),
+      });
+      document.getElementById('modal-reclamo').hidden = true;
+      await cargarReclamos();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Reposicion de stock ---------------------------------------------------
+
+  function abrirModalReponer(producto) {
+    productoParaReponer = producto;
+    mostrarError(document.getElementById('error-reponer'), '');
+    document.getElementById('reponer-contexto').textContent = `${producto.nombre} — proveedor: ${proveedorEnFicha.nombre}`;
+    document.getElementById('form-reponer').reset();
+    document.getElementById('modal-reponer').hidden = false;
+  }
+
+  async function guardarReposicion(e) {
+    e.preventDefault();
+    const errorEl = document.getElementById('error-reponer');
+    mostrarError(errorEl, '');
+    try {
+      await registrarReposicion({
+        productoId: productoParaReponer.id,
+        proveedorId: proveedorEnFicha.id,
+        localId: proveedorEnFicha.local_id,
+        organizationId: proveedorEnFicha.organization_id,
+        usuarioId: usuario.id,
+        cantidad: Number(document.getElementById('rp-cantidad').value),
+        precioCosto: Number(document.getElementById('rp-precio-costo').value),
+      });
+      document.getElementById('modal-reponer').hidden = true;
+      await cargarProductosVinculados();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  iniciar();
+</script>

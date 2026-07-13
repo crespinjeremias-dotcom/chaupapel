@@ -25,6 +25,8 @@ Código de invitación que genera un admin para que un empleado se autoregistre 
 ### `categorias` / `productos`
 Un producto pertenece a un local (no a toda la organización), reflejando que el stock es independiente por local (sección 1). Campos principales según sección 4: `stock_actual`, `stock_minimo` (por producto, no global), `precio_venta_actual`, `ultimo_precio_costo` (se completa solo desde la última reposición), `codigo_barras` (único por local, índice parcial), `perecedero` + `fecha_vencimiento` + `alerta_vencimiento_dias`. Hay un índice GIN con `pg_trgm` sobre `nombre` para el autocompletado de búsqueda.
 
+`productos` y `proveedores` tienen además `activo` (boolean, reversible, uso administrativo — "pausar" algo sin borrarlo) y `deleted_at` (timestamptz nullable, agregado en un pedido posterior a Fase 4): son dos conceptos independientes a propósito. `deleted_at` es un borrado lógico terminal desde la UI — saca la fila de cualquier listado operativo (`listarProductos`, `listarProveedores`, los pickers de vincular/reponer), pero la fila sigue existiendo intacta para que ventas, reposiciones, ajustes de stock, vínculos producto-proveedor y reclamos ya cargados sigan resolviendo el nombre por join normal, sin romperse. El índice único de `codigo_barras` ignora productos eliminados, para poder reutilizar el código en un producto nuevo. La policy de `update` de ambas tablas bloquea tocar una fila ya eliminada (ni el propio admin puede reactivarla desde la app una vez eliminada).
+
 ### `historial_precios_venta`
 Regla transversal de la sección 1 y 4: **el precio de venta nunca se pisa**. Cada fila es un tramo de vigencia (`vigente_desde` / `vigente_hasta`, null = tramo actual). Se puebla solo, vía trigger sobre `productos` — no hay insert/update manual desde el cliente. Importante: esta tabla es para *auditoría histórica* de precios; el congelamiento del precio en cada venta puntual lo hace `venta_items.precio_unitario` directamente (ver más abajo), no depende de esta tabla.
 
@@ -51,7 +53,16 @@ Caja de un empleado (o de la cuenta compartida) durante su turno (sección 2 y 1
 - `venta_items`: `precio_unitario` es el **precio congelado** al momento de la venta — no se recalcula nunca a partir de `productos.precio_venta_actual`. `subtotal` es una columna generada (`cantidad * precio_unitario`).
 - `venta_pagos`: hasta 2 filas por venta (combinación efectivo + transferencia, sección 7). Una venta fiada no tiene filas acá — ver `cuenta_corriente_movimientos`.
 
-Triggers: insertar/editar/borrar un `venta_item` ajusta `productos.stock_actual` automáticamente (`aplicar_stock_venta_item`). Anular una venta (`estado = 'anulada'`) repone el stock de todos sus items (`aplicar_anulacion_venta`). **Punto abierto**: qué pasa con el movimiento de cuenta corriente si se anula una venta fiada — no se implementó automáticamente porque depende de si ya hubo pagos parciales sobre ese fiado; a resolver en el diseño de Fase 6.
+Triggers: insertar/editar/borrar un `venta_item` ajusta `productos.stock_actual` automáticamente (`aplicar_stock_venta_item`). Anular una venta (`estado = 'anulada'`) repone el stock de todos sus items (`aplicar_anulacion_venta`).
+
+~~**Punto abierto**: qué pasa con el movimiento de cuenta corriente si se anula una venta fiada~~ — resuelto en Fase 5: se agregó `fiado_anulado` al enum `tipo_movimiento_cc_type` (no se reutilizó `cobro_fiado` para no mezclar plata efectivamente cobrada con anulaciones en los reportes) y `aplicar_anulacion_venta` inserta automáticamente la reversión. Cubre el caso general porque, al no existir todavía UI de cobro de fiado (Fase 6), una venta anulada dentro de la ventana de edición no puede tener pagos parciales previos sobre ese fiado en particular.
+
+### Punto de venta (Fase 5) — decisiones de scope
+
+- **Editar (`js/ventas.js` `actualizarVenta`) reemplaza items y pagos por completo** (`delete` + `insert`) en vez de diffear cambio a cambio — los triggers de stock ya reaccionan solos a insert/delete de `venta_items`, así que no hace falta lógica de reconciliación manual. Verificado que no deja filas duplicadas.
+- **Una venta fiada no se puede editar item por item, solo anular** (`puedeEditarItems` en `js/ventas.js` excluye `es_fiado`). Editar cambiaría el monto ya acreditado en `cuenta_corriente_movimientos`, y ese ajuste interactúa con el módulo de cobros que todavía no existe (Fase 6) — mismo tipo de ambigüedad que ya había quedado abierta para la anulación en Fase 1. Si hay un error en una venta fiada dentro de la ventana, se anula y se recarga de nuevo.
+- **Turno básico**: `abrirTurno`/`cerrarTurno` (`js/turnos.js`) no piden conteo de efectivo — el cierre real con `efectivo_esperado`/`efectivo_contado`/`diferencia` es Fase 7 (Caja). Por ahora "cerrar turno" solo marca `estado='cerrado'` y `fecha_cierre`.
+- **Gotcha de PostgREST**: `ventas` tiene dos foreign keys a `usuarios` (`usuario_id` y `anulada_por`), así que `select=*,usuarios(nombre)` tira `Could not embed because more than one relationship was found`. Hay que desambiguar con la sintaxis `usuarios:usuarios!usuario_id(nombre)`. Vale la pena tenerlo presente para cualquier tabla futura con más de una FK al mismo destino (ej. reportes de Fase 10).
 
 ## Cuenta corriente de clientes
 
@@ -59,7 +70,13 @@ Triggers: insertar/editar/borrar un `venta_item` ajusta `productos.stock_actual`
 Por local (sección 9). `saldo` es un campo cacheado: positivo = el cliente debe (fiado), negativo = el local le debe (saldo a favor). Se mantiene por trigger, la fuente de verdad real es `cuenta_corriente_movimientos`.
 
 ### `cuenta_corriente_movimientos`
-Un movimiento por evento: `fiado_nuevo`, `cobro_fiado`, `saldo_favor_generado`, `saldo_favor_usado`. `monto` siempre positivo; el trigger `aplicar_movimiento_cuenta_corriente` decide el signo del efecto sobre `clientes.saldo` según el `tipo`. `turno_id` en un `cobro_fiado` es lo que permite que ese cobro compute en la caja del turno en que efectivamente se cobró (sección 9, el ejemplo numérico del documento).
+Un movimiento por evento: `fiado_nuevo`, `cobro_fiado`, `saldo_favor_generado`, `saldo_favor_usado`, `fiado_anulado` (agregado en Fase 5). `monto` siempre positivo; el trigger `aplicar_movimiento_cuenta_corriente` decide el signo del efecto sobre `clientes.saldo` según el `tipo`. `turno_id` en un `cobro_fiado` es lo que permite que ese cobro compute en la caja del turno en que efectivamente se cobró (sección 9, el ejemplo numérico del documento).
+
+### Módulo de cuenta corriente (Fase 6) — decisiones de scope
+
+- **`clientes.html`**: listado con saldo (badge "Debe $X" / "A favor $X" / "Al día"), resumen de totales pendiente/a favor (satisface el "reporte" que pide la sección 9 sin construir todavía el módulo de Reportes de la Fase 10), ficha con historial completo de movimientos, y **Cobrar** — no hizo falta ninguna migración nueva: `clientes` y `cuenta_corriente_movimientos` ya tenían el patrón genérico de RLS desde la Fase 1 (cualquier aprobado del local, no admin-only, coherente con que cualquier empleado puede cargar un fiado en el punto de venta).
+- **Cobrar exige turno abierto** (mismo gate que abrir una venta en `ventas.html`) porque la sección 9 dice explícitamente que el cobro "se carga como ingreso del día en que se cobra" — el `turno_id` del movimiento es lo que le va a permitir a la Fase 7 (Caja) sumarlo al efectivo esperado de ese turno.
+- **Uso de saldo a favor NO se implementó todavía**: la sección 9 dice que se descuenta "la próxima vez que compre" o se devuelve — pero el saldo a favor recién se puede *generar* en la Fase 8 (cambio de producto con diferencia de precio a favor del cliente), que todavía no existe. No tiene sentido construir el "aplicar saldo a favor" en el checkout de `ventas.html` para una fuente de datos que no existe aún; queda para cuando se construya Fase 8, que es también donde naturalmente se necesita ese flujo completo.
 
 ## Devoluciones y reclamos
 

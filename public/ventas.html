@@ -1,0 +1,513 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ventas</title>
+<link rel="stylesheet" href="css/chaupapel.css" />
+
+<header class="app-header">
+  <div class="identidad">
+    <h1 id="nombre-local"></h1>
+    <p><a href="panel.html">← Volver al panel</a></p>
+  </div>
+  <button class="boton-secundario boton-inline" id="btn-logout">Cerrar sesión</button>
+</header>
+
+<main class="app-main ancho">
+  <div class="panel-seccion pantalla-turno-cerrado" id="pantalla-turno-cerrado" hidden>
+    <h2>No tenés un turno abierto</h2>
+    <p>Para cargar ventas primero necesitás abrir tu turno.</p>
+    <p class="mensaje-error" id="error-turno" hidden></p>
+    <button type="button" class="boton-primario" id="btn-abrir-turno">Iniciar turno</button>
+  </div>
+
+  <div id="pantalla-venta" hidden>
+    <div class="turno-banner">
+      <span id="turno-info"></span>
+      <button type="button" class="boton-secundario boton-inline" id="btn-cerrar-turno">Cerrar turno</button>
+    </div>
+
+    <div class="panel-seccion">
+      <div class="barra-herramientas">
+        <div class="campo campo-busqueda buscador-contenedor">
+          <input type="text" id="buscador" placeholder="Buscar producto por nombre o código de barras..." autocomplete="off" />
+          <div class="buscador-resultados" id="resultados-busqueda" hidden></div>
+        </div>
+        <button type="button" class="boton-chico secundario" id="btn-escanear">Escanear código</button>
+      </div>
+
+      <div class="tabla-contenedor">
+        <table class="tabla" id="tabla-carrito" hidden>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Cantidad</th>
+              <th>Precio</th>
+              <th>Subtotal</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-carrito"></tbody>
+        </table>
+        <p class="carrito-vacio" id="carrito-vacio">El carrito está vacío. Buscá un producto para empezar.</p>
+      </div>
+
+      <div class="total-carrito">
+        <span>Total</span>
+        <span id="total-valor">$0</span>
+      </div>
+    </div>
+
+    <div class="panel-seccion">
+      <div class="tabs-pago">
+        <button type="button" class="activo" id="tab-pago-normal">Pago</button>
+        <button type="button" id="tab-pago-fiado">Fiado</button>
+      </div>
+
+      <div id="seccion-pago-normal">
+        <div class="metodo-pago-fila">
+          <div class="campo">
+            <label for="metodo-1">Método</label>
+            <select id="metodo-1">
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="monto-1">Monto</label>
+            <input type="number" id="monto-1" min="0" step="0.01" />
+          </div>
+          <div></div>
+        </div>
+        <button type="button" class="boton-chico secundario" id="btn-agregar-metodo">+ Agregar otro método de pago</button>
+        <div class="metodo-pago-fila" id="fila-metodo-2" hidden>
+          <div class="campo">
+            <label for="metodo-2">Método</label>
+            <select id="metodo-2">
+              <option value="transferencia">Transferencia</option>
+              <option value="efectivo">Efectivo</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="monto-2">Monto</label>
+            <input type="number" id="monto-2" min="0" step="0.01" />
+          </div>
+          <button type="button" class="boton-chico secundario" id="btn-quitar-metodo">Quitar</button>
+        </div>
+      </div>
+
+      <div id="seccion-fiado" hidden>
+        <div class="campo campo-busqueda buscador-contenedor" id="campo-buscar-cliente">
+          <label for="buscador-cliente">Cliente</label>
+          <input type="text" id="buscador-cliente" placeholder="Buscar cliente por nombre..." autocomplete="off" />
+          <div class="buscador-resultados" id="resultados-clientes" hidden></div>
+        </div>
+        <div class="cliente-seleccionado" id="cliente-seleccionado" hidden>
+          <span id="cliente-seleccionado-nombre"></span>
+          <button type="button" class="boton-chico secundario" id="btn-quitar-cliente">Cambiar</button>
+        </div>
+      </div>
+
+      <p class="mensaje-error" id="error-checkout" hidden></p>
+      <p class="mensaje-exito" id="exito-checkout" hidden></p>
+      <button type="button" class="boton-primario" id="btn-confirmar-venta">Confirmar venta</button>
+    </div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="modal-escaner" hidden>
+  <div class="modal">
+    <h2>Escanear código de barras</h2>
+    <p class="mensaje-error" id="error-escaner" hidden></p>
+    <div class="escaner-contenedor">
+      <video class="escaner-video" id="video-escaner" autoplay muted playsinline></video>
+      <div class="escaner-guia"></div>
+    </div>
+    <p class="texto-suave texto-centrado">Encuadrá el código de barras dentro del recuadro.</p>
+    <div class="modal-acciones">
+      <button type="button" class="boton-secundario" id="btn-cerrar-escaner">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
+  import { listarLocales } from './js/empleados.js';
+  import { listarProductos } from './js/productos.js';
+  import { buscarClientes, crearClienteRapido } from './js/clientes.js';
+  import { obtenerTurnoAbierto, abrirTurno, cerrarTurno } from './js/turnos.js';
+  import { registrarVenta } from './js/ventas.js';
+  import { iniciarEscaneo, detenerEscaneo } from './js/barcode.js';
+  import { mostrarError, escapeHtml } from './js/utils.js';
+
+  let usuario = null;
+  // El admin no tiene local_id propio (ve todos los de su organizacion) --
+  // misma nota que en productos.html/proveedores.html. Multi-local es Fase 13.
+  let localIdActivo = null;
+  let turno = null;
+  let carrito = []; // { productoId, nombre, unidadMedida, stockActual, cantidad, precioUnitario }
+  let modoPago = 'normal'; // 'normal' | 'fiado'
+  let clienteSeleccionado = null;
+  let escaneoCancelado = false;
+
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await logout();
+    window.location.href = 'index.html';
+  });
+
+  async function iniciar() {
+    const session = await requireSession();
+    if (!session) return;
+
+    usuario = await obtenerUsuarioActual();
+    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false) {
+      window.location.href = 'panel.html';
+      return;
+    }
+
+    document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+
+    if (usuario.role === 'admin') {
+      const locales = await listarLocales();
+      localIdActivo = locales[0]?.id || null;
+    } else {
+      localIdActivo = usuario.local_id;
+    }
+
+    document.getElementById('btn-abrir-turno').addEventListener('click', manejarAbrirTurno);
+    document.getElementById('btn-cerrar-turno').addEventListener('click', manejarCerrarTurno);
+
+    document.getElementById('buscador').addEventListener('input', debounce(buscarProducto, 250));
+    document.getElementById('btn-escanear').addEventListener('click', () => abrirEscaner());
+    document.getElementById('btn-cerrar-escaner').addEventListener('click', cerrarEscaner);
+
+    document.getElementById('tab-pago-normal').addEventListener('click', () => cambiarModoPago('normal'));
+    document.getElementById('tab-pago-fiado').addEventListener('click', () => cambiarModoPago('fiado'));
+    document.getElementById('btn-agregar-metodo').addEventListener('click', () => {
+      document.getElementById('fila-metodo-2').hidden = false;
+      document.getElementById('btn-agregar-metodo').hidden = true;
+    });
+    document.getElementById('btn-quitar-metodo').addEventListener('click', () => {
+      document.getElementById('fila-metodo-2').hidden = true;
+      document.getElementById('btn-agregar-metodo').hidden = false;
+      document.getElementById('monto-2').value = '';
+    });
+
+    document.getElementById('buscador-cliente').addEventListener('input', debounce(buscarCliente, 250));
+    document.getElementById('btn-quitar-cliente').addEventListener('click', () => {
+      clienteSeleccionado = null;
+      document.getElementById('cliente-seleccionado').hidden = true;
+      document.getElementById('campo-buscar-cliente').hidden = false;
+    });
+
+    document.getElementById('btn-confirmar-venta').addEventListener('click', confirmarVenta);
+
+    await cargarEstadoTurno();
+  }
+
+  async function cargarEstadoTurno() {
+    turno = await obtenerTurnoAbierto(usuario.id);
+    document.getElementById('pantalla-turno-cerrado').hidden = !!turno;
+    document.getElementById('pantalla-venta').hidden = !turno;
+    if (turno) {
+      const hora = new Date(turno.fecha_apertura).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('turno-info').textContent = `Turno abierto desde las ${hora}`;
+    }
+  }
+
+  async function manejarAbrirTurno() {
+    const errorEl = document.getElementById('error-turno');
+    mostrarError(errorEl, '');
+    try {
+      await abrirTurno({ localId: localIdActivo, organizationId: usuario.organization_id, usuarioId: usuario.id });
+      await cargarEstadoTurno();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function manejarCerrarTurno() {
+    try {
+      await cerrarTurno(turno.id);
+      turno = null;
+      carrito = [];
+      await cargarEstadoTurno();
+    } catch (err) {
+      mostrarError(document.getElementById('error-turno'), err.message);
+    }
+  }
+
+  function debounce(fn, ms) {
+    let t;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  }
+
+  // Busqueda de productos ------------------------------------------------
+
+  async function buscarProducto() {
+    const query = document.getElementById('buscador').value.trim();
+    const contenedor = document.getElementById('resultados-busqueda');
+    if (!query) {
+      contenedor.hidden = true;
+      return;
+    }
+    try {
+      const productos = await listarProductos({ query, soloActivos: true });
+      if (productos.length === 0) {
+        contenedor.innerHTML = '<div class="sin-resultados">No se encontraron productos.</div>';
+      } else {
+        contenedor.innerHTML = productos
+          .map(
+            (p) => `
+            <button type="button" data-id="${p.id}">
+              <span>${escapeHtml(p.nombre)}${p.presentacion ? ' · ' + escapeHtml(p.presentacion) : ''}</span>
+              <span class="texto-suave">$${Number(p.precio_venta_actual).toLocaleString('es-AR')} · stock ${p.stock_actual}</span>
+            </button>`
+          )
+          .join('');
+        contenedor.querySelectorAll('button[data-id]').forEach((btn) =>
+          btn.addEventListener('click', () => {
+            agregarAlCarrito(productos.find((p) => p.id === btn.dataset.id));
+            document.getElementById('buscador').value = '';
+            contenedor.hidden = true;
+          })
+        );
+      }
+      contenedor.hidden = false;
+    } catch (err) {
+      contenedor.innerHTML = `<div class="sin-resultados">${escapeHtml(err.message)}</div>`;
+      contenedor.hidden = false;
+    }
+  }
+
+  function agregarAlCarrito(producto) {
+    const existente = carrito.find((it) => it.productoId === producto.id);
+    if (existente) {
+      if (existente.cantidad < producto.stock_actual) existente.cantidad += 1;
+    } else {
+      carrito.push({
+        productoId: producto.id,
+        nombre: producto.nombre + (producto.presentacion ? ' · ' + producto.presentacion : ''),
+        unidadMedida: producto.unidad_medida || '',
+        stockActual: producto.stock_actual,
+        cantidad: 1,
+        precioUnitario: Number(producto.precio_venta_actual),
+      });
+    }
+    renderCarrito();
+  }
+
+  function renderCarrito() {
+    const tabla = document.getElementById('tabla-carrito');
+    const vacio = document.getElementById('carrito-vacio');
+    const tbody = document.getElementById('tbody-carrito');
+
+    if (carrito.length === 0) {
+      tabla.hidden = true;
+      vacio.hidden = false;
+      document.getElementById('total-valor').textContent = '$0';
+      return;
+    }
+
+    tabla.hidden = false;
+    vacio.hidden = true;
+
+    tbody.innerHTML = carrito
+      .map(
+        (it, i) => `
+        <tr>
+          <td>${escapeHtml(it.nombre)}</td>
+          <td><input type="number" class="input-cantidad" min="0.01" max="${it.stockActual}" step="0.01" value="${it.cantidad}" data-index="${i}" /></td>
+          <td>$${it.precioUnitario.toLocaleString('es-AR')}</td>
+          <td>$${(it.cantidad * it.precioUnitario).toLocaleString('es-AR')}</td>
+          <td><button type="button" class="boton-chico peligro" data-quitar="${i}">Quitar</button></td>
+        </tr>`
+      )
+      .join('');
+
+    tbody.querySelectorAll('.input-cantidad').forEach((input) =>
+      input.addEventListener('change', (e) => {
+        const i = Number(e.target.dataset.index);
+        let nueva = Number(e.target.value);
+        if (nueva > carrito[i].stockActual) nueva = carrito[i].stockActual;
+        if (nueva <= 0) {
+          carrito.splice(i, 1);
+        } else {
+          carrito[i].cantidad = nueva;
+        }
+        renderCarrito();
+      })
+    );
+    tbody.querySelectorAll('[data-quitar]').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        carrito.splice(Number(btn.dataset.quitar), 1);
+        renderCarrito();
+      })
+    );
+
+    const total = carrito.reduce((acc, it) => acc + it.cantidad * it.precioUnitario, 0);
+    document.getElementById('total-valor').textContent = `$${total.toLocaleString('es-AR')}`;
+  }
+
+  // Metodo de pago / fiado ------------------------------------------------
+
+  function cambiarModoPago(modo) {
+    modoPago = modo;
+    document.getElementById('tab-pago-normal').classList.toggle('activo', modo === 'normal');
+    document.getElementById('tab-pago-fiado').classList.toggle('activo', modo === 'fiado');
+    document.getElementById('seccion-pago-normal').hidden = modo !== 'normal';
+    document.getElementById('seccion-fiado').hidden = modo !== 'fiado';
+  }
+
+  async function buscarCliente() {
+    const query = document.getElementById('buscador-cliente').value.trim();
+    const contenedor = document.getElementById('resultados-clientes');
+    if (!query) {
+      contenedor.hidden = true;
+      return;
+    }
+    try {
+      const clientes = await buscarClientes(query);
+      const opciones = clientes
+        .map(
+          (c) => `<button type="button" data-id="${c.id}">
+            <span>${escapeHtml(c.nombre)}</span>
+            <span class="texto-suave">${c.saldo > 0 ? 'Debe $' + Number(c.saldo).toLocaleString('es-AR') : ''}</span>
+          </button>`
+        )
+        .join('');
+      const opcionCrear = `<button type="button" id="btn-crear-cliente">+ Crear cliente "${escapeHtml(query)}"</button>`;
+      contenedor.innerHTML = opciones + opcionCrear;
+
+      contenedor.querySelectorAll('button[data-id]').forEach((btn) =>
+        btn.addEventListener('click', () => seleccionarCliente(clientes.find((c) => c.id === btn.dataset.id)))
+      );
+      document.getElementById('btn-crear-cliente').addEventListener('click', async () => {
+        try {
+          const nuevo = await crearClienteRapido({ nombre: query, localId: localIdActivo, organizationId: usuario.organization_id });
+          seleccionarCliente(nuevo);
+        } catch (err) {
+          mostrarError(document.getElementById('error-checkout'), err.message);
+        }
+      });
+      contenedor.hidden = false;
+    } catch (err) {
+      mostrarError(document.getElementById('error-checkout'), err.message);
+    }
+  }
+
+  function seleccionarCliente(cliente) {
+    clienteSeleccionado = cliente;
+    document.getElementById('buscador-cliente').value = '';
+    document.getElementById('resultados-clientes').hidden = true;
+    document.getElementById('campo-buscar-cliente').hidden = true;
+    document.getElementById('cliente-seleccionado').hidden = false;
+    document.getElementById('cliente-seleccionado-nombre').textContent = cliente.nombre;
+  }
+
+  // Confirmar venta --------------------------------------------------------
+
+  async function confirmarVenta() {
+    const errorEl = document.getElementById('error-checkout');
+    const exitoEl = document.getElementById('exito-checkout');
+    mostrarError(errorEl, '');
+    exitoEl.hidden = true;
+
+    if (carrito.length === 0) {
+      mostrarError(errorEl, 'Agregá al menos un producto al carrito.');
+      return;
+    }
+
+    const total = carrito.reduce((acc, it) => acc + it.cantidad * it.precioUnitario, 0);
+    const items = carrito.map((it) => ({ productoId: it.productoId, cantidad: it.cantidad, precioUnitario: it.precioUnitario }));
+
+    let pagos = [];
+    if (modoPago === 'fiado') {
+      if (!clienteSeleccionado) {
+        mostrarError(errorEl, 'Elegí o creá un cliente para la venta a fiado.');
+        return;
+      }
+    } else {
+      const metodo1 = document.getElementById('metodo-1').value;
+      const monto1 = Number(document.getElementById('monto-1').value) || 0;
+      pagos.push({ metodo: metodo1, monto: monto1 });
+
+      if (!document.getElementById('fila-metodo-2').hidden) {
+        const metodo2 = document.getElementById('metodo-2').value;
+        const monto2 = Number(document.getElementById('monto-2').value) || 0;
+        if (monto2 > 0) pagos.push({ metodo: metodo2, monto: monto2 });
+      }
+
+      const sumaPagos = pagos.reduce((acc, p) => acc + p.monto, 0);
+      if (Math.abs(sumaPagos - total) > 0.01) {
+        mostrarError(errorEl, `Los montos cargados ($${sumaPagos.toLocaleString('es-AR')}) no coinciden con el total ($${total.toLocaleString('es-AR')}).`);
+        return;
+      }
+    }
+
+    document.getElementById('btn-confirmar-venta').disabled = true;
+    try {
+      await registrarVenta({
+        turnoId: turno.id,
+        usuarioId: usuario.id,
+        localId: localIdActivo,
+        organizationId: usuario.organization_id,
+        items,
+        esFiado: modoPago === 'fiado',
+        clienteId: clienteSeleccionado?.id,
+        pagos,
+      });
+
+      carrito = [];
+      renderCarrito();
+      document.getElementById('monto-1').value = '';
+      document.getElementById('monto-2').value = '';
+      document.getElementById('fila-metodo-2').hidden = true;
+      document.getElementById('btn-agregar-metodo').hidden = false;
+      clienteSeleccionado = null;
+      document.getElementById('cliente-seleccionado').hidden = true;
+      document.getElementById('campo-buscar-cliente').hidden = false;
+      cambiarModoPago('normal');
+
+      exitoEl.textContent = 'Venta registrada.';
+      exitoEl.hidden = false;
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    } finally {
+      document.getElementById('btn-confirmar-venta').disabled = false;
+    }
+  }
+
+  // Escaner de camara (mismo patron que productos.html) --------------------
+
+  async function abrirEscaner() {
+    escaneoCancelado = false;
+    const errorEl = document.getElementById('error-escaner');
+    mostrarError(errorEl, '');
+    detenerEscaneo();
+    document.getElementById('modal-escaner').hidden = false;
+    try {
+      await iniciarEscaneo(
+        document.getElementById('video-escaner'),
+        (texto) => {
+          document.getElementById('buscador').value = texto;
+          buscarProducto();
+          cerrarEscaner();
+        },
+        (err) => mostrarError(errorEl, err.message || 'No se pudo leer el código.')
+      );
+      if (escaneoCancelado) detenerEscaneo();
+    } catch (err) {
+      mostrarError(errorEl, 'No se pudo acceder a la cámara: ' + err.message);
+    }
+  }
+
+  function cerrarEscaner() {
+    escaneoCancelado = true;
+    document.getElementById('modal-escaner').hidden = true;
+    detenerEscaneo();
+  }
+
+  iniciar();
+</script>

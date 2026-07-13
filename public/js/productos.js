@@ -26,10 +26,14 @@ export async function crearCategoria(nombre, localId, organizationId) {
 
 // Busca por nombre (autocompletado, seccion 4) o por codigo de barras exacto
 // (lector fisico o camara). Trae tambien el nombre de categoria para la tabla.
+// Excluye SIEMPRE los eliminados (deleted_at) -- es un listado operativo, un
+// producto eliminado no puede volver a aparecer para nada nuevo. soloActivos
+// es un filtro aparte (activo/inactivo), independiente de eliminado.
 export async function listarProductos({ query, soloActivos = false } = {}) {
   let consulta = supabase
     .from('productos')
     .select('*, categorias(nombre)')
+    .is('deleted_at', null)
     .order('nombre');
 
   if (soloActivos) consulta = consulta.eq('activo', true);
@@ -67,6 +71,15 @@ export async function actualizarProducto(id, datos) {
 
 export async function establecerActivo(id, activo) {
   const { error } = await supabase.from('productos').update({ activo }).eq('id', id);
+  if (error) throw error;
+}
+
+// Borrado logico: la fila sigue existiendo (ventas, reposiciones, ajustes y
+// vinculos con proveedores ya cargados la siguen referenciando sin romperse),
+// pero desaparece de listarProductos y de cualquier flujo operativo nuevo.
+// Terminal desde la UI -- no hay funcion de "restaurar" a proposito.
+export async function eliminarProducto(id) {
+  const { error } = await supabase.from('productos').update({ deleted_at: new Date().toISOString() }).eq('id', id);
   if (error) throw error;
 }
 

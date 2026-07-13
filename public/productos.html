@@ -103,6 +103,11 @@
         <label>Último precio de costo</label>
         <p class="campo-valor-solo-lectura" id="p-ultimo-costo-valor"></p>
       </div>
+      <div class="campo" id="campo-proveedores" hidden>
+        <label>Proveedores</label>
+        <p class="campo-valor-solo-lectura" id="p-proveedores-valor"></p>
+        <p class="texto-ayuda">La vinculación con proveedores se gestiona desde Proveedores.</p>
+      </div>
       <div class="campo-checkbox">
         <input type="checkbox" id="p-perecedero" />
         <label for="p-perecedero">Es perecedero</label>
@@ -177,6 +182,46 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-reponer" hidden>
+  <div class="modal">
+    <h2>Reponer stock</h2>
+    <p class="texto-suave" id="reponer-contexto"></p>
+    <p class="mensaje-error" id="error-reponer" hidden></p>
+    <form id="form-reponer">
+      <div class="campo" id="campo-reponer-proveedor">
+        <label for="rp-proveedor">Proveedor</label>
+        <select id="rp-proveedor" required></select>
+      </div>
+      <div class="campos-en-fila">
+        <div class="campo">
+          <label for="rp-cantidad">Cantidad que llegó</label>
+          <input type="number" id="rp-cantidad" min="0.01" step="0.01" required />
+        </div>
+        <div class="campo">
+          <label for="rp-precio-costo">Precio de costo pagado</label>
+          <input type="number" id="rp-precio-costo" min="0" step="0.01" required />
+        </div>
+      </div>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario" id="btn-cancelar-reponer">Cancelar</button>
+        <button type="submit" class="boton-primario" id="btn-guardar-reponer">Registrar reposición</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-eliminar" hidden>
+  <div class="modal">
+    <h2>Eliminar producto</h2>
+    <p id="eliminar-texto"></p>
+    <p class="mensaje-error" id="error-eliminar" hidden></p>
+    <div class="modal-acciones">
+      <button type="button" class="boton-secundario" id="btn-cancelar-eliminar">Cancelar</button>
+      <button type="button" class="boton-peligro" id="btn-confirmar-eliminar">Sí, eliminar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-escaner" hidden>
   <div class="modal">
     <h2>Escanear código de barras</h2>
@@ -202,10 +247,12 @@
     crearProducto,
     actualizarProducto,
     establecerActivo,
+    eliminarProducto,
     ajustarStock,
   } from './js/productos.js';
   import { iniciarEscaneo, detenerEscaneo } from './js/barcode.js';
   import { listarLocales } from './js/empleados.js';
+  import { registrarReposicion, listarProveedoresDeProducto } from './js/reposiciones.js';
   import { exportarProductos, descargarPlantilla, leerArchivoProductos } from './js/excel.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
@@ -218,6 +265,8 @@
   let productos = [];
   let productoEnEdicion = null;
   let productoParaAjuste = null;
+  let productoParaReponer = null;
+  let productoParaEliminar = null;
   let destinoEscaneo = null; // 'buscador' | 'form'
 
   document.getElementById('btn-logout').addEventListener('click', async () => {
@@ -287,6 +336,16 @@
     });
     document.getElementById('a-motivo').addEventListener('change', actualizarComentarioObligatorio);
     document.getElementById('form-ajuste').addEventListener('submit', guardarAjuste);
+
+    document.getElementById('btn-cancelar-reponer').addEventListener('click', () => {
+      document.getElementById('modal-reponer').hidden = true;
+    });
+    document.getElementById('form-reponer').addEventListener('submit', guardarReposicion);
+
+    document.getElementById('btn-cancelar-eliminar').addEventListener('click', () => {
+      document.getElementById('modal-eliminar').hidden = true;
+    });
+    document.getElementById('btn-confirmar-eliminar').addEventListener('click', confirmarEliminar);
   }
 
   function debounce(fn, ms) {
@@ -348,7 +407,10 @@
 
     tbody.innerHTML = productos
       .map((p) => {
-        const acciones = [`<button type="button" class="boton-chico secundario" data-ajustar="${p.id}">Ajustar stock</button>`];
+        const acciones = [
+          `<button type="button" class="boton-chico secundario" data-ajustar="${p.id}">Ajustar stock</button>`,
+          `<button type="button" class="boton-chico secundario" data-reponer="${p.id}">Reponer stock</button>`,
+        ];
         if (usuario.role === 'admin') {
           acciones.push(`<button type="button" class="boton-chico secundario" data-editar="${p.id}">Editar</button>`);
           acciones.push(
@@ -356,6 +418,7 @@
               p.activo ? 'Desactivar' : 'Reactivar'
             }</button>`
           );
+          acciones.push(`<button type="button" class="boton-chico peligro" data-eliminar="${p.id}">Eliminar</button>`);
         }
         return `
           <tr class="${p.activo ? '' : 'fila-inactiva'}">
@@ -372,11 +435,17 @@
     tbody.querySelectorAll('[data-ajustar]').forEach((btn) =>
       btn.addEventListener('click', () => abrirModalAjuste(productos.find((p) => p.id === btn.dataset.ajustar)))
     );
+    tbody.querySelectorAll('[data-reponer]').forEach((btn) =>
+      btn.addEventListener('click', () => abrirModalReponer(productos.find((p) => p.id === btn.dataset.reponer)))
+    );
     tbody.querySelectorAll('[data-editar]').forEach((btn) =>
       btn.addEventListener('click', () => abrirModalProducto(productos.find((p) => p.id === btn.dataset.editar)))
     );
     tbody.querySelectorAll('[data-toggle-activo]').forEach((btn) =>
       btn.addEventListener('click', () => alternarActivo(productos.find((p) => p.id === btn.dataset.toggleActivo)))
+    );
+    tbody.querySelectorAll('[data-eliminar]').forEach((btn) =>
+      btn.addEventListener('click', () => abrirConfirmarEliminar(productos.find((p) => p.id === btn.dataset.eliminar)))
     );
   }
 
@@ -389,9 +458,31 @@
     }
   }
 
+  // Eliminar (borrado logico) -----------------------------------------
+  // Accion terminal desde la UI: no hay boton para "restaurar". El historial
+  // de ventas/reposiciones/ajustes/vinculos donde aparece este producto se
+  // conserva intacto -- ver js/productos.js eliminarProducto().
+  function abrirConfirmarEliminar(producto) {
+    productoParaEliminar = producto;
+    mostrarError(document.getElementById('error-eliminar'), '');
+    document.getElementById('eliminar-texto').textContent =
+      `¿Seguro que querés eliminar "${producto.nombre}"? No vas a poder deshacer esto, pero el historial de ventas y reposiciones donde aparece se va a conservar.`;
+    document.getElementById('modal-eliminar').hidden = false;
+  }
+
+  async function confirmarEliminar() {
+    try {
+      await eliminarProducto(productoParaEliminar.id);
+      document.getElementById('modal-eliminar').hidden = true;
+      await cargarProductos();
+    } catch (err) {
+      mostrarError(document.getElementById('error-eliminar'), err.message);
+    }
+  }
+
   // Modal producto -----------------------------------------------------
 
-  function abrirModalProducto(producto = null) {
+  async function abrirModalProducto(producto = null) {
     productoEnEdicion = producto;
     const esEdicion = !!producto;
 
@@ -420,6 +511,21 @@
     document.getElementById('campos-vencimiento').hidden = !producto?.perecedero;
     document.getElementById('p-fecha-vencimiento').value = producto?.fecha_vencimiento || '';
     document.getElementById('p-dias-alerta').value = producto?.alerta_vencimiento_dias ?? '';
+
+    // Seccion 4: la ficha del producto muestra sus proveedores; la
+    // vinculacion en si se gestiona desde Proveedores, aca es solo lectura.
+    document.getElementById('campo-proveedores').hidden = !esEdicion;
+    if (esEdicion) {
+      document.getElementById('p-proveedores-valor').textContent = 'Cargando...';
+      listarProveedoresDeProducto(producto.id)
+        .then((proveedores) => {
+          document.getElementById('p-proveedores-valor').textContent =
+            proveedores.length > 0 ? proveedores.map((p) => p.nombre).join(', ') : 'Ninguno vinculado todavía.';
+        })
+        .catch((err) => {
+          document.getElementById('p-proveedores-valor').textContent = 'No se pudo cargar (' + err.message + ')';
+        });
+    }
 
     document.getElementById('modal-producto').hidden = false;
   }
@@ -520,6 +626,61 @@
         comentario: document.getElementById('a-comentario').value.trim(),
       });
       document.getElementById('modal-ajuste').hidden = true;
+      await cargarProductos();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Reposicion de stock (seccion 6): mismo modulo que en proveedores.html,
+  // este es el segundo punto de entrada ("misma accion, dos puntos de
+  // entrada"). Aca el proveedor no esta predeterminado -- si el producto
+  // tiene mas de uno vinculado, el admin/empleado elige cual uso.
+  async function abrirModalReponer(producto) {
+    productoParaReponer = producto;
+    const errorEl = document.getElementById('error-reponer');
+    mostrarError(errorEl, '');
+    document.getElementById('reponer-contexto').textContent = producto.nombre;
+    document.getElementById('form-reponer').reset();
+
+    const selectProveedor = document.getElementById('rp-proveedor');
+    const campoProveedor = document.getElementById('campo-reponer-proveedor');
+    const btnGuardar = document.getElementById('btn-guardar-reponer');
+    selectProveedor.innerHTML = '<option>Cargando...</option>';
+    document.getElementById('modal-reponer').hidden = false;
+
+    try {
+      const proveedores = await listarProveedoresDeProducto(producto.id);
+      if (proveedores.length === 0) {
+        selectProveedor.innerHTML = '';
+        campoProveedor.hidden = true;
+        btnGuardar.disabled = true;
+        mostrarError(errorEl, 'Este producto todavía no tiene ningún proveedor vinculado. Vinculalo primero desde Proveedores.');
+      } else {
+        campoProveedor.hidden = false;
+        btnGuardar.disabled = false;
+        selectProveedor.innerHTML = proveedores.map((p) => `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join('');
+      }
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function guardarReposicion(e) {
+    e.preventDefault();
+    const errorEl = document.getElementById('error-reponer');
+    mostrarError(errorEl, '');
+    try {
+      await registrarReposicion({
+        productoId: productoParaReponer.id,
+        proveedorId: document.getElementById('rp-proveedor').value,
+        localId: productoParaReponer.local_id,
+        organizationId: productoParaReponer.organization_id,
+        usuarioId: usuario.id,
+        cantidad: Number(document.getElementById('rp-cantidad').value),
+        precioCosto: Number(document.getElementById('rp-precio-costo').value),
+      });
+      document.getElementById('modal-reponer').hidden = true;
       await cargarProductos();
     } catch (err) {
       mostrarError(errorEl, err.message);

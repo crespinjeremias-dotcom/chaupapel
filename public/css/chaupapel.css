@@ -132,6 +132,24 @@ button {
   padding: 8px 14px;
 }
 
+.boton-peligro {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: var(--color-error);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.boton-peligro:hover:not(:disabled) {
+  background: #8f231c;
+}
+
 .enlaces {
   margin-top: 20px;
   display: flex;
@@ -449,6 +467,10 @@ button {
   margin: auto 0;
 }
 
+.modal.ancho {
+  max-width: 760px;
+}
+
 .modal h2 {
   margin: 0 0 20px;
   font-size: 1.15rem;
@@ -508,7 +530,8 @@ button {
 }
 
 .modal-acciones .boton-primario,
-.modal-acciones .boton-secundario {
+.modal-acciones .boton-secundario,
+.modal-acciones .boton-peligro {
   width: auto;
   flex: 1;
 }
@@ -561,4 +584,330 @@ button {
 
 .input-archivo {
   display: none;
+}
+
+/* Ficha de proveedor ------------------------------------------------------- */
+
+.ficha-seccion {
+  margin-top: 24px;
+}
+
+.ficha-seccion h3 {
+  font-size: 0.95rem;
+  margin: 0 0 10px;
+}
+
+.ficha-seccion .subtitulo-ficha {
+  color: var(--color-texto-suave);
+  font-size: 0.85rem;
+  margin: -6px 0 12px;
+}
+
+.lista-vinculos {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lista-vinculos li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--color-borde);
+  border-radius: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lista-vinculos .info-vinculo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lista-vinculos .acciones-vinculo {
+  display: flex;
+  gap: 6px;
+}
+
+.vincular-producto-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.vincular-producto-form select {
+  flex: 1;
+}
+
+.etiqueta.reclamo-pendiente {
+  background: var(--color-aviso-fondo);
+  color: var(--color-aviso-texto);
+}
+
+.etiqueta.reclamo-repuesto {
+  background: #e6f4ea;
+  color: #1e6b34;
+}
+
+/* Punto de venta ------------------------------------------------------ */
+
+.turno-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: #e6f4ea;
+  color: #1e6b34;
+  padding: 10px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+.pantalla-turno-cerrado {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.pantalla-turno-cerrado p {
+  color: var(--color-texto-suave);
+  margin-bottom: 20px;
+}
+
+.pantalla-turno-cerrado .boton-primario {
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+.buscador-contenedor {
+  position: relative;
+}
+
+.buscador-resultados {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.buscador-resultados button {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-borde);
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.buscador-resultados button:last-child {
+  border-bottom: none;
+}
+
+.buscador-resultados button:hover {
+  background: var(--color-fondo);
+}
+
+.buscador-resultados .sin-resultados {
+  padding: 10px 14px;
+  color: var(--color-texto-suave);
+  font-size: 0.88rem;
+}
+
+.carrito-vacio {
+  text-align: center;
+  color: var(--color-texto-suave);
+  padding: 30px 0;
+}
+
+.tabla input.input-cantidad {
+  width: 70px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-borde);
+  border-radius: 6px;
+}
+
+.total-carrito {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  padding: 14px 0;
+  border-top: 2px solid var(--color-borde);
+  margin-top: 10px;
+}
+
+.tabs-pago {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tabs-pago button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-borde);
+  background: var(--color-fondo);
+  color: var(--color-texto-suave);
+  font-weight: 600;
+}
+
+.tabs-pago button.activo {
+  background: var(--color-primario);
+  color: #fff;
+  border-color: var(--color-primario);
+}
+
+.metodo-pago-fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.metodo-pago-fila .campo {
+  margin-bottom: 0;
+}
+
+.cliente-seleccionado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--color-fondo);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.detalle-venta-items {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.detalle-venta-items li {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-borde);
+  font-size: 0.9rem;
+}
+
+.etiqueta.estado-anulada {
+  background: var(--color-error-fondo);
+  color: var(--color-error);
+}
+
+.etiqueta.estado-editada {
+  background: var(--color-aviso-fondo);
+  color: var(--color-aviso-texto);
+}
+
+.etiqueta.estado-activa {
+  background: #e6f4ea;
+  color: #1e6b34;
+}
+
+.etiqueta.fiado {
+  background: #e8eaed;
+  color: var(--color-texto-suave);
+}
+
+/* Cuenta corriente de clientes ------------------------------------------- */
+
+.resumen-saldos {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.resumen-saldos .tarjeta-resumen {
+  flex: 1;
+  min-width: 180px;
+  background: var(--color-fondo);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.resumen-saldos .tarjeta-resumen .etiqueta-resumen {
+  display: block;
+  color: var(--color-texto-suave);
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+}
+
+.resumen-saldos .tarjeta-resumen .valor-resumen {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.etiqueta.saldo-debe {
+  background: var(--color-error-fondo);
+  color: var(--color-error);
+}
+
+.etiqueta.saldo-favor {
+  background: #e6f4ea;
+  color: #1e6b34;
+}
+
+.etiqueta.saldo-al-dia {
+  background: #e8eaed;
+  color: var(--color-texto-suave);
+}
+
+.lista-movimientos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lista-movimientos li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--color-borde);
+  border-radius: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lista-movimientos .info-movimiento {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.monto-positivo {
+  color: var(--color-error);
+  font-weight: 600;
+}
+
+.monto-negativo {
+  color: #1e6b34;
+  font-weight: 600;
 }

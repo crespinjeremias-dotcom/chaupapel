@@ -1,0 +1,465 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Historial de ventas</title>
+<link rel="stylesheet" href="css/chaupapel.css" />
+
+<header class="app-header">
+  <div class="identidad">
+    <h1 id="nombre-local"></h1>
+    <p><a href="panel.html">← Volver al panel</a></p>
+  </div>
+  <button class="boton-secundario boton-inline" id="btn-logout">Cerrar sesión</button>
+</header>
+
+<main class="app-main ancho">
+  <div class="panel-seccion">
+    <div class="barra-herramientas">
+      <div class="campo">
+        <label for="filtro-mes">Mes</label>
+        <input type="month" id="filtro-mes" />
+      </div>
+      <div class="campo campo-busqueda">
+        <label for="buscador">Vendedor o cliente</label>
+        <input type="text" id="buscador" placeholder="Buscar..." />
+      </div>
+    </div>
+
+    <p class="mensaje-error" id="error-lista" hidden></p>
+    <p class="texto-suave" id="cargando">Cargando ventas...</p>
+
+    <div class="tabla-contenedor">
+      <table class="tabla" id="tabla-ventas" hidden>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Vendedor</th>
+            <th>Items</th>
+            <th>Total</th>
+            <th>Pago</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody-ventas"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="modal-detalle" hidden>
+  <div class="modal ancho">
+    <h2>Venta del <span id="detalle-fecha"></span></h2>
+    <p class="texto-suave" id="detalle-meta"></p>
+    <ul class="detalle-venta-items" id="detalle-items"></ul>
+    <p id="detalle-pago"></p>
+    <div class="modal-acciones">
+      <button type="button" class="boton-secundario" id="btn-cerrar-detalle">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-editar" hidden>
+  <div class="modal ancho">
+    <h2>Editar venta</h2>
+    <p class="mensaje-error" id="error-editar" hidden></p>
+
+    <div class="campo campo-busqueda buscador-contenedor">
+      <input type="text" id="buscador-editar" placeholder="Agregar producto..." autocomplete="off" />
+      <div class="buscador-resultados" id="resultados-editar" hidden></div>
+    </div>
+
+    <div class="tabla-contenedor">
+      <table class="tabla" id="tabla-editar-items">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Precio</th>
+            <th>Subtotal</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody-editar-items"></tbody>
+      </table>
+    </div>
+
+    <div class="total-carrito">
+      <span>Total</span>
+      <span id="editar-total-valor">$0</span>
+    </div>
+
+    <div class="metodo-pago-fila">
+      <div class="campo">
+        <label for="editar-metodo-1">Método</label>
+        <select id="editar-metodo-1">
+          <option value="efectivo">Efectivo</option>
+          <option value="transferencia">Transferencia</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="editar-monto-1">Monto</label>
+        <input type="number" id="editar-monto-1" min="0" step="0.01" />
+      </div>
+      <div></div>
+    </div>
+    <button type="button" class="boton-chico secundario" id="btn-agregar-metodo-editar">+ Agregar otro método de pago</button>
+    <div class="metodo-pago-fila" id="fila-metodo-2-editar" hidden>
+      <div class="campo">
+        <label for="editar-metodo-2">Método</label>
+        <select id="editar-metodo-2">
+          <option value="transferencia">Transferencia</option>
+          <option value="efectivo">Efectivo</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="editar-monto-2">Monto</label>
+        <input type="number" id="editar-monto-2" min="0" step="0.01" />
+      </div>
+      <button type="button" class="boton-chico secundario" id="btn-quitar-metodo-editar">Quitar</button>
+    </div>
+
+    <div class="modal-acciones">
+      <button type="button" class="boton-secundario" id="btn-cancelar-editar">Cancelar</button>
+      <button type="button" class="boton-primario" id="btn-guardar-editar">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-anular" hidden>
+  <div class="modal">
+    <h2>Anular venta</h2>
+    <p id="anular-texto"></p>
+    <p class="mensaje-error" id="error-anular" hidden></p>
+    <div class="modal-acciones">
+      <button type="button" class="boton-secundario" id="btn-cancelar-anular">Cancelar</button>
+      <button type="button" class="boton-peligro" id="btn-confirmar-anular">Sí, anular</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
+  import { listarProductos } from './js/productos.js';
+  import { listarVentas, obtenerVentaConDetalle, actualizarVenta, anularVenta, puedeModificar, puedeEditarItems } from './js/ventas.js';
+  import { mostrarError, escapeHtml } from './js/utils.js';
+
+  const ETIQUETA_ESTADO = { activa: 'Activa', editada: 'Editada', anulada: 'Anulada' };
+  const ETIQUETA_METODO = { efectivo: 'Efectivo', transferencia: 'Transferencia' };
+
+  let usuario = null;
+  let ventas = [];
+  let ventaEnEdicion = null;
+  let itemsEdicion = [];
+  let ventaParaAnular = null;
+
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await logout();
+    window.location.href = 'index.html';
+  });
+
+  async function iniciar() {
+    const session = await requireSession();
+    if (!session) return;
+
+    usuario = await obtenerUsuarioActual();
+    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false) {
+      window.location.href = 'panel.html';
+      return;
+    }
+
+    document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+
+    const ahora = new Date();
+    document.getElementById('filtro-mes').value = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+
+    document.getElementById('filtro-mes').addEventListener('change', cargarVentas);
+    document.getElementById('buscador').addEventListener('input', debounce(cargarVentas, 300));
+
+    document.getElementById('btn-cerrar-detalle').addEventListener('click', () => {
+      document.getElementById('modal-detalle').hidden = true;
+    });
+
+    document.getElementById('buscador-editar').addEventListener('input', debounce(buscarProductoParaEditar, 250));
+    document.getElementById('btn-cancelar-editar').addEventListener('click', () => {
+      document.getElementById('modal-editar').hidden = true;
+    });
+    document.getElementById('btn-guardar-editar').addEventListener('click', guardarEdicion);
+    document.getElementById('btn-agregar-metodo-editar').addEventListener('click', () => {
+      document.getElementById('fila-metodo-2-editar').hidden = false;
+      document.getElementById('btn-agregar-metodo-editar').hidden = true;
+    });
+    document.getElementById('btn-quitar-metodo-editar').addEventListener('click', () => {
+      document.getElementById('fila-metodo-2-editar').hidden = true;
+      document.getElementById('btn-agregar-metodo-editar').hidden = false;
+      document.getElementById('editar-monto-2').value = '';
+    });
+
+    document.getElementById('btn-cancelar-anular').addEventListener('click', () => {
+      document.getElementById('modal-anular').hidden = true;
+    });
+    document.getElementById('btn-confirmar-anular').addEventListener('click', confirmarAnular);
+
+    await cargarVentas();
+  }
+
+  function debounce(fn, ms) {
+    let t;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  }
+
+  function rangoDelMes() {
+    const [anio, mes] = document.getElementById('filtro-mes').value.split('-').map(Number);
+    const desde = new Date(anio, mes - 1, 1).toISOString();
+    const hasta = new Date(anio, mes, 1).toISOString();
+    return { desde, hasta };
+  }
+
+  async function cargarVentas() {
+    const errorEl = document.getElementById('error-lista');
+    const cargandoEl = document.getElementById('cargando');
+    const tabla = document.getElementById('tabla-ventas');
+    mostrarError(errorEl, '');
+    try {
+      const { desde, hasta } = rangoDelMes();
+      const query = document.getElementById('buscador').value.trim();
+      ventas = await listarVentas({ desde, hasta, query: query || undefined });
+      renderTabla();
+      cargandoEl.hidden = true;
+      tabla.hidden = false;
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+      cargandoEl.hidden = true;
+    }
+  }
+
+  function resumenPago(venta) {
+    if (venta.es_fiado) return `<span class="etiqueta fiado">Fiado · ${escapeHtml(venta.clientes?.nombre || '')}</span>`;
+    return 'Ver detalle';
+  }
+
+  function renderTabla() {
+    const tbody = document.getElementById('tbody-ventas');
+    if (ventas.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="texto-suave">No hay ventas en este período.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = ventas
+      .map((v) => {
+        const fecha = new Date(v.fecha).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const cantItems = v.venta_items?.[0]?.count ?? 0;
+        const acciones = [`<button type="button" class="boton-chico secundario" data-ver="${v.id}">Ver</button>`];
+        if (puedeEditarItems(v, usuario)) {
+          acciones.push(`<button type="button" class="boton-chico secundario" data-editar="${v.id}">Editar</button>`);
+        }
+        if (puedeModificar(v, usuario)) {
+          acciones.push(`<button type="button" class="boton-chico peligro" data-anular="${v.id}">Anular</button>`);
+        }
+        return `
+          <tr>
+            <td>${fecha}</td>
+            <td>${escapeHtml(v.usuarios?.nombre || '—')}</td>
+            <td>${cantItems}</td>
+            <td>$${Number(v.total).toLocaleString('es-AR')}</td>
+            <td>${resumenPago(v)}</td>
+            <td><span class="etiqueta estado-${v.estado}">${ETIQUETA_ESTADO[v.estado]}</span></td>
+            <td class="celda-acciones">${acciones.join('')}</td>
+          </tr>`;
+      })
+      .join('');
+
+    tbody.querySelectorAll('[data-ver]').forEach((btn) => btn.addEventListener('click', () => verDetalle(btn.dataset.ver)));
+    tbody.querySelectorAll('[data-editar]').forEach((btn) => btn.addEventListener('click', () => abrirEdicion(btn.dataset.editar)));
+    tbody.querySelectorAll('[data-anular]').forEach((btn) =>
+      btn.addEventListener('click', () => abrirConfirmarAnular(ventas.find((v) => v.id === btn.dataset.anular)))
+    );
+  }
+
+  // Detalle ------------------------------------------------------------
+
+  async function verDetalle(id) {
+    try {
+      const { venta, items, pagos } = await obtenerVentaConDetalle(id);
+      document.getElementById('detalle-fecha').textContent = new Date(venta.fecha).toLocaleString('es-AR');
+      document.getElementById('detalle-meta').textContent = `Vendedor: ${venta.usuarios?.nombre || '—'} · Estado: ${ETIQUETA_ESTADO[venta.estado]}`;
+      document.getElementById('detalle-items').innerHTML = items
+        .map(
+          (it) => `<li><span>${escapeHtml(it.productos?.nombre || 'Producto eliminado')} × ${it.cantidad}</span><span>$${Number(it.subtotal).toLocaleString('es-AR')}</span></li>`
+        )
+        .join('');
+      document.getElementById('detalle-pago').textContent = venta.es_fiado
+        ? `Fiado — cliente: ${venta.clientes?.nombre || '—'}`
+        : pagos.map((p) => `${ETIQUETA_METODO[p.metodo]}: $${Number(p.monto).toLocaleString('es-AR')}`).join(' · ');
+      document.getElementById('modal-detalle').hidden = false;
+    } catch (err) {
+      mostrarError(document.getElementById('error-lista'), err.message);
+    }
+  }
+
+  // Edicion ------------------------------------------------------------
+
+  async function abrirEdicion(id) {
+    const errorEl = document.getElementById('error-editar');
+    mostrarError(errorEl, '');
+    try {
+      const { venta, items, pagos } = await obtenerVentaConDetalle(id);
+      ventaEnEdicion = venta;
+      itemsEdicion = items.map((it) => ({
+        productoId: it.producto_id,
+        nombre: it.productos?.nombre || 'Producto eliminado',
+        cantidad: Number(it.cantidad),
+        precioUnitario: Number(it.precio_unitario),
+      }));
+
+      const pago1 = pagos[0];
+      const pago2 = pagos[1];
+      document.getElementById('editar-metodo-1').value = pago1?.metodo || 'efectivo';
+      document.getElementById('editar-monto-1').value = pago1?.monto ?? '';
+      if (pago2) {
+        document.getElementById('fila-metodo-2-editar').hidden = false;
+        document.getElementById('btn-agregar-metodo-editar').hidden = true;
+        document.getElementById('editar-metodo-2').value = pago2.metodo;
+        document.getElementById('editar-monto-2').value = pago2.monto;
+      } else {
+        document.getElementById('fila-metodo-2-editar').hidden = true;
+        document.getElementById('btn-agregar-metodo-editar').hidden = false;
+      }
+
+      renderItemsEdicion();
+      document.getElementById('modal-editar').hidden = false;
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function buscarProductoParaEditar() {
+    const query = document.getElementById('buscador-editar').value.trim();
+    const contenedor = document.getElementById('resultados-editar');
+    if (!query) {
+      contenedor.hidden = true;
+      return;
+    }
+    try {
+      const productos = await listarProductos({ query, soloActivos: true });
+      contenedor.innerHTML =
+        productos.length === 0
+          ? '<div class="sin-resultados">No se encontraron productos.</div>'
+          : productos
+              .map(
+                (p) => `<button type="button" data-id="${p.id}">
+                  <span>${escapeHtml(p.nombre)}</span>
+                  <span class="texto-suave">$${Number(p.precio_venta_actual).toLocaleString('es-AR')}</span>
+                </button>`
+              )
+              .join('');
+      contenedor.querySelectorAll('button[data-id]').forEach((btn) =>
+        btn.addEventListener('click', () => {
+          const p = productos.find((x) => x.id === btn.dataset.id);
+          const existente = itemsEdicion.find((it) => it.productoId === p.id);
+          if (existente) existente.cantidad += 1;
+          else itemsEdicion.push({ productoId: p.id, nombre: p.nombre, cantidad: 1, precioUnitario: Number(p.precio_venta_actual) });
+          renderItemsEdicion();
+          document.getElementById('buscador-editar').value = '';
+          contenedor.hidden = true;
+        })
+      );
+      contenedor.hidden = false;
+    } catch (err) {
+      mostrarError(document.getElementById('error-editar'), err.message);
+    }
+  }
+
+  function renderItemsEdicion() {
+    const tbody = document.getElementById('tbody-editar-items');
+    tbody.innerHTML = itemsEdicion
+      .map(
+        (it, i) => `
+        <tr>
+          <td>${escapeHtml(it.nombre)}</td>
+          <td><input type="number" class="input-cantidad" min="0.01" step="0.01" value="${it.cantidad}" data-index="${i}" /></td>
+          <td>$${it.precioUnitario.toLocaleString('es-AR')}</td>
+          <td>$${(it.cantidad * it.precioUnitario).toLocaleString('es-AR')}</td>
+          <td><button type="button" class="boton-chico peligro" data-quitar="${i}">Quitar</button></td>
+        </tr>`
+      )
+      .join('');
+
+    tbody.querySelectorAll('.input-cantidad').forEach((input) =>
+      input.addEventListener('change', (e) => {
+        const i = Number(e.target.dataset.index);
+        const nueva = Number(e.target.value);
+        if (nueva <= 0) itemsEdicion.splice(i, 1);
+        else itemsEdicion[i].cantidad = nueva;
+        renderItemsEdicion();
+      })
+    );
+    tbody.querySelectorAll('[data-quitar]').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        itemsEdicion.splice(Number(btn.dataset.quitar), 1);
+        renderItemsEdicion();
+      })
+    );
+
+    const total = itemsEdicion.reduce((acc, it) => acc + it.cantidad * it.precioUnitario, 0);
+    document.getElementById('editar-total-valor').textContent = `$${total.toLocaleString('es-AR')}`;
+  }
+
+  async function guardarEdicion() {
+    const errorEl = document.getElementById('error-editar');
+    mostrarError(errorEl, '');
+
+    if (itemsEdicion.length === 0) {
+      mostrarError(errorEl, 'La venta necesita al menos un producto. Si fue un error, anulala en vez de dejarla vacía.');
+      return;
+    }
+
+    const total = itemsEdicion.reduce((acc, it) => acc + it.cantidad * it.precioUnitario, 0);
+    const pagos = [{ metodo: document.getElementById('editar-metodo-1').value, monto: Number(document.getElementById('editar-monto-1').value) || 0 }];
+    if (!document.getElementById('fila-metodo-2-editar').hidden) {
+      const monto2 = Number(document.getElementById('editar-monto-2').value) || 0;
+      if (monto2 > 0) pagos.push({ metodo: document.getElementById('editar-metodo-2').value, monto: monto2 });
+    }
+    const sumaPagos = pagos.reduce((acc, p) => acc + p.monto, 0);
+    if (Math.abs(sumaPagos - total) > 0.01) {
+      mostrarError(errorEl, `Los montos cargados ($${sumaPagos.toLocaleString('es-AR')}) no coinciden con el total ($${total.toLocaleString('es-AR')}).`);
+      return;
+    }
+
+    try {
+      await actualizarVenta(ventaEnEdicion.id, {
+        items: itemsEdicion.map((it) => ({ productoId: it.productoId, cantidad: it.cantidad, precioUnitario: it.precioUnitario })),
+        pagos,
+      });
+      document.getElementById('modal-editar').hidden = true;
+      await cargarVentas();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Anulacion ------------------------------------------------------------
+
+  function abrirConfirmarAnular(venta) {
+    ventaParaAnular = venta;
+    mostrarError(document.getElementById('error-anular'), '');
+    document.getElementById('anular-texto').textContent =
+      `¿Seguro que querés anular esta venta por $${Number(venta.total).toLocaleString('es-AR')}? Se repone el stock de los productos` +
+      (venta.es_fiado ? ' y se revierte la deuda del cliente.' : '.');
+    document.getElementById('modal-anular').hidden = false;
+  }
+
+  async function confirmarAnular() {
+    try {
+      await anularVenta(ventaParaAnular.id, usuario.id);
+      document.getElementById('modal-anular').hidden = true;
+      await cargarVentas();
+    } catch (err) {
+      mostrarError(document.getElementById('error-anular'), err.message);
+    }
+  }
+
+  iniciar();
+</script>

@@ -1,0 +1,407 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Clientes</title>
+<link rel="stylesheet" href="css/chaupapel.css" />
+
+<header class="app-header">
+  <div class="identidad">
+    <h1 id="nombre-local"></h1>
+    <p><a href="panel.html">← Volver al panel</a></p>
+  </div>
+  <button class="boton-secundario boton-inline" id="btn-logout">Cerrar sesión</button>
+</header>
+
+<main class="app-main ancho">
+  <div class="panel-seccion">
+    <div class="resumen-saldos">
+      <div class="tarjeta-resumen">
+        <span class="etiqueta-resumen">Total pendiente de cobro</span>
+        <span class="valor-resumen" id="resumen-debe">$0</span>
+      </div>
+      <div class="tarjeta-resumen">
+        <span class="etiqueta-resumen">Total a favor de clientes</span>
+        <span class="valor-resumen" id="resumen-favor">$0</span>
+      </div>
+    </div>
+
+    <div class="barra-herramientas">
+      <div class="campo campo-busqueda">
+        <input type="text" id="buscador" placeholder="Buscar cliente por nombre..." />
+      </div>
+      <button type="button" class="boton-chico primario" id="btn-nuevo">+ Nuevo cliente</button>
+    </div>
+
+    <p class="mensaje-error" id="error-lista" hidden></p>
+    <p class="texto-suave" id="cargando">Cargando clientes...</p>
+
+    <div class="tabla-contenedor">
+      <table class="tabla" id="tabla-clientes" hidden>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Teléfono</th>
+            <th>Saldo</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody-clientes"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="modal-cliente" hidden>
+  <div class="modal">
+    <h2 id="modal-cliente-titulo">Nuevo cliente</h2>
+    <p class="mensaje-error" id="error-cliente" hidden></p>
+    <form id="form-cliente">
+      <div class="campo">
+        <label for="c-nombre">Nombre</label>
+        <input type="text" id="c-nombre" required />
+      </div>
+      <div class="campo">
+        <label for="c-telefono">Teléfono (opcional)</label>
+        <input type="tel" id="c-telefono" />
+      </div>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario" id="btn-cancelar-cliente">Cancelar</button>
+        <button type="submit" class="boton-primario">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-ficha" hidden>
+  <div class="modal ancho">
+    <h2 id="ficha-nombre"></h2>
+    <p class="texto-suave" id="ficha-telefono"></p>
+    <p id="ficha-saldo"></p>
+
+    <div class="modal-acciones">
+      <button type="button" class="boton-secundario" id="btn-editar-desde-ficha">Editar datos</button>
+      <button type="button" class="boton-primario" id="btn-cobrar">Cobrar</button>
+    </div>
+
+    <div class="ficha-seccion">
+      <h3>Movimientos</h3>
+      <ul class="lista-movimientos" id="lista-movimientos"></ul>
+    </div>
+
+    <div class="modal-acciones">
+      <button type="button" class="boton-secundario" id="btn-cerrar-ficha">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-cobrar" hidden>
+  <div class="modal">
+    <h2>Cobrar fiado — <span id="cobrar-cliente-nombre"></span></h2>
+    <p class="texto-suave" id="cobrar-saldo-actual"></p>
+    <p class="mensaje-error" id="error-cobrar" hidden></p>
+    <p class="aviso" id="aviso-sin-turno" hidden>
+      Necesitás un turno abierto para registrar un cobro (el cobro se suma a la caja del turno en el que se cobra).
+      <a href="ventas.html">Ir a abrir turno</a>.
+    </p>
+    <form id="form-cobrar">
+      <div class="campos-en-fila">
+        <div class="campo">
+          <label for="cobrar-monto">Monto</label>
+          <input type="number" id="cobrar-monto" min="0.01" step="0.01" required />
+        </div>
+        <div class="campo">
+          <label for="cobrar-metodo">Método</label>
+          <select id="cobrar-metodo">
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario" id="btn-cancelar-cobrar">Cancelar</button>
+        <button type="submit" class="boton-primario" id="btn-guardar-cobro">Registrar cobro</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script type="module">
+  import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
+  import { listarLocales } from './js/empleados.js';
+  import {
+    listarClientes,
+    crearClienteRapido,
+    actualizarCliente,
+    establecerActivo,
+    obtenerClienteConMovimientos,
+    registrarCobro,
+  } from './js/clientes.js';
+  import { obtenerTurnoAbierto } from './js/turnos.js';
+  import { mostrarError, escapeHtml } from './js/utils.js';
+
+  const ETIQUETA_TIPO = {
+    fiado_nuevo: 'Fiado nuevo',
+    cobro_fiado: 'Cobro',
+    saldo_favor_generado: 'Saldo a favor generado',
+    saldo_favor_usado: 'Saldo a favor usado',
+    fiado_anulado: 'Venta fiada anulada',
+  };
+  const ETIQUETA_METODO = { efectivo: 'Efectivo', transferencia: 'Transferencia' };
+
+  let usuario = null;
+  let localIdActivo = null;
+  let clientes = [];
+  let clienteEnEdicion = null;
+  let clienteEnFicha = null;
+  let turnoAbierto = null;
+
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await logout();
+    window.location.href = 'index.html';
+  });
+
+  async function iniciar() {
+    const session = await requireSession();
+    if (!session) return;
+
+    usuario = await obtenerUsuarioActual();
+    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false) {
+      window.location.href = 'panel.html';
+      return;
+    }
+
+    document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+
+    if (usuario.role === 'admin') {
+      const locales = await listarLocales();
+      localIdActivo = locales[0]?.id || null;
+    } else {
+      localIdActivo = usuario.local_id;
+    }
+
+    turnoAbierto = await obtenerTurnoAbierto(usuario.id);
+
+    document.getElementById('buscador').addEventListener('input', debounce(cargarClientes, 300));
+    document.getElementById('btn-nuevo').addEventListener('click', () => abrirModalCliente());
+    document.getElementById('btn-cancelar-cliente').addEventListener('click', () => {
+      document.getElementById('modal-cliente').hidden = true;
+    });
+    document.getElementById('form-cliente').addEventListener('submit', guardarCliente);
+
+    document.getElementById('btn-cerrar-ficha').addEventListener('click', () => {
+      document.getElementById('modal-ficha').hidden = true;
+    });
+    document.getElementById('btn-editar-desde-ficha').addEventListener('click', () => abrirModalCliente(clienteEnFicha));
+    document.getElementById('btn-cobrar').addEventListener('click', abrirModalCobrar);
+
+    document.getElementById('btn-cancelar-cobrar').addEventListener('click', () => {
+      document.getElementById('modal-cobrar').hidden = true;
+    });
+    document.getElementById('form-cobrar').addEventListener('submit', guardarCobro);
+
+    await cargarClientes();
+  }
+
+  function debounce(fn, ms) {
+    let t;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  }
+
+  function etiquetaSaldo(saldo) {
+    if (saldo > 0) return `<span class="etiqueta saldo-debe">Debe $${Number(saldo).toLocaleString('es-AR')}</span>`;
+    if (saldo < 0) return `<span class="etiqueta saldo-favor">A favor $${Number(-saldo).toLocaleString('es-AR')}</span>`;
+    return '<span class="etiqueta saldo-al-dia">Al día</span>';
+  }
+
+  async function cargarClientes() {
+    const errorEl = document.getElementById('error-lista');
+    const cargandoEl = document.getElementById('cargando');
+    const tabla = document.getElementById('tabla-clientes');
+    mostrarError(errorEl, '');
+    try {
+      const query = document.getElementById('buscador').value.trim();
+      clientes = await listarClientes({ query: query || undefined });
+      renderResumen();
+      renderTabla();
+      cargandoEl.hidden = true;
+      tabla.hidden = false;
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+      cargandoEl.hidden = true;
+    }
+  }
+
+  function renderResumen() {
+    const totalDebe = clientes.filter((c) => c.saldo > 0).reduce((acc, c) => acc + Number(c.saldo), 0);
+    const totalFavor = clientes.filter((c) => c.saldo < 0).reduce((acc, c) => acc - Number(c.saldo), 0);
+    document.getElementById('resumen-debe').textContent = `$${totalDebe.toLocaleString('es-AR')}`;
+    document.getElementById('resumen-favor').textContent = `$${totalFavor.toLocaleString('es-AR')}`;
+  }
+
+  function renderTabla() {
+    const tbody = document.getElementById('tbody-clientes');
+    if (clientes.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="texto-suave">No se encontraron clientes.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = clientes
+      .map(
+        (c) => `
+        <tr class="${c.activo ? '' : 'fila-inactiva'}">
+          <td>${escapeHtml(c.nombre)}</td>
+          <td>${escapeHtml(c.telefono || '—')}</td>
+          <td>${etiquetaSaldo(Number(c.saldo))}</td>
+          <td>${c.activo ? '<span class="etiqueta">Activo</span>' : '<span class="etiqueta inactivo">Inactivo</span>'}</td>
+          <td class="celda-acciones">
+            <button type="button" class="boton-chico secundario" data-ficha="${c.id}">Ver ficha</button>
+            <button type="button" class="boton-chico ${c.activo ? 'peligro' : 'primario'}" data-toggle-activo="${c.id}">${
+              c.activo ? 'Desactivar' : 'Reactivar'
+            }</button>
+          </td>
+        </tr>`
+      )
+      .join('');
+
+    tbody.querySelectorAll('[data-ficha]').forEach((btn) => btn.addEventListener('click', () => abrirFicha(btn.dataset.ficha)));
+    tbody.querySelectorAll('[data-toggle-activo]').forEach((btn) =>
+      btn.addEventListener('click', () => alternarActivo(clientes.find((c) => c.id === btn.dataset.toggleActivo)))
+    );
+  }
+
+  async function alternarActivo(cliente) {
+    try {
+      await establecerActivo(cliente.id, !cliente.activo);
+      await cargarClientes();
+    } catch (err) {
+      mostrarError(document.getElementById('error-lista'), err.message);
+    }
+  }
+
+  // Alta / edicion ---------------------------------------------------
+
+  function abrirModalCliente(cliente = null) {
+    clienteEnEdicion = cliente;
+    document.getElementById('modal-cliente-titulo').textContent = cliente ? 'Editar cliente' : 'Nuevo cliente';
+    mostrarError(document.getElementById('error-cliente'), '');
+    document.getElementById('c-nombre').value = cliente?.nombre || '';
+    document.getElementById('c-telefono').value = cliente?.telefono || '';
+    document.getElementById('modal-cliente').hidden = false;
+  }
+
+  async function guardarCliente(e) {
+    e.preventDefault();
+    const errorEl = document.getElementById('error-cliente');
+    mostrarError(errorEl, '');
+
+    const datos = {
+      nombre: document.getElementById('c-nombre').value.trim(),
+      telefono: document.getElementById('c-telefono').value.trim() || null,
+    };
+
+    try {
+      if (clienteEnEdicion) {
+        await actualizarCliente(clienteEnEdicion.id, datos);
+      } else {
+        datos.local_id = localIdActivo;
+        datos.organization_id = usuario.organization_id;
+        await crearClienteRapido(datos);
+      }
+      document.getElementById('modal-cliente').hidden = true;
+      await cargarClientes();
+      if (clienteEnFicha && clienteEnEdicion?.id === clienteEnFicha.id) await abrirFicha(clienteEnFicha.id);
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Ficha + movimientos ------------------------------------------------
+
+  async function abrirFicha(id) {
+    try {
+      const { cliente, movimientos } = await obtenerClienteConMovimientos(id);
+      clienteEnFicha = cliente;
+
+      document.getElementById('ficha-nombre').textContent = cliente.nombre;
+      document.getElementById('ficha-telefono').textContent = cliente.telefono || 'Sin teléfono cargado';
+      document.getElementById('ficha-saldo').innerHTML = etiquetaSaldo(Number(cliente.saldo));
+      document.getElementById('btn-cobrar').hidden = Number(cliente.saldo) <= 0;
+
+      document.getElementById('lista-movimientos').innerHTML =
+        movimientos.length === 0
+          ? '<li class="texto-suave">Todavía no hay movimientos.</li>'
+          : movimientos
+              .map((m) => {
+                const esDebe = m.tipo === 'fiado_nuevo';
+                const claseMonto = esDebe ? 'monto-positivo' : 'monto-negativo';
+                const signo = esDebe ? '+' : '−';
+                return `
+                <li>
+                  <span class="info-movimiento">
+                    <strong>${ETIQUETA_TIPO[m.tipo] || m.tipo}</strong>
+                    <span class="texto-suave">${new Date(m.fecha).toLocaleString('es-AR')} · ${escapeHtml(m.usuarios?.nombre || '—')}${
+                  m.metodo_pago ? ' · ' + ETIQUETA_METODO[m.metodo_pago] : ''
+                }</span>
+                  </span>
+                  <span class="${claseMonto}">${signo} $${Number(m.monto).toLocaleString('es-AR')}</span>
+                </li>`;
+              })
+              .join('');
+
+      document.getElementById('modal-ficha').hidden = false;
+    } catch (err) {
+      mostrarError(document.getElementById('error-lista'), err.message);
+    }
+  }
+
+  // Cobro ----------------------------------------------------------------
+
+  async function abrirModalCobrar() {
+    mostrarError(document.getElementById('error-cobrar'), '');
+    document.getElementById('cobrar-cliente-nombre').textContent = clienteEnFicha.nombre;
+    document.getElementById('cobrar-saldo-actual').textContent = `Debe $${Number(clienteEnFicha.saldo).toLocaleString('es-AR')}`;
+    document.getElementById('cobrar-monto').value = clienteEnFicha.saldo;
+    document.getElementById('cobrar-monto').max = clienteEnFicha.saldo;
+
+    turnoAbierto = await obtenerTurnoAbierto(usuario.id);
+    const sinTurno = !turnoAbierto;
+    document.getElementById('aviso-sin-turno').hidden = !sinTurno;
+    document.getElementById('form-cobrar').hidden = sinTurno;
+
+    document.getElementById('modal-cobrar').hidden = false;
+  }
+
+  async function guardarCobro(e) {
+    e.preventDefault();
+    const errorEl = document.getElementById('error-cobrar');
+    mostrarError(errorEl, '');
+
+    const monto = Number(document.getElementById('cobrar-monto').value);
+    if (monto <= 0) {
+      mostrarError(errorEl, 'El monto tiene que ser mayor a 0.');
+      return;
+    }
+
+    try {
+      await registrarCobro({
+        clienteId: clienteEnFicha.id,
+        turnoId: turnoAbierto.id,
+        usuarioId: usuario.id,
+        localId: clienteEnFicha.local_id,
+        organizationId: clienteEnFicha.organization_id,
+        monto,
+        metodoPago: document.getElementById('cobrar-metodo').value,
+      });
+      document.getElementById('modal-cobrar').hidden = true;
+      document.getElementById('modal-ficha').hidden = true;
+      await cargarClientes();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  iniciar();
+</script>
