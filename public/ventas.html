@@ -25,7 +25,8 @@
       <button type="button" class="boton-secundario boton-inline" id="btn-cerrar-turno">Cerrar turno</button>
     </div>
 
-    <div class="panel-seccion">
+    <div class="venta-layout">
+    <div class="panel-seccion venta-layout-principal">
       <div class="barra-herramientas">
         <div class="campo campo-busqueda buscador-contenedor">
           <input type="text" id="buscador" placeholder="Buscar producto por nombre o código de barras..." autocomplete="off" />
@@ -56,7 +57,7 @@
       </div>
     </div>
 
-    <div class="panel-seccion">
+    <div class="panel-seccion venta-layout-lateral">
       <div class="tabs-pago">
         <button type="button" class="activo" id="tab-pago-normal">Pago</button>
         <button type="button" id="tab-pago-fiado">Fiado</button>
@@ -110,8 +111,31 @@
       <p class="mensaje-exito" id="exito-checkout" hidden></p>
       <button type="button" class="boton-primario" id="btn-confirmar-venta">Confirmar venta</button>
     </div>
+    </div>
   </div>
 </main>
+
+<div class="modal-overlay" id="modal-cerrar-turno" hidden>
+  <div class="modal">
+    <h2>Cerrar turno</h2>
+    <p class="texto-suave">Contá el efectivo que tenés en la caja y cargalo para cerrar tu turno.</p>
+    <dl class="lista-metricas">
+      <div><dt>Efectivo esperado</dt><dd id="ct-efectivo-esperado">—</dd></div>
+      <div><dt>Transferencia esperada</dt><dd id="ct-transferencia-esperada">—</dd></div>
+      <div><dt>Fiado generado en el turno</dt><dd id="ct-fiado-generado">—</dd></div>
+    </dl>
+    <div class="campo">
+      <label for="ct-efectivo-contado">Efectivo contado</label>
+      <input type="number" id="ct-efectivo-contado" min="0" step="0.01" />
+    </div>
+    <p class="texto-suave" id="ct-diferencia" hidden></p>
+    <p class="mensaje-error" id="error-cerrar-turno" hidden></p>
+    <div class="modal-acciones">
+      <button type="button" class="boton-secundario" id="btn-cancelar-cerrar-turno">Cancelar</button>
+      <button type="button" class="boton-primario" id="btn-confirmar-cerrar-turno">Confirmar cierre</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="modal-escaner" hidden>
   <div class="modal">
@@ -131,11 +155,15 @@
 <script type="module">
   import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
   import { listarLocales } from './js/empleados.js';
+  import { obtenerLocalActivo } from './js/localActivo.js';
   import { listarProductos } from './js/productos.js';
   import { buscarClientes, crearClienteRapido } from './js/clientes.js';
-  import { obtenerTurnoAbierto, abrirTurno, cerrarTurno } from './js/turnos.js';
+  import { obtenerTurnoAbierto, abrirTurno } from './js/turnos.js';
+  import { calcularEsperadoTurno, cerrarTurnoConConteo } from './js/caja.js';
   import { registrarVenta } from './js/ventas.js';
   import { iniciarEscaneo, detenerEscaneo } from './js/barcode.js';
+  import { montarMenu } from './js/menu.js';
+  import { tieneFeature } from './js/planes.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
   let usuario = null;
@@ -144,6 +172,9 @@
   let localIdActivo = null;
   let turno = null;
   let carrito = []; // { productoId, nombre, unidadMedida, stockActual, cantidad, precioUnitario }
+  // precioUnitario es siempre el precio_venta_actual del producto: no hay forma
+  // de editarlo desde la pantalla de venta (decision del 2026-07-16, se saco
+  // la excepcion de oferta/descuento que habia antes).
   let modoPago = 'normal'; // 'normal' | 'fiado'
   let clienteSeleccionado = null;
   let escaneoCancelado = false;
@@ -164,16 +195,23 @@
     }
 
     document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+    montarMenu(usuario);
+    document.getElementById('btn-escanear').hidden = !tieneFeature(usuario, 'codigo_barras');
 
     if (usuario.role === 'admin') {
       const locales = await listarLocales();
-      localIdActivo = locales[0]?.id || null;
+      localIdActivo = obtenerLocalActivo(locales);
     } else {
       localIdActivo = usuario.local_id;
     }
 
     document.getElementById('btn-abrir-turno').addEventListener('click', manejarAbrirTurno);
     document.getElementById('btn-cerrar-turno').addEventListener('click', manejarCerrarTurno);
+    document.getElementById('btn-cancelar-cerrar-turno').addEventListener('click', () => {
+      document.getElementById('modal-cerrar-turno').hidden = true;
+    });
+    document.getElementById('btn-confirmar-cerrar-turno').addEventListener('click', confirmarCierreTurno);
+    document.getElementById('ct-efectivo-contado').addEventListener('input', actualizarDiferenciaPreview);
 
     document.getElementById('buscador').addEventListener('input', debounce(buscarProducto, 250));
     document.getElementById('btn-escanear').addEventListener('click', () => abrirEscaner());
@@ -225,13 +263,61 @@
   }
 
   async function manejarCerrarTurno() {
+    const errorEl = document.getElementById('error-cerrar-turno');
+    mostrarError(errorEl, '');
+    document.getElementById('ct-efectivo-contado').value = '';
+    document.getElementById('ct-diferencia').hidden = true;
+    document.getElementById('ct-efectivo-esperado').textContent = 'Calculando...';
+    document.getElementById('ct-transferencia-esperada').textContent = 'Calculando...';
+    document.getElementById('ct-fiado-generado').textContent = 'Calculando...';
+    document.getElementById('modal-cerrar-turno').hidden = false;
+
     try {
-      await cerrarTurno(turno.id);
+      const { efectivoEsperado, transferenciaEsperada, fiadoGenerado } = await calcularEsperadoTurno(turno.id);
+      document.getElementById('modal-cerrar-turno').dataset.efectivoEsperado = efectivoEsperado;
+      document.getElementById('ct-efectivo-esperado').textContent = `$${efectivoEsperado.toLocaleString('es-AR')}`;
+      document.getElementById('ct-transferencia-esperada').textContent = `$${transferenciaEsperada.toLocaleString('es-AR')}`;
+      document.getElementById('ct-fiado-generado').textContent = `$${fiadoGenerado.toLocaleString('es-AR')}`;
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  function actualizarDiferenciaPreview() {
+    const esperado = Number(document.getElementById('modal-cerrar-turno').dataset.efectivoEsperado || 0);
+    const contadoEl = document.getElementById('ct-efectivo-contado');
+    const diferenciaEl = document.getElementById('ct-diferencia');
+    if (contadoEl.value === '') {
+      diferenciaEl.hidden = true;
+      return;
+    }
+    const diferencia = Number(contadoEl.value) - esperado;
+    diferenciaEl.hidden = false;
+    if (diferencia === 0) {
+      diferenciaEl.textContent = 'Cierra justo, sin diferencia.';
+    } else if (diferencia > 0) {
+      diferenciaEl.textContent = `Sobran $${diferencia.toLocaleString('es-AR')} respecto de lo esperado.`;
+    } else {
+      diferenciaEl.textContent = `Faltan $${Math.abs(diferencia).toLocaleString('es-AR')} respecto de lo esperado.`;
+    }
+  }
+
+  async function confirmarCierreTurno() {
+    const errorEl = document.getElementById('error-cerrar-turno');
+    mostrarError(errorEl, '');
+    const contado = document.getElementById('ct-efectivo-contado').value;
+    if (contado === '') {
+      mostrarError(errorEl, 'Cargá el efectivo contado para cerrar el turno.');
+      return;
+    }
+    try {
+      await cerrarTurnoConConteo(turno.id, contado);
+      document.getElementById('modal-cerrar-turno').hidden = true;
       turno = null;
       carrito = [];
       await cargarEstadoTurno();
     } catch (err) {
-      mostrarError(document.getElementById('error-turno'), err.message);
+      mostrarError(errorEl, err.message);
     }
   }
 
@@ -286,6 +372,8 @@
     if (existente) {
       if (existente.cantidad < producto.stock_actual) existente.cantidad += 1;
     } else {
+      // precioUnitario se autocompleta con el precio de venta vigente del
+      // producto y no se puede editar desde aca.
       carrito.push({
         productoId: producto.id,
         nombre: producto.nombre + (producto.presentacion ? ' · ' + producto.presentacion : ''),
@@ -420,7 +508,11 @@
     }
 
     const total = carrito.reduce((acc, it) => acc + it.cantidad * it.precioUnitario, 0);
-    const items = carrito.map((it) => ({ productoId: it.productoId, cantidad: it.cantidad, precioUnitario: it.precioUnitario }));
+    const items = carrito.map((it) => ({
+      productoId: it.productoId,
+      cantidad: it.cantidad,
+      precioUnitario: it.precioUnitario,
+    }));
 
     let pagos = [];
     if (modoPago === 'fiado') {
@@ -448,7 +540,7 @@
 
     document.getElementById('btn-confirmar-venta').disabled = true;
     try {
-      await registrarVenta({
+      const venta = await registrarVenta({
         turnoId: turno.id,
         usuarioId: usuario.id,
         localId: localIdActivo,
@@ -470,7 +562,7 @@
       document.getElementById('campo-buscar-cliente').hidden = false;
       cambiarModoPago('normal');
 
-      exitoEl.textContent = 'Venta registrada.';
+      exitoEl.innerHTML = `Venta registrada. <a href="comprobante.html?venta=${venta.id}" target="_blank" rel="noopener">Ver comprobante</a>`;
       exitoEl.hidden = false;
     } catch (err) {
       mostrarError(errorEl, err.message);

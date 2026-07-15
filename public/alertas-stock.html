@@ -1,0 +1,94 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Alertas de stock bajo</title>
+<link rel="stylesheet" href="css/chaupapel.css" />
+
+<header class="app-header">
+  <div class="identidad">
+    <h1 id="nombre-local"></h1>
+    <p><a href="panel.html">← Volver al panel</a></p>
+  </div>
+  <button class="boton-secundario boton-inline" id="btn-logout">Cerrar sesión</button>
+</header>
+
+<main class="app-main ancho">
+  <div class="panel-seccion">
+    <h2>Productos con stock bajo</h2>
+    <p class="texto-suave">Productos cuyo stock actual está en o por debajo del mínimo configurado para ese producto.</p>
+
+    <p class="mensaje-error" id="error-lista" hidden></p>
+    <p class="texto-suave" id="cargando">Cargando...</p>
+
+    <div class="tabla-contenedor">
+      <table class="tabla" id="tabla-alertas" hidden>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th>Stock actual</th>
+            <th>Stock mínimo</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-alertas"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+  import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
+  import { listarProductos } from './js/productos.js';
+  import { montarMenu } from './js/menu.js';
+  import { mostrarError, escapeHtml } from './js/utils.js';
+
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await logout();
+    window.location.href = 'index.html';
+  });
+
+  async function iniciar() {
+    const session = await requireSession();
+    if (!session) return;
+
+    const usuario = await obtenerUsuarioActual();
+    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false) {
+      window.location.href = 'panel.html';
+      return;
+    }
+
+    document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+    montarMenu(usuario);
+
+    const errorEl = document.getElementById('error-lista');
+    const cargandoEl = document.getElementById('cargando');
+    const tabla = document.getElementById('tabla-alertas');
+    try {
+      const productos = await listarProductos({ soloActivos: true });
+      const conAlerta = productos.filter((p) => Number(p.stock_actual) <= Number(p.stock_minimo));
+
+      const tbody = document.getElementById('tbody-alertas');
+      tbody.innerHTML =
+        conAlerta.length === 0
+          ? '<tr><td colspan="4" class="texto-suave">Ningún producto está por debajo de su stock mínimo. 🎉</td></tr>'
+          : conAlerta
+              .map(
+                (p) => `
+              <tr>
+                <td>${escapeHtml(p.nombre)}${p.presentacion ? ' · ' + escapeHtml(p.presentacion) : ''}</td>
+                <td>${escapeHtml(p.categorias?.nombre || '—')}</td>
+                <td><span class="etiqueta stock-bajo">${p.stock_actual} ${escapeHtml(p.unidad_medida || '')}</span></td>
+                <td>${p.stock_minimo}</td>
+              </tr>`
+              )
+              .join('');
+
+      cargandoEl.hidden = true;
+      tabla.hidden = false;
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+      cargandoEl.hidden = true;
+    }
+  }
+
+  iniciar();
+</script>

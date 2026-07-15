@@ -1,0 +1,313 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Caja</title>
+<link rel="stylesheet" href="css/chaupapel.css" />
+
+<header class="app-header">
+  <div class="identidad">
+    <h1 id="nombre-local"></h1>
+    <p><a href="panel.html">← Volver al panel</a></p>
+  </div>
+  <button class="boton-secundario boton-inline" id="btn-logout">Cerrar sesión</button>
+</header>
+
+<main class="app-main ancho">
+  <div class="campo" id="campo-local" hidden>
+    <label for="select-local">Local</label>
+    <select id="select-local"></select>
+  </div>
+
+  <div class="panel-seccion">
+    <h2>Caja del día</h2>
+    <div class="barra-herramientas">
+      <div class="campo">
+        <label for="fecha-dia">Fecha</label>
+        <input type="date" id="fecha-dia" />
+      </div>
+    </div>
+
+    <p class="mensaje-error" id="error-dia" hidden></p>
+    <p class="mensaje-exito" id="exito-dia" hidden></p>
+
+    <div class="tabla-contenedor">
+      <table class="tabla" id="tabla-turnos" hidden>
+        <thead>
+          <tr>
+            <th>Empleado</th>
+            <th>Apertura</th>
+            <th>Cierre</th>
+            <th>Efectivo esperado</th>
+            <th>Efectivo contado</th>
+            <th>Diferencia</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-turnos"></tbody>
+      </table>
+      <p class="texto-suave" id="turnos-vacio">No hay turnos cargados ese día para este local.</p>
+    </div>
+
+    <div id="dia-cerrado-info" class="aviso" hidden></div>
+    <button type="button" class="boton-primario" id="btn-cerrar-dia">Cerrar caja del día</button>
+  </div>
+
+  <div class="panel-seccion">
+    <h2>Resumen y cierre mensual</h2>
+    <div class="barra-herramientas">
+      <div class="campo">
+        <label for="mes-resumen">Mes</label>
+        <input type="month" id="mes-resumen" />
+      </div>
+    </div>
+
+    <p class="mensaje-error" id="error-mes" hidden></p>
+    <p class="mensaje-exito" id="exito-mes" hidden></p>
+
+    <dl class="lista-metricas">
+      <div><dt>Total vendido</dt><dd id="mes-vendido">—</dd></div>
+      <div><dt>Total cobrado</dt><dd id="mes-cobrado">—</dd></div>
+      <div><dt>Saldo de fiado pendiente</dt><dd id="mes-fiado-pendiente">—</dd></div>
+      <div><dt>Gasto en mercadería</dt><dd id="mes-gasto-mercaderia">—</dd></div>
+      <div><dt>Ganancia bruta</dt><dd id="mes-ganancia-bruta">—</dd></div>
+    </dl>
+
+    <div id="mes-cerrado-info" class="aviso" hidden></div>
+    <button type="button" class="boton-primario" id="btn-cerrar-mes">Cerrar mes</button>
+  </div>
+
+  <div class="panel-seccion">
+    <h2>Historial de cierres</h2>
+    <h3 class="subtitulo-historial">Diarios</h3>
+    <ul class="lista-movimientos" id="lista-cierres-diarios"></ul>
+    <h3 class="subtitulo-historial">Mensuales</h3>
+    <ul class="lista-movimientos" id="lista-cierres-mensuales"></ul>
+  </div>
+</main>
+
+<script type="module">
+  import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
+  import { listarLocales } from './js/empleados.js';
+  import { obtenerLocalActivo, establecerLocalActivo } from './js/localActivo.js';
+  import {
+    listarTurnosDelDia,
+    cerrarCajaDelDia,
+    listarCierresDiarios,
+    calcularResumenMes,
+    cerrarCajaDelMes,
+    listarCierresMensuales,
+  } from './js/caja.js';
+  import { montarMenu } from './js/menu.js';
+  import { mostrarError, escapeHtml } from './js/utils.js';
+
+  const ETIQUETA_ESTADO_TURNO = { abierto: 'Abierto', cerrado: 'Cerrado' };
+  const formatoMoneda = (n) => `$${Number(n).toLocaleString('es-AR')}`;
+  const formatoHora = (iso) => (iso ? new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : '—');
+
+  let usuario = null;
+  let localIdActivo = null;
+
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await logout();
+    window.location.href = 'index.html';
+  });
+
+  async function iniciar() {
+    const session = await requireSession();
+    if (!session) return;
+
+    usuario = await obtenerUsuarioActual();
+    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false) {
+      window.location.href = 'panel.html';
+      return;
+    }
+    if (usuario.role !== 'admin') {
+      window.location.href = 'panel.html';
+      return;
+    }
+
+    document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+    montarMenu(usuario);
+
+    const locales = await listarLocales();
+    localIdActivo = obtenerLocalActivo(locales);
+    if (locales.length > 1) {
+      const select = document.getElementById('select-local');
+      select.innerHTML = locales.map((l) => `<option value="${l.id}">${escapeHtml(l.nombre)}</option>`).join('');
+      select.value = localIdActivo;
+      document.getElementById('campo-local').hidden = false;
+      select.addEventListener('change', () => {
+        localIdActivo = select.value;
+        establecerLocalActivo(localIdActivo);
+        cargarTodo();
+      });
+    }
+
+    const hoy = new Date();
+    document.getElementById('fecha-dia').value = hoy.toISOString().slice(0, 10);
+    document.getElementById('mes-resumen').value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+
+    document.getElementById('fecha-dia').addEventListener('change', cargarDia);
+    document.getElementById('btn-cerrar-dia').addEventListener('click', manejarCerrarDia);
+    document.getElementById('mes-resumen').addEventListener('change', cargarMes);
+    document.getElementById('btn-cerrar-mes').addEventListener('click', manejarCerrarMes);
+
+    await cargarTodo();
+  }
+
+  async function cargarTodo() {
+    await Promise.all([cargarDia(), cargarMes(), cargarHistorial()]);
+  }
+
+  // Caja del dia -----------------------------------------------------------
+
+  async function cargarDia() {
+    const errorEl = document.getElementById('error-dia');
+    mostrarError(errorEl, '');
+    document.getElementById('exito-dia').hidden = true;
+    document.getElementById('dia-cerrado-info').hidden = true;
+
+    try {
+      const fechaStr = document.getElementById('fecha-dia').value;
+      const [turnos, cierres] = await Promise.all([listarTurnosDelDia(localIdActivo, fechaStr), listarCierresDiarios(localIdActivo)]);
+      renderTurnos(turnos);
+
+      const cierre = cierres.find((c) => c.fecha === fechaStr);
+      const btnCerrar = document.getElementById('btn-cerrar-dia');
+      if (cierre) {
+        document.getElementById('dia-cerrado-info').hidden = false;
+        document.getElementById('dia-cerrado-info').textContent =
+          `Día cerrado. Efectivo esperado ${formatoMoneda(cierre.efectivo_esperado_total)}, contado ${formatoMoneda(
+            cierre.efectivo_contado_total
+          )}, diferencia ${formatoMoneda(cierre.diferencia_total)}.`;
+        btnCerrar.hidden = true;
+      } else {
+        btnCerrar.hidden = false;
+        btnCerrar.disabled = turnos.length === 0 || turnos.some((t) => t.estado === 'abierto');
+      }
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  function renderTurnos(turnos) {
+    const tabla = document.getElementById('tabla-turnos');
+    const vacio = document.getElementById('turnos-vacio');
+    if (turnos.length === 0) {
+      tabla.hidden = true;
+      vacio.hidden = false;
+      return;
+    }
+    tabla.hidden = false;
+    vacio.hidden = true;
+
+    document.getElementById('tbody-turnos').innerHTML = turnos
+      .map(
+        (t) => `
+        <tr>
+          <td>${escapeHtml(t.usuarios?.nombre || '—')}</td>
+          <td>${formatoHora(t.fecha_apertura)}</td>
+          <td>${formatoHora(t.fecha_cierre)}</td>
+          <td>${t.efectivo_esperado != null ? formatoMoneda(t.efectivo_esperado) : '—'}</td>
+          <td>${t.efectivo_contado != null ? formatoMoneda(t.efectivo_contado) : '—'}</td>
+          <td>${t.diferencia != null ? formatoMoneda(t.diferencia) : '—'}</td>
+          <td><span class="etiqueta estado-turno-${t.estado}">${ETIQUETA_ESTADO_TURNO[t.estado]}</span></td>
+        </tr>`
+      )
+      .join('');
+  }
+
+  async function manejarCerrarDia() {
+    const errorEl = document.getElementById('error-dia');
+    mostrarError(errorEl, '');
+    try {
+      await cerrarCajaDelDia({
+        localId: localIdActivo,
+        organizationId: usuario.organization_id,
+        fechaStr: document.getElementById('fecha-dia').value,
+        usuarioId: usuario.id,
+      });
+      document.getElementById('exito-dia').hidden = false;
+      document.getElementById('exito-dia').textContent = 'Caja del día cerrada.';
+      await Promise.all([cargarDia(), cargarHistorial()]);
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Resumen y cierre mensual -------------------------------------------------
+
+  async function cargarMes() {
+    const errorEl = document.getElementById('error-mes');
+    mostrarError(errorEl, '');
+    document.getElementById('exito-mes').hidden = true;
+    document.getElementById('mes-cerrado-info').hidden = true;
+
+    try {
+      const [anio, mes] = document.getElementById('mes-resumen').value.split('-').map(Number);
+      const [resumen, cierres] = await Promise.all([calcularResumenMes(localIdActivo, anio, mes), listarCierresMensuales(localIdActivo)]);
+
+      document.getElementById('mes-vendido').textContent = formatoMoneda(resumen.totalVendido);
+      document.getElementById('mes-cobrado').textContent = formatoMoneda(resumen.totalCobrado);
+      document.getElementById('mes-fiado-pendiente').textContent = formatoMoneda(resumen.totalFiadoPendiente);
+      document.getElementById('mes-gasto-mercaderia').textContent = formatoMoneda(resumen.totalGastosMercaderia);
+      document.getElementById('mes-ganancia-bruta').textContent = formatoMoneda(resumen.gananciaBruta);
+
+      const cierre = cierres.find((c) => c.anio === anio && c.mes === mes);
+      if (cierre) {
+        document.getElementById('mes-cerrado-info').hidden = false;
+        document.getElementById('mes-cerrado-info').textContent = `Mes cerrado el ${new Date(cierre.cerrado_at).toLocaleDateString('es-AR')}. Los valores de arriba son en vivo, no la foto cerrada.`;
+      }
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function manejarCerrarMes() {
+    const errorEl = document.getElementById('error-mes');
+    mostrarError(errorEl, '');
+    try {
+      const [anio, mes] = document.getElementById('mes-resumen').value.split('-').map(Number);
+      await cerrarCajaDelMes({ localId: localIdActivo, organizationId: usuario.organization_id, anio, mes, usuarioId: usuario.id });
+      document.getElementById('exito-mes').hidden = false;
+      document.getElementById('exito-mes').textContent = 'Mes cerrado.';
+      await Promise.all([cargarMes(), cargarHistorial()]);
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Historial ----------------------------------------------------------------
+
+  async function cargarHistorial() {
+    const [diarios, mensuales] = await Promise.all([listarCierresDiarios(localIdActivo), listarCierresMensuales(localIdActivo)]);
+
+    document.getElementById('lista-cierres-diarios').innerHTML =
+      diarios.length === 0
+        ? '<li class="texto-suave">Todavía no se cerró ningún día.</li>'
+        : diarios
+            .slice(0, 10)
+            .map(
+              (c) => `
+          <li>
+            <span>${new Date(c.fecha).toLocaleDateString('es-AR')}</span>
+            <span>Efectivo ${formatoMoneda(c.efectivo_contado_total)} · Dif. ${formatoMoneda(c.diferencia_total)}</span>
+          </li>`
+            )
+            .join('');
+
+    document.getElementById('lista-cierres-mensuales').innerHTML =
+      mensuales.length === 0
+        ? '<li class="texto-suave">Todavía no se cerró ningún mes.</li>'
+        : mensuales
+            .map(
+              (c) => `
+          <li>
+            <span>${String(c.mes).padStart(2, '0')}/${c.anio}</span>
+            <span>Vendido ${formatoMoneda(c.total_vendido)} · Ganancia bruta ${formatoMoneda(c.ganancia_bruta)}</span>
+          </li>`
+            )
+            .join('');
+  }
+
+  iniciar();
+</script>

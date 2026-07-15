@@ -39,13 +39,34 @@
 </div>
 
 <script type="module">
-  import { login, registrarSesionActual, cerrarSesionesAnteriores } from './js/auth.js';
+  import {
+    login,
+    registrarSesionActual,
+    cerrarSesionesAnteriores,
+    obtenerUsuarioActual,
+    obtenerSuperAdminActual,
+    pantallaDeEntrada,
+  } from './js/auth.js';
   import { mostrarError, mostrarCargando, traducirError } from './js/utils.js';
 
   const form = document.getElementById('form-login');
   const errorEl = document.getElementById('error');
   const avisoSesion = document.getElementById('aviso-sesion');
   const btnSubmit = document.getElementById('btn-submit');
+
+  // El Super-Admin no tiene fila en `usuarios` (no pertenece a ninguna
+  // organizacion), asi que se chequea aparte y primero -- si se lo dejara
+  // caer en la logica normal, pantallaDeEntrada() con usuario=null lo
+  // mandaria de vuelta a index.html (loop de login).
+  async function irAPantallaDeEntrada() {
+    const superAdmin = await obtenerSuperAdminActual();
+    if (superAdmin) {
+      window.location.href = 'superadmin.html';
+      return;
+    }
+    const usuario = await obtenerUsuarioActual();
+    window.location.href = pantallaDeEntrada(usuario);
+  }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -73,15 +94,15 @@
       // si falla el chequeo de sesion unica, no bloqueamos el login por eso
     }
 
-    window.location.href = 'panel.html';
+    await irAPantallaDeEntrada();
   });
 
   document.getElementById('btn-cerrar-anterior').addEventListener('click', async () => {
     await cerrarSesionesAnteriores();
-    window.location.href = 'panel.html';
+    await irAPantallaDeEntrada();
   });
 
-  document.getElementById('btn-mantener-ambas').addEventListener('click', () => {
-    window.location.href = 'panel.html';
+  document.getElementById('btn-mantener-ambas').addEventListener('click', async () => {
+    await irAPantallaDeEntrada();
   });
 </script>

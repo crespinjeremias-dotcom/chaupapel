@@ -108,7 +108,7 @@
         <p class="campo-valor-solo-lectura" id="p-proveedores-valor"></p>
         <p class="texto-ayuda">La vinculación con proveedores se gestiona desde Proveedores.</p>
       </div>
-      <div class="campo-checkbox">
+      <div class="campo-checkbox" id="campo-perecedero">
         <input type="checkbox" id="p-perecedero" />
         <label for="p-perecedero">Es perecedero</label>
       </div>
@@ -252,8 +252,11 @@
   } from './js/productos.js';
   import { iniciarEscaneo, detenerEscaneo } from './js/barcode.js';
   import { listarLocales } from './js/empleados.js';
+  import { obtenerLocalActivo } from './js/localActivo.js';
   import { registrarReposicion, listarProveedoresDeProducto } from './js/reposiciones.js';
   import { exportarProductos, descargarPlantilla, leerArchivoProductos } from './js/excel.js';
+  import { montarMenu } from './js/menu.js';
+  import { tieneFeature } from './js/planes.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
   let usuario = null;
@@ -268,6 +271,7 @@
   let productoParaReponer = null;
   let productoParaEliminar = null;
   let destinoEscaneo = null; // 'buscador' | 'form'
+  let tieneVencimientoActivo = true;
 
   document.getElementById('btn-logout').addEventListener('click', async () => {
     await logout();
@@ -285,13 +289,28 @@
     }
 
     document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+    montarMenu(usuario);
+
+    // Seccion 15: codigo de barras y Excel son Plan Medio+, vencimiento
+    // tambien -- se ocultan por completo si el plan contratado no llega.
+    const tieneCodigoBarras = tieneFeature(usuario, 'codigo_barras');
+    const tieneExcel = tieneFeature(usuario, 'excel');
+    const tieneVencimiento = tieneFeature(usuario, 'vencimiento');
+    document.getElementById('btn-escanear').hidden = !tieneCodigoBarras;
+    document.getElementById('btn-escanear-form').hidden = !tieneCodigoBarras;
+    document.getElementById('campo-perecedero').hidden = !tieneVencimiento;
+    tieneVencimientoActivo = tieneVencimiento;
 
     if (usuario.role === 'admin') {
       document.getElementById('btn-nuevo').hidden = false;
-      document.getElementById('btn-plantilla').hidden = false;
-      document.getElementById('btn-importar').hidden = false;
+      if (tieneExcel) {
+        document.getElementById('btn-plantilla').hidden = false;
+        document.getElementById('btn-importar').hidden = false;
+      } else {
+        document.getElementById('btn-exportar').hidden = true;
+      }
       const locales = await listarLocales();
-      localIdActivo = locales[0]?.id || null;
+      localIdActivo = obtenerLocalActivo(locales);
     } else {
       localIdActivo = usuario.local_id;
     }
@@ -391,7 +410,7 @@
     if (!p.activo) return '<span class="etiqueta inactivo">Inactivo</span>';
     const badges = [];
     if (p.stock_actual <= p.stock_minimo) badges.push('<span class="etiqueta stock-bajo">Stock bajo</span>');
-    if (p.perecedero && p.fecha_vencimiento && p.alerta_vencimiento_dias != null) {
+    if (tieneVencimientoActivo && p.perecedero && p.fecha_vencimiento && p.alerta_vencimiento_dias != null) {
       const dias = (new Date(p.fecha_vencimiento) - new Date()) / 86400000;
       if (dias <= p.alerta_vencimiento_dias) badges.push('<span class="etiqueta por-vencer">Por vencer</span>');
     }

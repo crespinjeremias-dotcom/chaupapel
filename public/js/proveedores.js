@@ -131,3 +131,16 @@ export async function marcarReclamoRepuesto(id) {
   const { error } = await supabase.from('reclamos_proveedor').update({ estado: 'repuesto' }).eq('id', id);
   if (error) throw error;
 }
+
+// Igual que listarReclamos pero sin filtrar por proveedor -- se usa en el
+// dashboard para el resumen de alertas ("reclamos pendientes" a todos los
+// proveedores del local).
+export async function listarReclamosPendientes() {
+  const { data, error } = await supabase
+    .from('reclamos_proveedor')
+    .select('*, productos(nombre), proveedores(nombre)')
+    .eq('estado', 'pendiente')
+    .order('fecha', { ascending: false });
+  if (error) throw error;
+  return data;
+}

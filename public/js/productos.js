@@ -96,3 +96,18 @@ export async function ajustarStock({ productoId, localId, organizationId, usuari
   });
   if (error) throw error;
 }
+
+// Historial de ajustes de stock (mermas, seccion 12): mismo motivo/comentario
+// que ya se carga en ajustarStock, solo para consulta.
+export async function listarAjustesStock({ desde, hasta } = {}) {
+  let consulta = supabase
+    .from('ajustes_stock')
+    .select('*, productos(nombre), usuarios(nombre)')
+    .order('created_at', { ascending: false });
+  if (desde) consulta = consulta.gte('created_at', desde);
+  if (hasta) consulta = consulta.lt('created_at', hasta);
+
+  const { data, error } = await consulta;
+  if (error) throw error;
+  return data;
+}

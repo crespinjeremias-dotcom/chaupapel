@@ -11,7 +11,7 @@
   <button class="boton-secundario boton-inline" id="btn-logout">Cerrar sesión</button>
 </header>
 
-<main class="app-main">
+<main class="app-main ancho">
   <div class="panel-seccion" id="seccion-suspendida" hidden>
     <h2>Cuenta suspendida</h2>
     <p class="texto-suave">
@@ -29,13 +29,70 @@
     <p class="texto-suave">Tu cuenta está activa.</p>
   </div>
 
-  <div class="panel-seccion" id="seccion-modulos" hidden>
-    <h2>Módulos</h2>
-    <a class="boton-secundario boton-inline" href="productos.html">Productos e inventario</a>
-    <a class="boton-secundario boton-inline" href="proveedores.html">Proveedores</a>
-    <a class="boton-secundario boton-inline" href="ventas.html">Ventas</a>
-    <a class="boton-secundario boton-inline" href="historial-ventas.html">Historial de ventas</a>
-    <a class="boton-secundario boton-inline" href="clientes.html">Clientes (cuenta corriente)</a>
+  <div class="campo" id="campo-local-dashboard" hidden>
+    <label for="select-local-dashboard">Ver</label>
+    <select id="select-local-dashboard">
+      <option value="">Todos los locales (consolidado)</option>
+    </select>
+  </div>
+
+  <div class="dashboard-grid" id="dashboard-admin" hidden>
+    <div class="panel-seccion tarjeta-dashboard" id="seccion-alertas">
+      <h2>Alertas</h2>
+      <p class="mensaje-error" id="error-alertas" hidden></p>
+      <div id="alertas-vacio" class="texto-suave" hidden>Sin alertas por ahora. 🎉</div>
+      <ul class="lista-alertas" id="lista-stock-bajo"></ul>
+      <ul class="lista-alertas" id="lista-por-vencer"></ul>
+      <ul class="lista-alertas" id="lista-reclamos-pendientes"></ul>
+    </div>
+
+    <div class="panel-seccion tarjeta-dashboard" id="seccion-caja-hoy">
+      <h2>Caja de hoy</h2>
+      <p class="texto-suave">Resumen en vivo del día. Para el conteo de efectivo turno por turno y el cierre del día, andá a <a href="caja.html">Caja</a>.</p>
+      <dl class="lista-metricas">
+        <div><dt>Efectivo esperado</dt><dd id="caja-efectivo">—</dd></div>
+        <div><dt>Transferencia esperada</dt><dd id="caja-transferencia">—</dd></div>
+        <div><dt>Fiado generado hoy</dt><dd id="caja-fiado">—</dd></div>
+        <div><dt>Total vendido hoy</dt><dd id="caja-total">—</dd></div>
+      </dl>
+    </div>
+
+    <div class="panel-seccion tarjeta-dashboard" id="seccion-resumen-mes">
+      <h2>Resumen del mes</h2>
+      <dl class="lista-metricas">
+        <div><dt>Total vendido</dt><dd id="mes-vendido">—</dd></div>
+        <div><dt>Total cobrado</dt><dd id="mes-cobrado">—</dd></div>
+        <div><dt>Saldo de fiado pendiente</dt><dd id="mes-fiado-pendiente">—</dd></div>
+        <div><dt>Gasto en mercadería</dt><dd id="mes-gasto-mercaderia">—</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <div class="panel-seccion" id="seccion-plan" hidden>
+    <h2>Mi plan</h2>
+    <p class="texto-suave">Plan actual: <strong id="plan-actual-label"></strong>.</p>
+
+    <div id="plan-aviso-pendiente" class="aviso" hidden></div>
+    <div id="plan-aviso-rechazada" class="mensaje-error" hidden></div>
+
+    <div class="campo-con-boton" id="plan-form-solicitud">
+      <select id="select-plan"></select>
+      <button type="button" class="boton-chico primario" id="btn-guardar-plan">Solicitar cambio</button>
+    </div>
+    <p class="texto-suave">El cambio de plan lo aprueba el administrador del sistema (el pago se coordina aparte).</p>
+    <p class="mensaje-error" id="error-plan" hidden></p>
+    <p class="mensaje-exito" id="exito-plan" hidden></p>
+  </div>
+
+  <div class="panel-seccion" id="seccion-locales" hidden>
+    <h2>Mis locales</h2>
+    <ul class="lista-usuarios" id="lista-locales"></ul>
+    <div id="nuevo-local-bloqueado" class="texto-suave" hidden>Para tener más de un local necesitás el Plan Completo.</div>
+    <div class="campo-con-boton" id="nuevo-local-form" hidden>
+      <input type="text" id="input-nuevo-local" placeholder="Nombre del nuevo local" />
+      <button type="button" class="boton-chico primario" id="btn-crear-local">+ Agregar local</button>
+    </div>
+    <p class="mensaje-error" id="error-locales" hidden></p>
   </div>
 
   <div class="panel-seccion" id="seccion-invitar" hidden>
@@ -64,10 +121,19 @@
 
 <script type="module">
   import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
-  import { listarLocales, listarUsuariosOrganizacion, generarInvitacion, aprobarEmpleado } from './js/empleados.js';
+  import { listarLocales, listarUsuariosOrganizacion, generarInvitacion, aprobarEmpleado, crearLocal } from './js/empleados.js';
+  import { listarProductos } from './js/productos.js';
+  import { listarReclamosPendientes } from './js/proveedores.js';
+  import { obtenerResumenCajaHoy, obtenerResumenMes } from './js/dashboard.js';
+  import { montarMenu } from './js/menu.js';
+  import { obtenerLocalActivo, establecerLocalActivo } from './js/localActivo.js';
+  import { tieneFeature, PLANES, PLAN_LABEL, solicitarCambioPlan, obtenerUltimaSolicitudPlan } from './js/planes.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
+  const formatoMoneda = (n) => `$${Number(n).toLocaleString('es-AR')}`;
+
   const ROL_LABEL = { admin: 'Administrador', empleado: 'Empleado' };
+  let localDashboardFiltro = null; // null = consolidado (todos los locales)
 
   document.getElementById('btn-logout').addEventListener('click', async () => {
     await logout();
@@ -94,13 +160,12 @@
     document.getElementById('header').hidden = false;
     document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
     document.getElementById('usuario-info').textContent = `${usuario.nombre} · ${ROL_LABEL[usuario.role]}`;
+    montarMenu(usuario);
 
     if (usuario.status === 'pending') {
       document.getElementById('aviso-pendiente').hidden = false;
       return;
     }
-
-    document.getElementById('seccion-modulos').hidden = false;
 
     if (usuario.role === 'empleado') {
       document.getElementById('seccion-empleado').hidden = false;
@@ -115,14 +180,40 @@
   async function iniciarPanelAdmin(usuario) {
     const locales = await listarLocales();
 
+    document.getElementById('dashboard-admin').hidden = false;
+    document.getElementById('seccion-plan').hidden = false;
+    document.getElementById('seccion-locales').hidden = false;
     document.getElementById('seccion-invitar').hidden = false;
     document.getElementById('seccion-pendientes').hidden = false;
     document.getElementById('seccion-equipo').hidden = false;
+
+    cargarAlertas();
+    cargarCajaHoy();
+    cargarResumenMes();
+    iniciarSeccionPlan(usuario);
+    iniciarSeccionLocales(usuario, locales);
+
+    // Toggle "todos los locales" vs local especifico (seccion 1 y 13): solo
+    // tiene sentido mostrarlo si hay mas de un local Y el plan lo incluye.
+    if (locales.length > 1 && tieneFeature(usuario, 'multi_local')) {
+      const selectDashboard = document.getElementById('select-local-dashboard');
+      selectDashboard.insertAdjacentHTML(
+        'beforeend',
+        locales.map((l) => `<option value="${l.id}">${escapeHtml(l.nombre)}</option>`).join('')
+      );
+      document.getElementById('campo-local-dashboard').hidden = false;
+      selectDashboard.addEventListener('change', () => {
+        localDashboardFiltro = selectDashboard.value || null;
+        cargarCajaHoy();
+        cargarResumenMes();
+      });
+    }
 
     const selectInvitar = document.getElementById('select-local-invitar');
     const campoLocalInvitar = document.getElementById('campo-local-invitar');
     if (locales.length > 1) {
       selectInvitar.innerHTML = locales.map((l) => `<option value="${l.id}">${l.nombre}</option>`).join('');
+      selectInvitar.value = obtenerLocalActivo(locales);
       campoLocalInvitar.hidden = false;
     }
 
@@ -148,6 +239,172 @@
     });
 
     await cargarListasUsuarios(locales);
+  }
+
+  // Alertas: reusa exactamente las mismas condiciones que ya se usan en
+  // productos.html (stock bajo, por vencer) y proveedores.html (reclamos
+  // pendientes) -- solo se muestran juntas y resumidas aca.
+  async function cargarAlertas() {
+    try {
+      const [productos, reclamos] = await Promise.all([listarProductos({ soloActivos: true }), listarReclamosPendientes()]);
+
+      const stockBajo = productos.filter((p) => Number(p.stock_actual) <= Number(p.stock_minimo));
+      // Vencimiento es Plan Medio+ (seccion 15): si el plan no lo incluye,
+      // ni se muestra la alerta (aunque hubiera datos viejos de antes de bajar de plan).
+      const porVencer = !tieneFeature(usuario, 'vencimiento')
+        ? []
+        : productos.filter((p) => {
+            if (!p.perecedero || !p.fecha_vencimiento || p.alerta_vencimiento_dias == null) return false;
+            const dias = (new Date(p.fecha_vencimiento) - new Date()) / 86400000;
+            return dias <= p.alerta_vencimiento_dias;
+          });
+
+      document.getElementById('lista-stock-bajo').innerHTML = stockBajo
+        .map((p) => `<li>📉 <a href="productos.html">${escapeHtml(p.nombre)}</a> — stock ${p.stock_actual}/${p.stock_minimo}</li>`)
+        .join('');
+      document.getElementById('lista-por-vencer').innerHTML = porVencer
+        .map((p) => `<li>⏳ <a href="productos.html">${escapeHtml(p.nombre)}</a> — vence ${new Date(p.fecha_vencimiento).toLocaleDateString('es-AR')}</li>`)
+        .join('');
+      document.getElementById('lista-reclamos-pendientes').innerHTML = reclamos
+        .map((r) => `<li>📦 Reclamo pendiente a <a href="proveedores.html">${escapeHtml(r.proveedores?.nombre || '—')}</a>${r.productos ? ' · ' + escapeHtml(r.productos.nombre) : ''}</li>`)
+        .join('');
+
+      document.getElementById('alertas-vacio').hidden = stockBajo.length + porVencer.length + reclamos.length > 0;
+    } catch (err) {
+      mostrarError(document.getElementById('error-alertas'), err.message);
+    }
+  }
+
+  async function cargarCajaHoy() {
+    try {
+      const resumen = await obtenerResumenCajaHoy(localDashboardFiltro || undefined);
+      document.getElementById('caja-efectivo').textContent = formatoMoneda(resumen.efectivo);
+      document.getElementById('caja-transferencia').textContent = formatoMoneda(resumen.transferencia);
+      document.getElementById('caja-fiado').textContent = formatoMoneda(resumen.fiadoGenerado);
+      document.getElementById('caja-total').textContent = formatoMoneda(resumen.totalVendido);
+    } catch (err) {
+      document.getElementById('seccion-caja-hoy').querySelector('h2').insertAdjacentHTML(
+        'afterend',
+        `<p class="mensaje-error">${escapeHtml(err.message)}</p>`
+      );
+    }
+  }
+
+  async function cargarResumenMes() {
+    try {
+      const ahora = new Date();
+      const resumen = await obtenerResumenMes(ahora.getFullYear(), ahora.getMonth() + 1, localDashboardFiltro || undefined);
+      document.getElementById('mes-vendido').textContent = formatoMoneda(resumen.totalVendido);
+      document.getElementById('mes-cobrado').textContent = formatoMoneda(resumen.totalCobrado);
+      document.getElementById('mes-fiado-pendiente').textContent = formatoMoneda(resumen.saldoFiadoPendiente);
+      document.getElementById('mes-gasto-mercaderia').textContent = formatoMoneda(resumen.gastoMercaderia);
+    } catch (err) {
+      document.getElementById('seccion-resumen-mes').querySelector('h2').insertAdjacentHTML(
+        'afterend',
+        `<p class="mensaje-error">${escapeHtml(err.message)}</p>`
+      );
+    }
+  }
+
+  // Mi plan (seccion 15/16): auto-servicio, el admin sube o baja de plan sin
+  // intervencion del dueño del SaaS. is_active (suspension por falta de pago)
+  // es aparte y esta bloqueado a nivel de base para que solo lo toque el
+  // super-admin -- esto es solo el plan contratado.
+  async function iniciarSeccionPlan(usuario) {
+    const planActual = usuario.organizations?.plan || 'basico';
+    document.getElementById('plan-actual-label').textContent = PLAN_LABEL[planActual];
+
+    const select = document.getElementById('select-plan');
+    select.innerHTML = PLANES.map((p) => `<option value="${p}">${PLAN_LABEL[p]}</option>`).join('');
+    select.value = planActual;
+
+    const errorEl = document.getElementById('error-plan');
+    const exitoEl = document.getElementById('exito-plan');
+    const avisoPendiente = document.getElementById('plan-aviso-pendiente');
+    const avisoRechazada = document.getElementById('plan-aviso-rechazada');
+    const formSolicitud = document.getElementById('plan-form-solicitud');
+
+    let ultimaSolicitud;
+    try {
+      ultimaSolicitud = await obtenerUltimaSolicitudPlan(usuario.organization_id);
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+      return;
+    }
+
+    if (ultimaSolicitud?.estado === 'pendiente') {
+      avisoPendiente.hidden = false;
+      avisoPendiente.textContent = `Tenés una solicitud pendiente de aprobación: de ${PLAN_LABEL[ultimaSolicitud.plan_actual]} a ${PLAN_LABEL[ultimaSolicitud.plan_solicitado]}.`;
+      formSolicitud.hidden = true;
+      return;
+    }
+
+    if (ultimaSolicitud?.estado === 'rechazada') {
+      avisoRechazada.hidden = false;
+      avisoRechazada.textContent = `Tu última solicitud (a ${PLAN_LABEL[ultimaSolicitud.plan_solicitado]}) fue rechazada. Podés volver a solicitar un cambio de plan.`;
+    }
+
+    document.getElementById('btn-guardar-plan').addEventListener('click', async () => {
+      mostrarError(errorEl, '');
+      exitoEl.hidden = true;
+      if (select.value === planActual) {
+        mostrarError(errorEl, 'Elegí un plan distinto al actual para solicitar el cambio.');
+        return;
+      }
+      try {
+        await solicitarCambioPlan({
+          organizationId: usuario.organization_id,
+          planActual,
+          planSolicitado: select.value,
+          usuarioId: usuario.id,
+        });
+        formSolicitud.hidden = true;
+        avisoRechazada.hidden = true;
+        avisoPendiente.hidden = false;
+        avisoPendiente.textContent = `Tenés una solicitud pendiente de aprobación: de ${PLAN_LABEL[planActual]} a ${PLAN_LABEL[select.value]}.`;
+        exitoEl.hidden = false;
+        exitoEl.textContent = 'Solicitud enviada. Te vamos a avisar acá mismo cuando se apruebe.';
+      } catch (err) {
+        mostrarError(errorEl, err.message);
+      }
+    });
+  }
+
+  // Mis locales (seccion 1 y 13, multi-local): tener mas de un local es Plan
+  // Completo. Un local ya existente se puede seguir viendo/usando aunque el
+  // admin baje de plan despues (no se borra nada), solo se bloquea agregar
+  // uno nuevo.
+  function iniciarSeccionLocales(usuario, locales) {
+    renderListaLocales(locales);
+
+    const puedeAgregar = tieneFeature(usuario, 'multi_local');
+    document.getElementById('nuevo-local-form').hidden = !puedeAgregar;
+    document.getElementById('nuevo-local-bloqueado').hidden = puedeAgregar;
+
+    document.getElementById('btn-crear-local').addEventListener('click', async () => {
+      const errorEl = document.getElementById('error-locales');
+      mostrarError(errorEl, '');
+      const nombre = document.getElementById('input-nuevo-local').value.trim();
+      if (!nombre) {
+        mostrarError(errorEl, 'Cargá un nombre para el nuevo local.');
+        return;
+      }
+      try {
+        const nuevo = await crearLocal({ nombre, organizationId: usuario.organization_id });
+        locales.push(nuevo);
+        locales.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        renderListaLocales(locales);
+        document.getElementById('input-nuevo-local').value = '';
+      } catch (err) {
+        mostrarError(errorEl, err.message);
+      }
+    });
+  }
+
+  function renderListaLocales(locales) {
+    document.getElementById('lista-locales').innerHTML = locales
+      .map((l) => `<li><span>${escapeHtml(l.nombre)}</span></li>`)
+      .join('');
   }
 
   async function cargarListasUsuarios(locales) {

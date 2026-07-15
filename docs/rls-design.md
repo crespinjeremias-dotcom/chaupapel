@@ -66,9 +66,21 @@ Además de las policies, hay un trigger `prevent_privilege_escalation` en `usuar
 
 Al probar el flujo de Auth en el navegador encontré que la policy `organizations_update` (que deja al admin editar su propia organización — necesaria para que pueda cambiar de plan, sección 16) también le permitía, sin querer, reactivar o desactivar su propia cuenta escribiendo `is_active`. Eso anula el sentido del corte de acceso manual del super-admin. RLS no puede restringir columna por columna dentro de una misma policy de `update`, así que se resolvió con un trigger (`prevent_is_active_change`, igual patrón que `prevent_privilege_escalation` en `usuarios`): bloquea cualquier cambio a `is_active` salvo que la request se haga con la `service_role` key (`auth.role() = 'service_role'`), que es el único camino que va a usar el panel de super-admin (Fase 15). Verificado en vivo: el admin puede cambiar `plan` pero no `is_active`.
 
-## Panel de super-admin del SaaS (sección 16)
+## Panel de super-admin del SaaS (sección 16) — revisado en Fase 15
 
-El panel de super-admin (Fase 15) **no es un rol dentro de RLS** — no hay un `role = 'superadmin'` en `usuarios`. Las operaciones de super-admin (activar/desactivar una organización) se hacen con la **service role key** de Supabase desde una Netlify Function, que bypasea RLS por completo. Es un panel operado por fuera del modelo multi-tenant, no un usuario más de alguna organización.
+**Decisión revisada** (la versión anterior de esta sección decía que el super-admin no sería un rol reconocido por RLS en absoluto; se cambió al arrancar la Fase 15 con el primer caso de uso concreto — aprobación de cambios de plan):
+
+El super-admin **sí es una identidad reconocida por RLS**, pero separada por completo del modelo `usuarios`/`organizations`: vive en una tabla nueva `super_admins (id references auth.users, nombre)`, sin `organization_id` (esa columna es `not null` en `usuarios`, así que un super-admin no puede ser una fila ahí sin inventar una organización dummy). Hay una función `is_super_admin()`, mismo patrón que `is_admin()`/`current_org_id()`, que resuelve `exists (select 1 from super_admins where id = auth.uid())`.
+
+El acceso amplio se implementa con **policies aditivas**, nunca modificando las policies existentes: se sumaron `organizations_select_superadmin` y `organizations_update_superadmin` (ambas `using (is_super_admin())`), y las policies de la tabla nueva `solicitudes_cambio_plan` incluyen `is_super_admin()` en su condición de select. El aislamiento entre organizaciones normales (Admin/Empleado) no se tocó en ningún lado — es exactamente el mismo que antes de esta fase.
+
+**`organizations.is_active` sigue siendo la excepción**: el trigger `prevent_is_active_change` (ver sección de arriba) exige `service_role`, no `is_super_admin()`. No se tocó al agregar este rol. Cuando se construya la función de activar/desactivar organización (pendiente, ver más abajo), va a necesitar una Netlify Function con la service role key — ese trigger seguiría bloqueando el intento aunque el usuario autenticado tenga `is_super_admin() = true`, a propósito: es una segunda capa de protección para la única columna que corta el acceso de un cliente entero.
+
+Alta de la cuenta: no hay flujo de auto-registro. Se crea el usuario de Supabase Auth manualmente desde el dashboard (Authentication → Add user) y después se inserta a mano la fila correspondiente en `super_admins` — dos pasos deliberadamente manuales, coherente con "no me auto-registro como organización".
+
+**Qué falta para el resto de la sección 16** (no se construyó en este primer paso, a propósito — "empezar de a poco"):
+- Activar/desactivar organización por falta de pago: sigue atado a `service_role`, necesita la Netlify Function que todavía no existe (`netlify/functions/README.md`).
+- Listado general de organizaciones, notificación de cierre de caja por email, etc.: quedan como próximas secciones del panel, con la navegación ya armada para sumarlas (`superadmin.html`).
 
 ## GRANT de tabla, además de RLS (Fase 2)
 

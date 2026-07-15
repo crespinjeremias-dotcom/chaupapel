@@ -1,9 +1,14 @@
+/* Breakpoints del sistema: 700px separa celular de tablet/notebook (tambien
+   cubre la mayoria de los celulares en horizontal), 1100px habilita layouts
+   de escritorio mas anchos. Los celulares chicos en horizontal (alto <=480px)
+   se resuelven aparte via media query de orientation. */
 :root {
   --color-fondo: #f4f5f7;
   --color-superficie: #ffffff;
   --color-texto: #1c1e21;
   --color-texto-suave: #5c6370;
-  --color-borde: #d9dce1;
+  --color-borde: #e3e6ea;
+  --color-borde-fuerte: #d3d7dd;
   --color-primario: #1f6f50;
   --color-primario-hover: #185a41;
   --color-error: #b3261e;
@@ -11,6 +16,8 @@
   --color-aviso-fondo: #fff4e0;
   --color-aviso-texto: #7a4a00;
   --radio: 10px;
+  --sombra-1: 0 1px 2px rgba(20, 22, 25, 0.05);
+  --sombra-2: 0 4px 16px rgba(20, 22, 25, 0.08);
   font-size: 16px;
 }
 
@@ -40,7 +47,7 @@ body {
   padding: 32px;
   width: 100%;
   max-width: 420px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--sombra-2);
 }
 
 .tarjeta h1 {
@@ -186,6 +193,12 @@ button {
   margin-bottom: 16px;
 }
 
+.mensaje-exito a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
 .aviso {
   background: var(--color-aviso-fondo);
   color: var(--color-aviso-texto);
@@ -251,7 +264,81 @@ button {
   background: var(--color-superficie);
   border-radius: var(--radio);
   padding: 20px 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--sombra-1);
+}
+
+/* Dashboard admin: tarjetas informativas en grilla -- una columna en
+   celular vertical, dos en tablet/celular horizontal, tres en escritorio. */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.tarjeta-dashboard dl.lista-metricas {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lista-metricas > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.lista-metricas dt {
+  color: var(--color-texto-suave);
+  font-size: 0.88rem;
+}
+
+.lista-metricas dd {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.05rem;
+  white-space: nowrap;
+}
+
+.lista-alertas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lista-alertas li {
+  font-size: 0.9rem;
+  padding: 8px 0;
+}
+
+.lista-alertas li:not(:last-child) {
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.lista-alertas a {
+  color: var(--color-texto);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.lista-alertas a:hover {
+  text-decoration: underline;
+}
+
+@media (min-width: 700px), (max-height: 480px) and (orientation: landscape) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .panel-seccion h2 {
@@ -273,7 +360,7 @@ button {
   justify-content: space-between;
   align-items: center;
   padding: 10px 12px;
-  border: 1px solid var(--color-borde);
+  background: var(--color-fondo);
   border-radius: 8px;
   flex-wrap: wrap;
   gap: 8px;
@@ -322,7 +409,7 @@ button {
 /* Paginas de modulo (mas anchas que el panel) ----------------------- */
 
 .app-main.ancho {
-  max-width: 1080px;
+  max-width: 1200px;
 }
 
 .app-header .identidad a {
@@ -465,6 +552,7 @@ button {
   width: 100%;
   max-width: 560px;
   margin: auto 0;
+  box-shadow: var(--sombra-2);
 }
 
 .modal.ancho {
@@ -478,8 +566,14 @@ button {
 
 .modal .campos-en-fila {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 0 16px;
+}
+
+@media (min-width: 480px) {
+  .modal .campos-en-fila {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .modal .campo-checkbox {
@@ -617,7 +711,7 @@ button {
   justify-content: space-between;
   align-items: center;
   padding: 10px 12px;
-  border: 1px solid var(--color-borde);
+  background: var(--color-fondo);
   border-radius: 8px;
   flex-wrap: wrap;
   gap: 8px;
@@ -655,6 +749,35 @@ button {
 }
 
 /* Punto de venta ------------------------------------------------------ */
+
+/* En pantallas angostas y verticales todo va apilado (carrito arriba, pago
+   abajo). En notebook, tablet, o celular horizontal, el carrito ocupa el
+   espacio principal a la izquierda y el pago queda fijo a la derecha -- asi
+   se aprovecha el ancho en vez de dejar todo angosto al centro. */
+.venta-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (min-width: 700px), (max-height: 480px) and (orientation: landscape) {
+  .venta-layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .venta-layout-principal {
+    flex: 2 1 0;
+    min-width: 0;
+  }
+
+  .venta-layout-lateral {
+    flex: 1 1 340px;
+    max-width: 380px;
+    position: sticky;
+    top: 20px;
+  }
+}
 
 .turno-banner {
   display: flex;
@@ -695,13 +818,12 @@ button {
   left: 0;
   right: 0;
   background: var(--color-superficie);
-  border: 1px solid var(--color-borde);
   border-radius: 8px;
   margin-top: 4px;
   max-height: 280px;
   overflow-y: auto;
   z-index: 20;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--sombra-2);
 }
 
 .buscador-resultados button {
@@ -750,7 +872,7 @@ button {
   font-size: 1.2rem;
   font-weight: 700;
   padding: 14px 0;
-  border-top: 2px solid var(--color-borde);
+  border-top: 1px solid var(--color-borde);
   margin-top: 10px;
 }
 
@@ -890,7 +1012,7 @@ button {
   justify-content: space-between;
   align-items: center;
   padding: 10px 12px;
-  border: 1px solid var(--color-borde);
+  background: var(--color-fondo);
   border-radius: 8px;
   flex-wrap: wrap;
   gap: 6px;
@@ -910,4 +1032,289 @@ button {
 .monto-negativo {
   color: #1e6b34;
   font-weight: 600;
+}
+
+/* Comprobante no fiscal ---------------------------------------------------- */
+
+.comprobante-acciones {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  max-width: 380px;
+  margin: 24px auto 0;
+  padding: 0 16px;
+}
+
+.comprobante-acciones .boton-secundario,
+.comprobante-acciones .boton-primario {
+  width: auto;
+}
+
+.comprobante {
+  max-width: 380px;
+  margin: 24px auto;
+  padding: 24px 20px;
+  background: var(--color-superficie);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-1);
+  font-family: ui-monospace, monospace;
+}
+
+.comprobante h1 {
+  font-size: 1.1rem;
+  text-align: center;
+  margin: 0 0 4px;
+}
+
+.comprobante .c-fecha,
+.comprobante .c-vendedor {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-texto-suave);
+  margin: 2px 0;
+}
+
+.c-tabla-items {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 0.82rem;
+}
+
+.c-tabla-items th,
+.c-tabla-items td {
+  text-align: left;
+  padding: 4px 2px;
+}
+
+.c-tabla-items thead th {
+  border-bottom: 1px dashed var(--color-borde-fuerte);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+}
+
+.c-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding-top: 10px;
+  border-top: 1px dashed var(--color-borde-fuerte);
+}
+
+.c-pago {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.c-leyenda {
+  margin-top: 18px;
+  font-size: 0.72rem;
+  text-align: center;
+  color: var(--color-texto-suave);
+  border-top: 1px dashed var(--color-borde-fuerte);
+  padding-top: 10px;
+}
+
+@media print {
+  .no-imprimir {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .comprobante {
+    box-shadow: none;
+    margin: 0;
+    max-width: none;
+    width: 80mm;
+  }
+}
+
+/* Reportes ---------------------------------------------------------------- */
+
+.acciones-exportar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Devolucion / cambio ---------------------------------------------------- */
+
+#dev-campos-cambio,
+#dev-diferencia-bloque {
+  background: var(--color-fondo);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+#dev-campos-cambio .campo:last-child,
+#dev-diferencia-bloque .campo:last-child {
+  margin-bottom: 0;
+}
+
+/* Caja (cierre de turno / dia / mes) ------------------------------------ */
+
+.subtitulo-historial {
+  font-size: 0.85rem;
+  color: var(--color-texto-suave);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 18px 0 8px;
+}
+
+.subtitulo-historial:first-of-type {
+  margin-top: 0;
+}
+
+.etiqueta.estado-turno-abierto {
+  background: var(--color-aviso-fondo);
+  color: var(--color-aviso-texto);
+}
+
+.etiqueta.estado-turno-cerrado {
+  background: #e6f4ea;
+  color: #1e6b34;
+}
+
+/* Menu hamburguesa ---------------------------------------------------- */
+
+.boton-hamburguesa {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 36px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.boton-hamburguesa span {
+  display: block;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-texto);
+}
+
+.menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 22, 25, 0.45);
+  z-index: 200;
+}
+
+.menu-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  max-width: 85vw;
+  background: var(--color-superficie);
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--sombra-2);
+}
+
+.menu-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 18px 12px;
+}
+
+.menu-drawer-header h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.menu-drawer-header button {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--color-texto-suave);
+  padding: 4px;
+}
+
+.menu-selector-local {
+  padding: 0 18px 14px;
+}
+
+.menu-selector-local label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-texto-suave);
+  margin-bottom: 4px;
+}
+
+.menu-selector-local select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-borde);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: var(--color-fondo);
+}
+
+.menu-lista {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.menu-lista li a,
+.menu-lista li .menu-item-proximamente {
+  display: block;
+  padding: 13px 18px;
+  margin: 2px 8px;
+  border-radius: 8px;
+  color: var(--color-texto);
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.menu-lista li a:hover {
+  background: var(--color-fondo);
+}
+
+.menu-lista li .menu-item-proximamente {
+  color: var(--color-texto-suave);
+  cursor: default;
+}
+
+.menu-lista li .menu-item-proximamente .etiqueta {
+  margin-left: 8px;
+}
+
+.menu-lista li.menu-separador {
+  margin: 10px 0;
+}
+
+.menu-lista li.menu-cerrar-sesion button {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 2px 8px;
+  text-align: left;
+  padding: 13px 10px;
+  border-radius: 8px;
+  background: none;
+  border: none;
+  color: var(--color-error);
+  font-size: 0.95rem;
+}
+
+.menu-lista li.menu-cerrar-sesion button:hover {
+  background: var(--color-error-fondo);
 }

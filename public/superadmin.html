@@ -1,0 +1,178 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Panel del sistema</title>
+<link rel="stylesheet" href="css/chaupapel.css" />
+
+<header class="app-header">
+  <div class="identidad">
+    <h1>Panel del sistema</h1>
+    <p id="superadmin-nombre"></p>
+  </div>
+  <button class="boton-secundario boton-inline" id="btn-logout">Cerrar sesión</button>
+</header>
+
+<main class="app-main ancho">
+  <div class="tabs-pago" id="tabs-superadmin">
+    <button type="button" class="activo" id="tab-cambios-plan">Cambios de plan</button>
+    <button type="button" disabled title="Todavía no está construido">Organizaciones (próximamente)</button>
+    <button type="button" disabled title="Todavía no está construido">Suscripciones y cobros (próximamente)</button>
+  </div>
+
+  <div id="seccion-cambios-plan">
+    <div class="panel-seccion">
+      <h2>Pendientes de aprobación</h2>
+      <p class="mensaje-error" id="error-pendientes" hidden></p>
+      <p class="mensaje-exito" id="exito-pendientes" hidden></p>
+      <div class="tabla-contenedor">
+        <table class="tabla" id="tabla-pendientes" hidden>
+          <thead>
+            <tr>
+              <th>Organización</th>
+              <th>Plan actual</th>
+              <th>Plan solicitado</th>
+              <th>Fecha</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-pendientes"></tbody>
+        </table>
+        <p class="texto-suave" id="pendientes-vacio">No hay solicitudes pendientes.</p>
+      </div>
+    </div>
+
+    <div class="panel-seccion">
+      <h2>Historial</h2>
+      <div class="tabla-contenedor">
+        <table class="tabla" id="tabla-historial" hidden>
+          <thead>
+            <tr>
+              <th>Organización</th>
+              <th>Cambio</th>
+              <th>Estado</th>
+              <th>Resuelta</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-historial"></tbody>
+        </table>
+        <p class="texto-suave" id="historial-vacio">Todavía no se resolvió ninguna solicitud.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+  import { requireSession, obtenerSuperAdminActual, logout } from './js/auth.js';
+  import { listarSolicitudesPendientes, listarHistorialSolicitudes, aprobarSolicitud, rechazarSolicitud } from './js/superadmin.js';
+  import { PLAN_LABEL } from './js/planes.js';
+  import { mostrarError, escapeHtml } from './js/utils.js';
+
+  const ETIQUETA_ESTADO = { aprobada: 'Aprobada', rechazada: 'Rechazada' };
+
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await logout();
+    window.location.href = 'index.html';
+  });
+
+  async function iniciar() {
+    const session = await requireSession();
+    if (!session) return;
+
+    const superAdmin = await obtenerSuperAdminActual();
+    if (!superAdmin) {
+      // No es super-admin: no tiene nada que hacer en este panel, ni aunque
+      // haya entrado directo por URL con una sesion valida de otro tipo.
+      window.location.href = 'index.html';
+      return;
+    }
+
+    document.getElementById('superadmin-nombre').textContent = superAdmin.nombre;
+
+    await Promise.all([cargarPendientes(), cargarHistorial()]);
+  }
+
+  async function cargarPendientes() {
+    const errorEl = document.getElementById('error-pendientes');
+    mostrarError(errorEl, '');
+    try {
+      const solicitudes = await listarSolicitudesPendientes();
+      const tabla = document.getElementById('tabla-pendientes');
+      const vacio = document.getElementById('pendientes-vacio');
+
+      if (solicitudes.length === 0) {
+        tabla.hidden = true;
+        vacio.hidden = false;
+        return;
+      }
+      tabla.hidden = false;
+      vacio.hidden = true;
+
+      document.getElementById('tbody-pendientes').innerHTML = solicitudes
+        .map(
+          (s) => `
+          <tr>
+            <td>${escapeHtml(s.organizations?.nombre || '—')}</td>
+            <td>${PLAN_LABEL[s.plan_actual]}</td>
+            <td>${PLAN_LABEL[s.plan_solicitado]}</td>
+            <td>${new Date(s.created_at).toLocaleString('es-AR')}</td>
+            <td class="celda-acciones">
+              <button type="button" class="boton-chico primario" data-aprobar="${s.id}">Aprobar</button>
+              <button type="button" class="boton-chico peligro" data-rechazar="${s.id}">Rechazar</button>
+            </td>
+          </tr>`
+        )
+        .join('');
+
+      document.getElementById('tbody-pendientes').querySelectorAll('[data-aprobar]').forEach((btn) =>
+        btn.addEventListener('click', () => resolverSolicitud(btn.dataset.aprobar, aprobarSolicitud, 'Solicitud aprobada.'))
+      );
+      document.getElementById('tbody-pendientes').querySelectorAll('[data-rechazar]').forEach((btn) =>
+        btn.addEventListener('click', () => resolverSolicitud(btn.dataset.rechazar, rechazarSolicitud, 'Solicitud rechazada.'))
+      );
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function resolverSolicitud(id, accion, mensajeExito) {
+    const errorEl = document.getElementById('error-pendientes');
+    const exitoEl = document.getElementById('exito-pendientes');
+    mostrarError(errorEl, '');
+    exitoEl.hidden = true;
+    try {
+      await accion(id);
+      exitoEl.hidden = false;
+      exitoEl.textContent = mensajeExito;
+      await Promise.all([cargarPendientes(), cargarHistorial()]);
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function cargarHistorial() {
+    const solicitudes = await listarHistorialSolicitudes();
+    const tabla = document.getElementById('tabla-historial');
+    const vacio = document.getElementById('historial-vacio');
+
+    if (solicitudes.length === 0) {
+      tabla.hidden = true;
+      vacio.hidden = false;
+      return;
+    }
+    tabla.hidden = false;
+    vacio.hidden = true;
+
+    document.getElementById('tbody-historial').innerHTML = solicitudes
+      .map(
+        (s) => `
+        <tr>
+          <td>${escapeHtml(s.organizations?.nombre || '—')}</td>
+          <td>${PLAN_LABEL[s.plan_actual]} → ${PLAN_LABEL[s.plan_solicitado]}</td>
+          <td><span class="etiqueta estado-${s.estado === 'aprobada' ? 'activa' : 'anulada'}">${ETIQUETA_ESTADO[s.estado]}</span></td>
+          <td>${new Date(s.resuelta_at).toLocaleString('es-AR')}</td>
+        </tr>`
+      )
+      .join('');
+  }
+
+  iniciar();
+</script>

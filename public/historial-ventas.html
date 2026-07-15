@@ -52,8 +52,79 @@
     <p class="texto-suave" id="detalle-meta"></p>
     <ul class="detalle-venta-items" id="detalle-items"></ul>
     <p id="detalle-pago"></p>
+
+    <div class="ficha-seccion" id="detalle-seccion-devoluciones">
+      <h3>Devoluciones y cambios</h3>
+      <p class="texto-suave" id="detalle-sin-devoluciones">No se registró ninguna en esta venta.</p>
+      <ul class="lista-movimientos" id="detalle-lista-devoluciones"></ul>
+    </div>
+
     <div class="modal-acciones">
+      <a class="boton-secundario" id="link-ver-comprobante" target="_blank" rel="noopener">Ver comprobante</a>
+      <button type="button" class="boton-secundario" id="btn-registrar-devolucion">Devolución / cambio</button>
       <button type="button" class="boton-secundario" id="btn-cerrar-detalle">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-devolucion" hidden>
+  <div class="modal">
+    <h2>Devolución / cambio</h2>
+    <p class="mensaje-error" id="error-devolucion" hidden></p>
+
+    <div class="campo">
+      <label for="dev-item">Producto devuelto</label>
+      <select id="dev-item"></select>
+    </div>
+    <div class="campo">
+      <label for="dev-cantidad">Cantidad</label>
+      <input type="number" id="dev-cantidad" min="0.01" step="0.01" />
+    </div>
+    <div class="campo">
+      <label for="dev-motivo">Motivo</label>
+      <textarea id="dev-motivo" placeholder="Ej: producto roto, vencido, defectuoso..."></textarea>
+    </div>
+    <div class="campo-checkbox">
+      <input type="checkbox" id="dev-es-cambio" />
+      <label for="dev-es-cambio">Es un cambio por otro producto (no una devolución simple)</label>
+    </div>
+
+    <div id="dev-campos-cambio" hidden>
+      <div class="campo campo-busqueda buscador-contenedor">
+        <label for="dev-buscador-nuevo">Producto nuevo</label>
+        <input type="text" id="dev-buscador-nuevo" placeholder="Buscar producto..." autocomplete="off" />
+        <div class="buscador-resultados" id="dev-resultados-nuevo" hidden></div>
+      </div>
+      <p class="texto-suave" id="dev-producto-nuevo-elegido" hidden></p>
+      <div class="campo">
+        <label for="dev-cantidad-nueva">Cantidad del producto nuevo</label>
+        <input type="number" id="dev-cantidad-nueva" min="0.01" step="0.01" value="1" />
+      </div>
+    </div>
+
+    <div id="dev-diferencia-bloque" hidden>
+      <p class="texto-suave" id="dev-diferencia-texto"></p>
+      <div class="campo">
+        <label for="dev-resolucion">¿Cómo se resuelve la diferencia?</label>
+        <select id="dev-resolucion">
+          <option value="resuelto_ahora">Se resuelve ahora (paga o se le devuelve en el momento)</option>
+          <option value="saldo_pendiente">Queda como saldo del cliente</option>
+        </select>
+      </div>
+      <div class="campo campo-busqueda buscador-contenedor" id="dev-campo-cliente" hidden>
+        <label for="dev-buscador-cliente">Cliente</label>
+        <input type="text" id="dev-buscador-cliente" placeholder="Buscar cliente por nombre..." autocomplete="off" />
+        <div class="buscador-resultados" id="dev-resultados-cliente" hidden></div>
+      </div>
+      <div class="cliente-seleccionado" id="dev-cliente-seleccionado" hidden>
+        <span id="dev-cliente-seleccionado-nombre"></span>
+        <button type="button" class="boton-chico secundario" id="dev-btn-quitar-cliente">Cambiar</button>
+      </div>
+    </div>
+
+    <div class="modal-acciones">
+      <button type="button" class="boton-secundario" id="btn-cancelar-devolucion">Cancelar</button>
+      <button type="button" class="boton-primario" id="btn-confirmar-devolucion">Registrar</button>
     </div>
   </div>
 </div>
@@ -141,16 +212,25 @@
   import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
   import { listarProductos } from './js/productos.js';
   import { listarVentas, obtenerVentaConDetalle, actualizarVenta, anularVenta, puedeModificar, puedeEditarItems } from './js/ventas.js';
+  import { registrarDevolucionCambio, listarDevolucionesDeVenta } from './js/devoluciones.js';
+  import { buscarClientes, crearClienteRapido } from './js/clientes.js';
+  import { montarMenu } from './js/menu.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
   const ETIQUETA_ESTADO = { activa: 'Activa', editada: 'Editada', anulada: 'Anulada' };
   const ETIQUETA_METODO = { efectivo: 'Efectivo', transferencia: 'Transferencia' };
+  const ETIQUETA_TIPO_DEVOLUCION = { devolucion: 'Devolución', cambio: 'Cambio' };
 
   let usuario = null;
   let ventas = [];
   let ventaEnEdicion = null;
   let itemsEdicion = [];
   let ventaParaAnular = null;
+
+  let ventaDetalleActual = null;
+  let itemsDetalleActual = [];
+  let productoNuevoElegido = null;
+  let clienteDevolucionElegido = null;
 
   document.getElementById('btn-logout').addEventListener('click', async () => {
     await logout();
@@ -168,6 +248,7 @@
     }
 
     document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+    montarMenu(usuario);
 
     const ahora = new Date();
     document.getElementById('filtro-mes').value = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
@@ -177,6 +258,38 @@
 
     document.getElementById('btn-cerrar-detalle').addEventListener('click', () => {
       document.getElementById('modal-detalle').hidden = true;
+    });
+
+    document.getElementById('btn-registrar-devolucion').addEventListener('click', abrirDevolucion);
+    document.getElementById('btn-cancelar-devolucion').addEventListener('click', () => {
+      document.getElementById('modal-devolucion').hidden = true;
+    });
+    document.getElementById('btn-confirmar-devolucion').addEventListener('click', confirmarDevolucion);
+    document.getElementById('dev-item').addEventListener('change', () => {
+      const item = itemsDetalleActual[document.getElementById('dev-item').value];
+      document.getElementById('dev-cantidad').max = item.cantidad;
+      document.getElementById('dev-cantidad').value = item.cantidad;
+      recalcularDiferencia();
+    });
+    document.getElementById('dev-cantidad').addEventListener('input', recalcularDiferencia);
+    document.getElementById('dev-cantidad-nueva').addEventListener('input', recalcularDiferencia);
+    document.getElementById('dev-es-cambio').addEventListener('change', (e) => {
+      document.getElementById('dev-campos-cambio').hidden = !e.target.checked;
+      if (!e.target.checked) {
+        productoNuevoElegido = null;
+        document.getElementById('dev-producto-nuevo-elegido').hidden = true;
+      }
+      recalcularDiferencia();
+    });
+    document.getElementById('dev-buscador-nuevo').addEventListener('input', debounce(buscarProductoNuevoDevolucion, 250));
+    document.getElementById('dev-resolucion').addEventListener('change', (e) => {
+      document.getElementById('dev-campo-cliente').hidden = e.target.value !== 'saldo_pendiente';
+    });
+    document.getElementById('dev-buscador-cliente').addEventListener('input', debounce(buscarClienteDevolucion, 250));
+    document.getElementById('dev-btn-quitar-cliente').addEventListener('click', () => {
+      clienteDevolucionElegido = null;
+      document.getElementById('dev-cliente-seleccionado').hidden = true;
+      document.getElementById('dev-campo-cliente').hidden = false;
     });
 
     document.getElementById('buscador-editar').addEventListener('input', debounce(buscarProductoParaEditar, 250));
@@ -225,7 +338,12 @@
     try {
       const { desde, hasta } = rangoDelMes();
       const query = document.getElementById('buscador').value.trim();
-      ventas = await listarVentas({ desde, hasta, query: query || undefined });
+      // El empleado ve solo sus propias ventas (o las de la cuenta compartida
+      // si el local usa ese modo -- en ese caso todas quedan con el mismo
+      // usuario_id, asi que el filtro ya da el resultado correcto solo). El
+      // admin sigue viendo todo el local.
+      const usuarioId = usuario.role === 'empleado' ? usuario.id : undefined;
+      ventas = await listarVentas({ desde, hasta, query: query || undefined, usuarioId });
       renderTabla();
       cargandoEl.hidden = true;
       tabla.hidden = false;
@@ -283,19 +401,251 @@
   async function verDetalle(id) {
     try {
       const { venta, items, pagos } = await obtenerVentaConDetalle(id);
+      ventaDetalleActual = venta;
+      itemsDetalleActual = items;
+
       document.getElementById('detalle-fecha').textContent = new Date(venta.fecha).toLocaleString('es-AR');
       document.getElementById('detalle-meta').textContent = `Vendedor: ${venta.usuarios?.nombre || '—'} · Estado: ${ETIQUETA_ESTADO[venta.estado]}`;
       document.getElementById('detalle-items').innerHTML = items
         .map(
-          (it) => `<li><span>${escapeHtml(it.productos?.nombre || 'Producto eliminado')} × ${it.cantidad}</span><span>$${Number(it.subtotal).toLocaleString('es-AR')}</span></li>`
+          (it) =>
+            `<li><span>${escapeHtml(it.productos?.nombre || 'Producto eliminado')} × ${it.cantidad}</span><span>$${Number(
+              it.subtotal
+            ).toLocaleString('es-AR')}</span></li>`
         )
         .join('');
       document.getElementById('detalle-pago').textContent = venta.es_fiado
         ? `Fiado — cliente: ${venta.clientes?.nombre || '—'}`
         : pagos.map((p) => `${ETIQUETA_METODO[p.metodo]}: $${Number(p.monto).toLocaleString('es-AR')}`).join(' · ');
+
+      document.getElementById('btn-registrar-devolucion').hidden = venta.estado === 'anulada';
+      document.getElementById('link-ver-comprobante').href = `comprobante.html?venta=${id}`;
+      await cargarDevolucionesDeVenta(id);
+
       document.getElementById('modal-detalle').hidden = false;
     } catch (err) {
       mostrarError(document.getElementById('error-lista'), err.message);
+    }
+  }
+
+  async function cargarDevolucionesDeVenta(ventaId) {
+    const devoluciones = await listarDevolucionesDeVenta(ventaId);
+    document.getElementById('detalle-sin-devoluciones').hidden = devoluciones.length > 0;
+    document.getElementById('detalle-lista-devoluciones').innerHTML = devoluciones
+      .map((d) => {
+        const detalleCambio = d.tipo === 'cambio' ? ` por ${escapeHtml(d.producto_nuevo?.nombre || 'producto eliminado')} × ${d.cantidad_nueva}` : '';
+        const detalleDiferencia =
+          d.diferencia_precio != null
+            ? ` · Diferencia $${Number(d.diferencia_precio).toLocaleString('es-AR')} (${d.resolucion === 'saldo_pendiente' ? 'como saldo' : 'resuelta al momento'})`
+            : '';
+        return `
+          <li>
+            <span class="info-movimiento">
+              <span>${ETIQUETA_TIPO_DEVOLUCION[d.tipo]}: ${escapeHtml(d.producto_original?.nombre || 'producto eliminado')} × ${d.cantidad}${detalleCambio}</span>
+              <span class="texto-suave">${escapeHtml(d.motivo)}${detalleDiferencia}</span>
+            </span>
+            <span class="texto-suave">${new Date(d.fecha).toLocaleDateString('es-AR')}</span>
+          </li>`;
+      })
+      .join('');
+  }
+
+  // Devolucion / cambio --------------------------------------------------
+
+  function abrirDevolucion() {
+    const errorEl = document.getElementById('error-devolucion');
+    mostrarError(errorEl, '');
+
+    productoNuevoElegido = null;
+    clienteDevolucionElegido = null;
+    document.getElementById('dev-motivo').value = '';
+    document.getElementById('dev-es-cambio').checked = false;
+    document.getElementById('dev-campos-cambio').hidden = true;
+    document.getElementById('dev-producto-nuevo-elegido').hidden = true;
+    document.getElementById('dev-buscador-nuevo').value = '';
+    document.getElementById('dev-cantidad-nueva').value = '1';
+    document.getElementById('dev-resolucion').value = 'resuelto_ahora';
+    document.getElementById('dev-campo-cliente').hidden = true;
+    document.getElementById('dev-cliente-seleccionado').hidden = true;
+    document.getElementById('dev-diferencia-bloque').hidden = true;
+
+    const selectItem = document.getElementById('dev-item');
+    selectItem.innerHTML = itemsDetalleActual
+      .map(
+        (it, i) =>
+          `<option value="${i}">${escapeHtml(it.productos?.nombre || 'Producto eliminado')} (vendidos: ${it.cantidad}, $${Number(
+            it.precio_unitario
+          ).toLocaleString('es-AR')} c/u)</option>`
+      )
+      .join('');
+    const primerItem = itemsDetalleActual[0];
+    document.getElementById('dev-cantidad').max = primerItem.cantidad;
+    document.getElementById('dev-cantidad').value = primerItem.cantidad;
+
+    document.getElementById('modal-devolucion').hidden = false;
+  }
+
+  async function buscarProductoNuevoDevolucion() {
+    const query = document.getElementById('dev-buscador-nuevo').value.trim();
+    const contenedor = document.getElementById('dev-resultados-nuevo');
+    if (!query) {
+      contenedor.hidden = true;
+      return;
+    }
+    try {
+      const productos = await listarProductos({ query, soloActivos: true });
+      contenedor.innerHTML =
+        productos.length === 0
+          ? '<div class="sin-resultados">No se encontraron productos.</div>'
+          : productos
+              .map(
+                (p) => `<button type="button" data-id="${p.id}">
+                  <span>${escapeHtml(p.nombre)}</span>
+                  <span class="texto-suave">$${Number(p.precio_venta_actual).toLocaleString('es-AR')}</span>
+                </button>`
+              )
+              .join('');
+      contenedor.querySelectorAll('button[data-id]').forEach((btn) =>
+        btn.addEventListener('click', () => {
+          productoNuevoElegido = productos.find((p) => p.id === btn.dataset.id);
+          document.getElementById('dev-producto-nuevo-elegido').hidden = false;
+          document.getElementById('dev-producto-nuevo-elegido').textContent = `Elegido: ${productoNuevoElegido.nombre} ($${Number(
+            productoNuevoElegido.precio_venta_actual
+          ).toLocaleString('es-AR')} c/u)`;
+          document.getElementById('dev-buscador-nuevo').value = '';
+          contenedor.hidden = true;
+          recalcularDiferencia();
+        })
+      );
+      contenedor.hidden = false;
+    } catch (err) {
+      mostrarError(document.getElementById('error-devolucion'), err.message);
+    }
+  }
+
+  function recalcularDiferencia() {
+    const bloque = document.getElementById('dev-diferencia-bloque');
+    const esCambio = document.getElementById('dev-es-cambio').checked;
+    if (!esCambio || !productoNuevoElegido) {
+      bloque.hidden = true;
+      return;
+    }
+    const item = itemsDetalleActual[document.getElementById('dev-item').value];
+    const cantidad = Number(document.getElementById('dev-cantidad').value) || 0;
+    const cantidadNueva = Number(document.getElementById('dev-cantidad-nueva').value) || 0;
+    const totalOriginal = cantidad * Number(item.precio_unitario);
+    const totalNuevo = cantidadNueva * Number(productoNuevoElegido.precio_venta_actual);
+    const diferencia = totalNuevo - totalOriginal;
+
+    if (diferencia === 0) {
+      bloque.hidden = true;
+      return;
+    }
+    bloque.hidden = false;
+    document.getElementById('dev-diferencia-texto').textContent =
+      diferencia > 0
+        ? `El cliente paga $${diferencia.toLocaleString('es-AR')} de diferencia.`
+        : `Queda a favor del cliente $${Math.abs(diferencia).toLocaleString('es-AR')}.`;
+  }
+
+  async function buscarClienteDevolucion() {
+    const query = document.getElementById('dev-buscador-cliente').value.trim();
+    const contenedor = document.getElementById('dev-resultados-cliente');
+    if (!query) {
+      contenedor.hidden = true;
+      return;
+    }
+    try {
+      const clientes = await buscarClientes(query);
+      const opciones = clientes
+        .map((c) => `<button type="button" data-id="${c.id}"><span>${escapeHtml(c.nombre)}</span></button>`)
+        .join('');
+      const opcionCrear = `<button type="button" id="dev-btn-crear-cliente">+ Crear cliente "${escapeHtml(query)}"</button>`;
+      contenedor.innerHTML = opciones + opcionCrear;
+      contenedor.querySelectorAll('button[data-id]').forEach((btn) =>
+        btn.addEventListener('click', () => seleccionarClienteDevolucion(clientes.find((c) => c.id === btn.dataset.id)))
+      );
+      document.getElementById('dev-btn-crear-cliente').addEventListener('click', async () => {
+        try {
+          const nuevo = await crearClienteRapido({ nombre: query, localId: ventaDetalleActual.local_id, organizationId: usuario.organization_id });
+          seleccionarClienteDevolucion(nuevo);
+        } catch (err) {
+          mostrarError(document.getElementById('error-devolucion'), err.message);
+        }
+      });
+      contenedor.hidden = false;
+    } catch (err) {
+      mostrarError(document.getElementById('error-devolucion'), err.message);
+    }
+  }
+
+  function seleccionarClienteDevolucion(cliente) {
+    clienteDevolucionElegido = cliente;
+    document.getElementById('dev-buscador-cliente').value = '';
+    document.getElementById('dev-resultados-cliente').hidden = true;
+    document.getElementById('dev-campo-cliente').hidden = true;
+    document.getElementById('dev-cliente-seleccionado').hidden = false;
+    document.getElementById('dev-cliente-seleccionado-nombre').textContent = cliente.nombre;
+  }
+
+  async function confirmarDevolucion() {
+    const errorEl = document.getElementById('error-devolucion');
+    mostrarError(errorEl, '');
+
+    const item = itemsDetalleActual[document.getElementById('dev-item').value];
+    const cantidad = Number(document.getElementById('dev-cantidad').value) || 0;
+    const motivo = document.getElementById('dev-motivo').value.trim();
+    const esCambio = document.getElementById('dev-es-cambio').checked;
+
+    if (cantidad <= 0 || cantidad > Number(item.cantidad)) {
+      mostrarError(errorEl, `La cantidad tiene que ser mayor a 0 y no puede superar la cantidad vendida (${item.cantidad}).`);
+      return;
+    }
+    if (!motivo) {
+      mostrarError(errorEl, 'Cargá el motivo de la devolución o cambio.');
+      return;
+    }
+    if (esCambio && !productoNuevoElegido) {
+      mostrarError(errorEl, 'Elegí el producto nuevo del cambio.');
+      return;
+    }
+    const cantidadNueva = esCambio ? Number(document.getElementById('dev-cantidad-nueva').value) || 0 : null;
+    if (esCambio && cantidadNueva <= 0) {
+      mostrarError(errorEl, 'Cargá una cantidad válida para el producto nuevo.');
+      return;
+    }
+
+    const diferenciaVisible = !document.getElementById('dev-diferencia-bloque').hidden;
+    const resolucion = diferenciaVisible ? document.getElementById('dev-resolucion').value : null;
+    const diferenciaPrecio = diferenciaVisible
+      ? cantidadNueva * Number(productoNuevoElegido.precio_venta_actual) - cantidad * Number(item.precio_unitario)
+      : null;
+
+    if (resolucion === 'saldo_pendiente' && !clienteDevolucionElegido) {
+      mostrarError(errorEl, 'Elegí o creá el cliente para dejar la diferencia como saldo.');
+      return;
+    }
+
+    try {
+      await registrarDevolucionCambio({
+        ventaId: ventaDetalleActual.id,
+        localId: ventaDetalleActual.local_id,
+        organizationId: usuario.organization_id,
+        tipo: esCambio ? 'cambio' : 'devolucion',
+        productoOriginalId: item.producto_id,
+        cantidad,
+        motivo,
+        productoNuevoId: esCambio ? productoNuevoElegido.id : null,
+        cantidadNueva,
+        diferenciaPrecio,
+        resolucion,
+        clienteId: resolucion === 'saldo_pendiente' ? clienteDevolucionElegido.id : null,
+        usuarioId: usuario.id,
+      });
+      document.getElementById('modal-devolucion').hidden = true;
+      await cargarDevolucionesDeVenta(ventaDetalleActual.id);
+    } catch (err) {
+      mostrarError(errorEl, err.message);
     }
   }
 
@@ -360,7 +710,13 @@
           const p = productos.find((x) => x.id === btn.dataset.id);
           const existente = itemsEdicion.find((it) => it.productoId === p.id);
           if (existente) existente.cantidad += 1;
-          else itemsEdicion.push({ productoId: p.id, nombre: p.nombre, cantidad: 1, precioUnitario: Number(p.precio_venta_actual) });
+          else
+            itemsEdicion.push({
+              productoId: p.id,
+              nombre: p.nombre,
+              cantidad: 1,
+              precioUnitario: Number(p.precio_venta_actual),
+            });
           renderItemsEdicion();
           document.getElementById('buscador-editar').value = '';
           contenedor.hidden = true;
@@ -430,7 +786,11 @@
 
     try {
       await actualizarVenta(ventaEnEdicion.id, {
-        items: itemsEdicion.map((it) => ({ productoId: it.productoId, cantidad: it.cantidad, precioUnitario: it.precioUnitario })),
+        items: itemsEdicion.map((it) => ({
+          productoId: it.productoId,
+          cantidad: it.cantidad,
+          precioUnitario: it.precioUnitario,
+        })),
         pagos,
       });
       document.getElementById('modal-editar').hidden = true;

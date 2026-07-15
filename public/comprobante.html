@@ -1,0 +1,100 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Comprobante</title>
+<link rel="stylesheet" href="css/chaupapel.css" />
+
+<div class="comprobante-acciones no-imprimir">
+  <button type="button" class="boton-secundario boton-inline" id="btn-volver">← Volver</button>
+  <button type="button" class="boton-primario boton-inline" id="btn-imprimir">Imprimir / Guardar como PDF</button>
+</div>
+
+<p class="mensaje-error no-imprimir" id="error-comprobante" hidden></p>
+
+<div class="comprobante" id="comprobante" hidden>
+  <h1 id="c-local"></h1>
+  <p class="c-fecha" id="c-fecha"></p>
+  <p class="c-vendedor" id="c-vendedor"></p>
+
+  <table class="c-tabla-items">
+    <thead>
+      <tr>
+        <th>Producto</th>
+        <th>Cant.</th>
+        <th>P. unit.</th>
+        <th>Subtotal</th>
+      </tr>
+    </thead>
+    <tbody id="c-items"></tbody>
+  </table>
+
+  <div class="c-total">
+    <span>Total</span>
+    <span id="c-total-valor"></span>
+  </div>
+
+  <p class="c-pago" id="c-pago"></p>
+
+  <p class="c-leyenda">Comprobante no válido como factura.</p>
+</div>
+
+<script type="module">
+  import { requireSession, obtenerUsuarioActual } from './js/auth.js';
+  import { obtenerVentaConDetalle } from './js/ventas.js';
+  import { escapeHtml, mostrarError } from './js/utils.js';
+
+  const ETIQUETA_METODO = { efectivo: 'Efectivo', transferencia: 'Transferencia' };
+
+  document.getElementById('btn-volver').addEventListener('click', () => history.back());
+  document.getElementById('btn-imprimir').addEventListener('click', () => window.print());
+
+  async function iniciar() {
+    const session = await requireSession();
+    if (!session) return;
+
+    const usuario = await obtenerUsuarioActual();
+    if (!usuario || usuario.status !== 'approved') {
+      window.location.href = 'panel.html';
+      return;
+    }
+
+    const ventaId = new URLSearchParams(window.location.search).get('venta');
+    const errorEl = document.getElementById('error-comprobante');
+    if (!ventaId) {
+      mostrarError(errorEl, 'Falta indicar qué venta mostrar.');
+      return;
+    }
+
+    try {
+      const { venta, items, pagos } = await obtenerVentaConDetalle(ventaId);
+
+      document.getElementById('c-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+      document.getElementById('c-fecha').textContent = new Date(venta.fecha).toLocaleString('es-AR');
+      document.getElementById('c-vendedor').textContent = `Atendido por: ${venta.usuarios?.nombre || '—'}`;
+
+      document.getElementById('c-items').innerHTML = items
+        .map(
+          (it) => `
+          <tr>
+            <td>${escapeHtml(it.productos?.nombre || 'Producto eliminado')}</td>
+            <td>${it.cantidad}</td>
+            <td>$${Number(it.precio_unitario).toLocaleString('es-AR')}</td>
+            <td>$${Number(it.subtotal).toLocaleString('es-AR')}</td>
+          </tr>`
+        )
+        .join('');
+
+      document.getElementById('c-total-valor').textContent = `$${Number(venta.total).toLocaleString('es-AR')}`;
+
+      document.getElementById('c-pago').textContent = venta.es_fiado
+        ? `Fiado — cliente: ${venta.clientes?.nombre || '—'}`
+        : pagos.map((p) => `${ETIQUETA_METODO[p.metodo]}: $${Number(p.monto).toLocaleString('es-AR')}`).join(' · ');
+
+      document.title = `Comprobante ${new Date(venta.fecha).toLocaleDateString('es-AR')}`;
+      document.getElementById('comprobante').hidden = false;
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  iniciar();
+</script>

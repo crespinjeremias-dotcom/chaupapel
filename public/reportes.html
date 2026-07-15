@@ -1,0 +1,304 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reportes y estadísticas</title>
+<link rel="stylesheet" href="css/chaupapel.css" />
+
+<header class="app-header">
+  <div class="identidad">
+    <h1 id="nombre-local"></h1>
+    <p><a href="panel.html">← Volver al panel</a></p>
+  </div>
+  <button class="boton-secundario boton-inline" id="btn-logout">Cerrar sesión</button>
+</header>
+
+<main class="app-main ancho">
+  <div class="panel-seccion" id="seccion-mas-vendidos">
+    <h2>Productos más vendidos</h2>
+    <div class="barra-herramientas">
+      <div class="campo">
+        <label for="mv-mes">Mes</label>
+        <input type="month" id="mv-mes" />
+      </div>
+      <div class="campo-checkbox">
+        <input type="checkbox" id="mv-usar-franja" />
+        <label for="mv-usar-franja">Filtrar por franja horaria</label>
+      </div>
+      <div class="campo" id="mv-campo-desde" hidden>
+        <label for="mv-hora-desde">Desde (hs)</label>
+        <input type="number" id="mv-hora-desde" min="0" max="23" value="0" />
+      </div>
+      <div class="campo" id="mv-campo-hasta" hidden>
+        <label for="mv-hora-hasta">Hasta (hs)</label>
+        <input type="number" id="mv-hora-hasta" min="1" max="24" value="24" />
+      </div>
+    </div>
+    <p class="mensaje-error" id="error-mas-vendidos" hidden></p>
+    <div class="tabla-contenedor">
+      <table class="tabla" id="tabla-mas-vendidos" hidden>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Cantidad vendida</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-mas-vendidos"></tbody>
+      </table>
+      <p class="texto-suave" id="mas-vendidos-vacio">No hay ventas en ese período.</p>
+    </div>
+  </div>
+
+  <div class="panel-seccion" id="seccion-mas-vendidos-bloqueada" hidden>
+    <h2>Productos más vendidos <span class="etiqueta">Plan Completo</span></h2>
+    <p class="texto-suave">Esta estadística está disponible a partir del Plan Completo. Podés cambiar de plan desde el <a href="panel.html">panel</a>.</p>
+  </div>
+
+  <div class="panel-seccion">
+    <h2>Historial de ajustes de stock (mermas)</h2>
+    <div class="barra-herramientas">
+      <div class="campo">
+        <label for="aj-mes">Mes</label>
+        <input type="month" id="aj-mes" />
+      </div>
+    </div>
+    <p class="mensaje-error" id="error-ajustes" hidden></p>
+    <div class="tabla-contenedor">
+      <table class="tabla" id="tabla-ajustes" hidden>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Motivo</th>
+            <th>Comentario</th>
+            <th>Usuario</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-ajustes"></tbody>
+      </table>
+      <p class="texto-suave" id="ajustes-vacio">No hay ajustes de stock en ese período.</p>
+    </div>
+  </div>
+
+  <div class="panel-seccion">
+    <h2>Exportar a Excel</h2>
+    <div class="barra-herramientas">
+      <div class="campo">
+        <label for="export-mes">Mes (para ventas)</label>
+        <input type="month" id="export-mes" />
+      </div>
+      <div class="campo" id="campo-local-export" hidden>
+        <label for="select-local-export">Local (para cierres de caja)</label>
+        <select id="select-local-export"></select>
+      </div>
+    </div>
+    <p class="mensaje-error" id="error-exportar" hidden></p>
+    <div class="acciones-exportar">
+      <button type="button" class="boton-secundario boton-inline" id="btn-exportar-ventas">Exportar ventas del mes</button>
+      <button type="button" class="boton-secundario boton-inline" id="btn-exportar-cierres">Exportar cierres de caja</button>
+      <button type="button" class="boton-secundario boton-inline" id="btn-exportar-stock">Exportar stock actual</button>
+    </div>
+  </div>
+
+  <div class="panel-seccion">
+    <h2>Otros reportes</h2>
+    <a class="boton-secundario boton-inline" href="clientes.html">Cuenta corriente de clientes</a>
+    <a class="boton-secundario boton-inline" href="caja.html">Historial de caja</a>
+    <a class="boton-secundario boton-inline" href="historial-ventas.html">Historial de ventas</a>
+  </div>
+</main>
+
+<script type="module">
+  import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
+  import { listarLocales } from './js/empleados.js';
+  import { obtenerLocalActivo, establecerLocalActivo } from './js/localActivo.js';
+  import { productosMasVendidos, listarVentas } from './js/ventas.js';
+  import { listarAjustesStock, listarProductos, MOTIVOS_AJUSTE } from './js/productos.js';
+  import { listarCierresDiarios, listarCierresMensuales } from './js/caja.js';
+  import { exportarVentas, exportarCierres, exportarProductos } from './js/excel.js';
+  import { montarMenu } from './js/menu.js';
+  import { tieneFeature } from './js/planes.js';
+  import { mostrarError, escapeHtml } from './js/utils.js';
+
+  const ETIQUETA_MOTIVO = Object.fromEntries(MOTIVOS_AJUSTE.map((m) => [m.value, m.label]));
+
+  let usuario = null;
+  let localIdActivo = null;
+
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await logout();
+    window.location.href = 'index.html';
+  });
+
+  async function iniciar() {
+    const session = await requireSession();
+    if (!session) return;
+
+    usuario = await obtenerUsuarioActual();
+    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false) {
+      window.location.href = 'panel.html';
+      return;
+    }
+    if (usuario.role !== 'admin') {
+      window.location.href = 'panel.html';
+      return;
+    }
+
+    document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+    montarMenu(usuario);
+
+    const locales = await listarLocales();
+    localIdActivo = obtenerLocalActivo(locales);
+    if (locales.length > 1) {
+      const select = document.getElementById('select-local-export');
+      select.innerHTML = locales.map((l) => `<option value="${l.id}">${escapeHtml(l.nombre)}</option>`).join('');
+      select.value = localIdActivo;
+      document.getElementById('campo-local-export').hidden = false;
+      select.addEventListener('change', () => {
+        localIdActivo = select.value;
+        establecerLocalActivo(localIdActivo);
+      });
+    }
+
+    const hoy = new Date();
+    const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+    document.getElementById('mv-mes').value = mesActual;
+    document.getElementById('aj-mes').value = mesActual;
+    document.getElementById('export-mes').value = mesActual;
+
+    document.getElementById('mv-mes').addEventListener('change', cargarMasVendidos);
+    document.getElementById('mv-usar-franja').addEventListener('change', (e) => {
+      document.getElementById('mv-campo-desde').hidden = !e.target.checked;
+      document.getElementById('mv-campo-hasta').hidden = !e.target.checked;
+      cargarMasVendidos();
+    });
+    document.getElementById('mv-hora-desde').addEventListener('change', cargarMasVendidos);
+    document.getElementById('mv-hora-hasta').addEventListener('change', cargarMasVendidos);
+    document.getElementById('aj-mes').addEventListener('change', cargarAjustes);
+
+    document.getElementById('btn-exportar-ventas').addEventListener('click', manejarExportarVentas);
+    document.getElementById('btn-exportar-cierres').addEventListener('click', manejarExportarCierres);
+    document.getElementById('btn-exportar-stock').addEventListener('click', manejarExportarStock);
+
+    // Seccion 15: "productos mas vendidos" es Plan Completo.
+    if (tieneFeature(usuario, 'estadisticas')) {
+      document.getElementById('seccion-mas-vendidos').hidden = false;
+      await cargarMasVendidos();
+    } else {
+      document.getElementById('seccion-mas-vendidos').hidden = true;
+      document.getElementById('seccion-mas-vendidos-bloqueada').hidden = false;
+    }
+    await cargarAjustes();
+  }
+
+  function rangoDelMes(inputId) {
+    const [anio, mes] = document.getElementById(inputId).value.split('-').map(Number);
+    return { desde: new Date(anio, mes - 1, 1).toISOString(), hasta: new Date(anio, mes, 1).toISOString() };
+  }
+
+  // Productos mas vendidos ---------------------------------------------------
+
+  async function cargarMasVendidos() {
+    const errorEl = document.getElementById('error-mas-vendidos');
+    mostrarError(errorEl, '');
+    try {
+      const { desde, hasta } = rangoDelMes('mv-mes');
+      const usarFranja = document.getElementById('mv-usar-franja').checked;
+      const productos = await productosMasVendidos({
+        desde,
+        hasta,
+        horaDesde: usarFranja ? Number(document.getElementById('mv-hora-desde').value) : undefined,
+        horaHasta: usarFranja ? Number(document.getElementById('mv-hora-hasta').value) : undefined,
+      });
+
+      const tabla = document.getElementById('tabla-mas-vendidos');
+      const vacio = document.getElementById('mas-vendidos-vacio');
+      if (productos.length === 0) {
+        tabla.hidden = true;
+        vacio.hidden = false;
+        return;
+      }
+      tabla.hidden = false;
+      vacio.hidden = true;
+      document.getElementById('tbody-mas-vendidos').innerHTML = productos
+        .slice(0, 15)
+        .map((p) => `<tr><td>${escapeHtml(p.nombre)}</td><td>${p.cantidad}</td></tr>`)
+        .join('');
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Ajustes de stock -----------------------------------------------------
+
+  async function cargarAjustes() {
+    const errorEl = document.getElementById('error-ajustes');
+    mostrarError(errorEl, '');
+    try {
+      const { desde, hasta } = rangoDelMes('aj-mes');
+      const ajustes = await listarAjustesStock({ desde, hasta });
+
+      const tabla = document.getElementById('tabla-ajustes');
+      const vacio = document.getElementById('ajustes-vacio');
+      if (ajustes.length === 0) {
+        tabla.hidden = true;
+        vacio.hidden = false;
+        return;
+      }
+      tabla.hidden = false;
+      vacio.hidden = true;
+      document.getElementById('tbody-ajustes').innerHTML = ajustes
+        .map(
+          (a) => `
+          <tr>
+            <td>${new Date(a.created_at).toLocaleDateString('es-AR')}</td>
+            <td>${escapeHtml(a.productos?.nombre || 'Producto eliminado')}</td>
+            <td class="${a.cantidad > 0 ? 'monto-negativo' : 'monto-positivo'}">${a.cantidad > 0 ? '+' : ''}${a.cantidad}</td>
+            <td>${ETIQUETA_MOTIVO[a.motivo] || a.motivo}</td>
+            <td>${escapeHtml(a.comentario || '—')}</td>
+            <td>${escapeHtml(a.usuarios?.nombre || '—')}</td>
+          </tr>`
+        )
+        .join('');
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Exportacion ------------------------------------------------------------
+
+  async function manejarExportarVentas() {
+    const errorEl = document.getElementById('error-exportar');
+    mostrarError(errorEl, '');
+    try {
+      const { desde, hasta } = rangoDelMes('export-mes');
+      const ventas = await listarVentas({ desde, hasta });
+      exportarVentas(ventas, `ventas-${document.getElementById('export-mes').value}.xlsx`);
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function manejarExportarCierres() {
+    const errorEl = document.getElementById('error-exportar');
+    mostrarError(errorEl, '');
+    try {
+      const [diarios, mensuales] = await Promise.all([listarCierresDiarios(localIdActivo), listarCierresMensuales(localIdActivo)]);
+      exportarCierres(diarios, mensuales);
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function manejarExportarStock() {
+    const errorEl = document.getElementById('error-exportar');
+    mostrarError(errorEl, '');
+    try {
+      const productos = await listarProductos({ soloActivos: true });
+      exportarProductos(productos, 'stock-actual.xlsx');
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  iniciar();
+</script>

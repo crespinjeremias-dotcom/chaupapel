@@ -58,7 +58,7 @@ export async function obtenerClienteConMovimientos(id) {
 
 // Cobro de fiado (seccion 9): "el pago se carga como ingreso del dia en que
 // se cobra, con su metodo de pago" -- por eso exige un turno abierto, igual
-// que una venta (asi Fase 7/Caja puede sumarlo al efectivo esperado del
+// que una venta (asi js/caja.js puede sumarlo al efectivo esperado del
 // turno via turno_id). El trigger de la base actualiza clientes.saldo solo.
 export async function registrarCobro({ clienteId, turnoId, usuarioId, localId, organizationId, monto, metodoPago }) {
   const { error } = await supabase.from('cuenta_corriente_movimientos').insert({

@@ -67,10 +67,28 @@ export async function obtenerUsuarioActual() {
 
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre, role, status, local_id, organization_id, organizations(nombre, plan, is_active), locales(nombre)')
+    .select(
+      'id, nombre, role, status, local_id, organization_id, organizations(nombre, plan, plan_overrides, is_active), locales(nombre, fiado_habilitado)'
+    )
     .eq('id', sessionData.session.user.id)
     .maybeSingle();
 
+  if (error) throw error;
+  return data;
+}
+
+// Super-Admin (seccion 16, Fase 15): identidad separada de organizations/
+// usuarios -- se chequea aparte, antes de asumir que el usuario logueado
+// tiene una fila en `usuarios`. Null para cualquier cuenta normal.
+export async function obtenerSuperAdminActual() {
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) return null;
+
+  const { data, error } = await supabase
+    .from('super_admins')
+    .select('id, nombre')
+    .eq('id', sessionData.session.user.id)
+    .maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -83,4 +101,16 @@ export async function requireSession() {
     return null;
   }
   return data.session;
+}
+
+// A donde va cada quien despues de iniciar sesion (no despues de registrarse
+// -- un admin recien creado o un empleado pending siguen yendo a panel.html,
+// que ya maneja esos estados). Empleado entra directo al punto de venta;
+// admin al dashboard general. pending/organizacion suspendida siempre van a
+// panel.html, que ya tiene los mensajes correspondientes para esos casos.
+export function pantallaDeEntrada(usuario) {
+  if (!usuario) return 'index.html';
+  if (usuario.status !== 'approved') return 'panel.html';
+  if (usuario.organizations?.is_active === false) return 'panel.html';
+  return usuario.role === 'empleado' ? 'ventas.html' : 'panel.html';
 }

@@ -6,6 +6,16 @@ export async function listarLocales() {
   return data;
 }
 
+// Alta de un local adicional (seccion 1 y 13, multi-local): la RLS ya exige
+// admin de la organizacion, asi que un insert directo alcanza -- a diferencia
+// del alta de la organizacion en si, esto no necesita una funcion security
+// definer.
+export async function crearLocal({ nombre, organizationId }) {
+  const { data, error } = await supabase.from('locales').insert({ nombre, organization_id: organizationId }).select().single();
+  if (error) throw error;
+  return data;
+}
+
 export async function listarUsuariosOrganizacion() {
   const { data, error } = await supabase
     .from('usuarios')

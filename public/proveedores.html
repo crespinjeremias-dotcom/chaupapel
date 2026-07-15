@@ -91,7 +91,7 @@
       <ul class="lista-vinculos" id="lista-productos-vinculados"></ul>
     </div>
 
-    <div class="ficha-seccion">
+    <div class="ficha-seccion" id="seccion-reclamos">
       <h3>Reclamos y devoluciones</h3>
       <p class="mensaje-error" id="error-reclamos" hidden></p>
       <button type="button" class="boton-chico secundario" id="btn-nuevo-reclamo">+ Nuevo reclamo</button>
@@ -170,6 +170,7 @@
 <script type="module">
   import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
   import { listarLocales } from './js/empleados.js';
+  import { obtenerLocalActivo } from './js/localActivo.js';
   import {
     listarProveedores,
     crearProveedor,
@@ -185,6 +186,7 @@
     marcarReclamoRepuesto,
   } from './js/proveedores.js';
   import { registrarReposicion } from './js/reposiciones.js';
+  import { montarMenu } from './js/menu.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
   let usuario = null;
@@ -211,11 +213,12 @@
     }
 
     document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+    montarMenu(usuario);
 
     if (usuario.role === 'admin') {
       document.getElementById('btn-nuevo').hidden = false;
       const locales = await listarLocales();
-      localIdActivo = locales[0]?.id || null;
+      localIdActivo = obtenerLocalActivo(locales);
     } else {
       localIdActivo = usuario.local_id;
     }
@@ -404,10 +407,15 @@
       .join(' · ') || 'Sin datos de contacto cargados.';
     document.getElementById('ficha-notas').textContent = proveedor.notas || '';
     document.getElementById('form-vincular').hidden = usuario.role !== 'admin';
+    // reclamos_proveedor paso a ser admin-only en la RLS (pedido explicito:
+    // el empleado no debe ni ver reclamos pendientes) -- se oculta la seccion
+    // entera y ni se consulta, para no depender de que el error de RLS se
+    // maneje bien en la UI.
+    document.getElementById('seccion-reclamos').hidden = usuario.role !== 'admin';
 
     document.getElementById('modal-ficha').hidden = false;
     await cargarProductosVinculados();
-    await cargarReclamos();
+    if (usuario.role === 'admin') await cargarReclamos();
   }
 
   async function cargarProductosVinculados() {

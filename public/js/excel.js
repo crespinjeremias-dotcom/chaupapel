@@ -33,6 +33,44 @@ export function exportarProductos(productos, nombreArchivo = 'productos.xlsx') {
   XLSX.writeFile(libro, nombreArchivo);
 }
 
+export function exportarVentas(ventas, nombreArchivo = 'ventas.xlsx') {
+  const filas = ventas.map((v) => ({
+    Fecha: new Date(v.fecha).toLocaleString('es-AR'),
+    Vendedor: v.usuarios?.nombre || '',
+    Total: Number(v.total),
+    Pago: v.es_fiado ? `Fiado (${v.clientes?.nombre || ''})` : 'Contado',
+    Estado: v.estado,
+  }));
+  const hoja = XLSX.utils.json_to_sheet(filas, { header: ['Fecha', 'Vendedor', 'Total', 'Pago', 'Estado'] });
+  const libro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(libro, hoja, 'Ventas');
+  XLSX.writeFile(libro, nombreArchivo);
+}
+
+export function exportarCierres(cierresDiarios, cierresMensuales, nombreArchivo = 'cierres-de-caja.xlsx') {
+  const filasDiarios = cierresDiarios.map((c) => ({
+    Fecha: c.fecha,
+    'Efectivo esperado': Number(c.efectivo_esperado_total),
+    'Efectivo contado': Number(c.efectivo_contado_total),
+    Transferencia: Number(c.transferencia_total),
+    'Fiado nuevo': Number(c.fiado_nuevo_total),
+    Diferencia: Number(c.diferencia_total),
+  }));
+  const filasMensuales = cierresMensuales.map((c) => ({
+    Mes: `${String(c.mes).padStart(2, '0')}/${c.anio}`,
+    'Total vendido': Number(c.total_vendido),
+    'Total cobrado': Number(c.total_cobrado),
+    'Fiado pendiente': Number(c.total_fiado_pendiente),
+    'Gasto mercadería': Number(c.total_gastos_mercaderia),
+    'Ganancia bruta': Number(c.ganancia_bruta),
+  }));
+
+  const libro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasDiarios), 'Cierres diarios');
+  XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasMensuales), 'Cierres mensuales');
+  XLSX.writeFile(libro, nombreArchivo);
+}
+
 export function descargarPlantilla() {
   const hoja = XLSX.utils.json_to_sheet([], { header: COLUMNAS });
   const libro = XLSX.utils.book_new();

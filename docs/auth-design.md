@@ -35,4 +35,4 @@ Limitación conocida y aceptada para el MVP: si se abren tres sesiones seguidas 
 
 - Probar el flujo completo de "restablecer contraseña" con un link real de email (no se pudo simular sin acceso a una casilla real en este entorno de pruebas). El código sigue el patrón estándar de Supabase (`onAuthStateChange` con evento `PASSWORD_RECOVERY`), pero no quedó verificado en vivo end-to-end.
 - Plantillas de email de Supabase (confirmación, recuperación) están con el diseño default — personalizarlas es cosmético, no bloquea funcionalidad.
-- Panel de super-admin para manejar `is_active` (Fase 15).
+- Panel de super-admin: la aprobación de cambios de plan ya está (Fase 15, primer caso de uso — ver `docs/rls-design.md`, sección "Panel de super-admin del SaaS"). Falta activar/desactivar `is_active` por falta de pago, que sigue atado a `service_role` y necesita una Netlify Function.

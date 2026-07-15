@@ -128,6 +128,7 @@
 <script type="module">
   import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
   import { listarLocales } from './js/empleados.js';
+  import { obtenerLocalActivo } from './js/localActivo.js';
   import {
     listarClientes,
     crearClienteRapido,
@@ -137,6 +138,7 @@
     registrarCobro,
   } from './js/clientes.js';
   import { obtenerTurnoAbierto } from './js/turnos.js';
+  import { montarMenu } from './js/menu.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
   const ETIQUETA_TIPO = {
@@ -171,10 +173,11 @@
     }
 
     document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
+    montarMenu(usuario);
 
     if (usuario.role === 'admin') {
       const locales = await listarLocales();
-      localIdActivo = locales[0]?.id || null;
+      localIdActivo = obtenerLocalActivo(locales);
     } else {
       localIdActivo = usuario.local_id;
     }

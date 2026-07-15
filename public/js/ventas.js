@@ -80,7 +80,12 @@ export async function registrarVenta({ turnoId, usuarioId, localId, organization
   return venta;
 }
 
-export async function listarVentas({ desde, hasta, query } = {}) {
+// usuarioId: si se pasa, filtra a las ventas de ese vendedor puntual -- lo
+// usa historial-ventas.html cuando quien mira es un empleado (seccion "menu
+// diferenciado por rol": el empleado ve "mis ventas", no las de todo el
+// local). En modo de cuenta compartida esto ya funciona bien solo, porque
+// todas las ventas de ese dia quedan cargadas con el mismo usuario_id.
+export async function listarVentas({ desde, hasta, query, usuarioId } = {}) {
   let consulta = supabase
     .from('ventas')
     // ventas tiene dos FK a usuarios (usuario_id y anulada_por) -- hay que
@@ -90,13 +95,18 @@ export async function listarVentas({ desde, hasta, query } = {}) {
 
   if (desde) consulta = consulta.gte('fecha', desde);
   if (hasta) consulta = consulta.lte('fecha', hasta);
+  if (usuarioId) consulta = consulta.eq('usuario_id', usuarioId);
 
   const { data, error } = await consulta;
   if (error) throw error;
 
-  if (!query) return data;
-  const q = query.toLowerCase();
-  return data.filter((v) => v.usuarios?.nombre?.toLowerCase().includes(q) || v.clientes?.nombre?.toLowerCase().includes(q));
+  let resultado = data;
+  if (query) {
+    const q = query.toLowerCase();
+    resultado = resultado.filter((v) => v.usuarios?.nombre?.toLowerCase().includes(q) || v.clientes?.nombre?.toLowerCase().includes(q));
+  }
+
+  return resultado;
 }
 
 export async function obtenerVentaConDetalle(id) {
@@ -110,6 +120,37 @@ export async function obtenerVentaConDetalle(id) {
   if (errorPagos) throw errorPagos;
 
   return { venta, items, pagos };
+}
+
+// Productos mas vendidos (seccion 12): agrupa venta_items por producto en un
+// rango de fechas, con filtro opcional de franja horaria (hora local, ej.
+// 8-14). Se trae el detalle y se agrupa en el cliente porque PostgREST no
+// puede filtrar por "hora del dia" de una columna timestamptz directamente.
+export async function productosMasVendidos({ desde, hasta, horaDesde, horaHasta }) {
+  const { data, error } = await supabase
+    .from('venta_items')
+    .select('cantidad, producto_id, productos(nombre), ventas!inner(fecha, estado)')
+    .gte('ventas.fecha', desde)
+    .lt('ventas.fecha', hasta)
+    .neq('ventas.estado', 'anulada');
+  if (error) throw error;
+
+  const filtrados =
+    horaDesde == null || horaHasta == null
+      ? data
+      : data.filter((it) => {
+          const hora = new Date(it.ventas.fecha).getHours();
+          return hora >= horaDesde && hora < horaHasta;
+        });
+
+  const porProducto = new Map();
+  for (const it of filtrados) {
+    const actual = porProducto.get(it.producto_id) || { nombre: it.productos?.nombre || 'Producto eliminado', cantidad: 0 };
+    actual.cantidad += Number(it.cantidad);
+    porProducto.set(it.producto_id, actual);
+  }
+
+  return [...porProducto.values()].sort((a, b) => b.cantidad - a.cantidad);
 }
 
 // Reemplaza items y pagos por completo (borra + inserta de nuevo) en vez de
