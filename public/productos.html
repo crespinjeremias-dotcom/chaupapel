@@ -2,6 +2,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Productos</title>
 <link rel="stylesheet" href="css/chaupapel.css" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#1f6f50" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<script type="module">
+  import { registrarServiceWorker } from './js/pwa.js';
+  registrarServiceWorker();
+</script>
 
 <header class="app-header">
   <div class="identidad">
@@ -18,10 +25,15 @@
         <input type="text" id="buscador" placeholder="Buscar por nombre o código de barras..." />
       </div>
       <button type="button" class="boton-chico secundario" id="btn-escanear">Escanear código</button>
+      <div class="dropdown" id="dropdown-excel">
+        <button type="button" class="boton-chico secundario" id="btn-excel-toggle">Excel ▾</button>
+        <div class="dropdown-menu" id="dropdown-excel-menu" hidden>
+          <button type="button" id="btn-exportar">Exportar</button>
+          <button type="button" id="btn-plantilla" hidden>Plantilla</button>
+          <button type="button" id="btn-importar" hidden>Importar</button>
+        </div>
+      </div>
       <button type="button" class="boton-chico primario" id="btn-nuevo" hidden>+ Nuevo producto</button>
-      <button type="button" class="boton-chico secundario" id="btn-exportar">Exportar Excel</button>
-      <button type="button" class="boton-chico secundario" id="btn-plantilla" hidden>Plantilla Excel</button>
-      <button type="button" class="boton-chico secundario" id="btn-importar" hidden>Importar Excel</button>
       <input type="file" id="input-importar" class="input-archivo" accept=".xlsx,.xls" />
     </div>
 
@@ -327,6 +339,20 @@
     document.getElementById('btn-plantilla').addEventListener('click', () => descargarPlantilla());
     document.getElementById('btn-importar').addEventListener('click', () => document.getElementById('input-importar').click());
     document.getElementById('input-importar').addEventListener('change', manejarImportacion);
+
+    // Dropdown "Excel" agrupa exportar/plantilla/importar -- mismas 3
+    // acciones de siempre, solo se juntan en un solo botón para no competir
+    // en la barra principal.
+    const dropdownExcel = document.getElementById('dropdown-excel');
+    const menuExcel = document.getElementById('dropdown-excel-menu');
+    document.getElementById('btn-excel-toggle').addEventListener('click', (e) => {
+      e.stopPropagation();
+      menuExcel.hidden = !menuExcel.hidden;
+    });
+    menuExcel.querySelectorAll('button').forEach((btn) => btn.addEventListener('click', () => (menuExcel.hidden = true)));
+    document.addEventListener('click', (e) => {
+      if (!dropdownExcel.contains(e.target)) menuExcel.hidden = true;
+    });
 
     document.getElementById('btn-escanear').addEventListener('click', () => abrirEscaner('buscador'));
     document.getElementById('btn-escanear-form').addEventListener('click', () => abrirEscaner('form'));

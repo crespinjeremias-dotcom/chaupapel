@@ -2,6 +2,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Caja</title>
 <link rel="stylesheet" href="css/chaupapel.css" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#1f6f50" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<script type="module">
+  import { registrarServiceWorker } from './js/pwa.js';
+  registrarServiceWorker();
+</script>
 
 <header class="app-header">
   <div class="identidad">
@@ -48,7 +55,7 @@
     </div>
 
     <div id="dia-cerrado-info" class="aviso" hidden></div>
-    <button type="button" class="boton-primario" id="btn-cerrar-dia">Cerrar caja del día</button>
+    <button type="button" class="boton-cierre" id="btn-cerrar-dia">Cerrar caja del día</button>
   </div>
 
   <div class="panel-seccion">
@@ -72,7 +79,7 @@
     </dl>
 
     <div id="mes-cerrado-info" class="aviso" hidden></div>
-    <button type="button" class="boton-primario" id="btn-cerrar-mes">Cerrar mes</button>
+    <button type="button" class="boton-cierre" id="btn-cerrar-mes">Cerrar mes</button>
   </div>
 
   <div class="panel-seccion">

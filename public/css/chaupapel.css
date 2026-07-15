@@ -139,6 +139,31 @@ button {
   padding: 8px 14px;
 }
 
+/* Acciones de cierre importantes (cerrar turno / caja del dia / mes):
+   mismo tratamiento visual para las tres, para que se lean como la misma
+   clase de accion en vez de estilos sueltos por pantalla. */
+.boton-cierre {
+  display: inline-block;
+  width: auto;
+  padding: 10px 18px;
+  background: var(--color-primario);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.boton-cierre:hover:not(:disabled) {
+  background: var(--color-primario-hover);
+}
+
+.boton-cierre:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .boton-peligro {
   display: block;
   width: 100%;
@@ -231,13 +256,15 @@ button {
 
 .app-header {
   background: var(--color-superficie);
-  border-bottom: 1px solid var(--color-borde);
-  padding: 16px 24px;
+  box-shadow: var(--sombra-1);
+  padding: 10px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
+  position: relative;
+  z-index: 1;
 }
 
 .app-header .identidad h1 {
@@ -275,11 +302,23 @@ button {
   gap: 20px;
 }
 
+.tarjeta-dashboard {
+  padding: 18px 20px;
+}
+
+.tarjeta-dashboard h2 {
+  margin: 0 0 8px;
+}
+
+.tarjeta-dashboard p.texto-suave {
+  margin: 0 0 10px;
+}
+
 .tarjeta-dashboard dl.lista-metricas {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .lista-metricas > div {
@@ -287,6 +326,7 @@ button {
   justify-content: space-between;
   align-items: baseline;
   gap: 12px;
+  padding: 2px 0;
 }
 
 .lista-metricas dt {
@@ -409,7 +449,7 @@ button {
 /* Paginas de modulo (mas anchas que el panel) ----------------------- */
 
 .app-main.ancho {
-  max-width: 1200px;
+  max-width: 1400px;
 }
 
 .app-header .identidad a {
@@ -476,6 +516,46 @@ button {
 .boton-chico:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+/* Dropdown (agrupa botones relacionados, ej. las 3 acciones de Excel) ---- */
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--color-superficie);
+  border-radius: 8px;
+  box-shadow: var(--sombra-2);
+  min-width: 170px;
+  z-index: 30;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dropdown-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 10px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--color-texto);
+}
+
+.dropdown-menu button:hover {
+  background: var(--color-fondo);
 }
 
 /* Tabla --------------------------------------------------------------- */

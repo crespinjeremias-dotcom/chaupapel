@@ -36,3 +36,28 @@ export async function rechazarSolicitud(id) {
   const { error } = await supabase.rpc('rechazar_solicitud_plan', { p_solicitud_id: id });
   if (error) throw error;
 }
+
+// Listado de todas las organizaciones: esto SI se puede leer directo con
+// RLS (policy organizations_select_superadmin), no hace falta la Netlify
+// Function -- esa function solo hace falta para escribir is_active.
+export async function listarOrganizaciones() {
+  const { data, error } = await supabase.from('organizations').select('id, nombre, plan, is_active, created_at').order('nombre');
+  if (error) throw error;
+  return data;
+}
+
+// activar/desactivar si pasa por la Netlify Function: es la unica columna
+// que el trigger prevent_is_active_change bloquea salvo con la service role
+// key (ver netlify/functions/toggle-organizacion.js).
+export async function alternarOrganizacionActiva(organizationId, activo) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  const resp = await fetch('/.netlify/functions/toggle-organizacion', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ organizationId, activo }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || 'No se pudo actualizar la organización.');
+  return data;
+}

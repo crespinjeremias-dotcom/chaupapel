@@ -2,6 +2,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Panel del sistema</title>
 <link rel="stylesheet" href="css/chaupapel.css" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#1f6f50" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<script type="module">
+  import { registrarServiceWorker } from './js/pwa.js';
+  registrarServiceWorker();
+</script>
 
 <header class="app-header">
   <div class="identidad">
@@ -14,7 +21,7 @@
 <main class="app-main ancho">
   <div class="tabs-pago" id="tabs-superadmin">
     <button type="button" class="activo" id="tab-cambios-plan">Cambios de plan</button>
-    <button type="button" disabled title="Todavía no está construido">Organizaciones (próximamente)</button>
+    <button type="button" id="tab-organizaciones">Organizaciones</button>
     <button type="button" disabled title="Todavía no está construido">Suscripciones y cobros (próximamente)</button>
   </div>
 
@@ -58,11 +65,39 @@
       </div>
     </div>
   </div>
+
+  <div id="seccion-organizaciones" hidden>
+    <div class="panel-seccion">
+      <h2>Organizaciones</h2>
+      <p class="mensaje-error" id="error-organizaciones" hidden></p>
+      <div class="tabla-contenedor">
+        <table class="tabla" id="tabla-organizaciones" hidden>
+          <thead>
+            <tr>
+              <th>Organización</th>
+              <th>Plan</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-organizaciones"></tbody>
+        </table>
+        <p class="texto-suave" id="organizaciones-vacio">No hay organizaciones todavía.</p>
+      </div>
+    </div>
+  </div>
 </main>
 
 <script type="module">
   import { requireSession, obtenerSuperAdminActual, logout } from './js/auth.js';
-  import { listarSolicitudesPendientes, listarHistorialSolicitudes, aprobarSolicitud, rechazarSolicitud } from './js/superadmin.js';
+  import {
+    listarSolicitudesPendientes,
+    listarHistorialSolicitudes,
+    aprobarSolicitud,
+    rechazarSolicitud,
+    listarOrganizaciones,
+    alternarOrganizacionActiva,
+  } from './js/superadmin.js';
   import { PLAN_LABEL } from './js/planes.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
@@ -87,7 +122,18 @@
 
     document.getElementById('superadmin-nombre').textContent = superAdmin.nombre;
 
+    document.getElementById('tab-cambios-plan').addEventListener('click', () => cambiarTab('cambios-plan'));
+    document.getElementById('tab-organizaciones').addEventListener('click', () => cambiarTab('organizaciones'));
+
     await Promise.all([cargarPendientes(), cargarHistorial()]);
+  }
+
+  function cambiarTab(tab) {
+    document.getElementById('tab-cambios-plan').classList.toggle('activo', tab === 'cambios-plan');
+    document.getElementById('tab-organizaciones').classList.toggle('activo', tab === 'organizaciones');
+    document.getElementById('seccion-cambios-plan').hidden = tab !== 'cambios-plan';
+    document.getElementById('seccion-organizaciones').hidden = tab !== 'organizaciones';
+    if (tab === 'organizaciones') cargarOrganizaciones();
   }
 
   async function cargarPendientes() {
@@ -172,6 +218,57 @@
         </tr>`
       )
       .join('');
+  }
+
+  async function cargarOrganizaciones() {
+    const errorEl = document.getElementById('error-organizaciones');
+    mostrarError(errorEl, '');
+    try {
+      const organizaciones = await listarOrganizaciones();
+      const tabla = document.getElementById('tabla-organizaciones');
+      const vacio = document.getElementById('organizaciones-vacio');
+
+      if (organizaciones.length === 0) {
+        tabla.hidden = true;
+        vacio.hidden = false;
+        return;
+      }
+      tabla.hidden = false;
+      vacio.hidden = true;
+
+      document.getElementById('tbody-organizaciones').innerHTML = organizaciones
+        .map(
+          (o) => `
+          <tr>
+            <td>${escapeHtml(o.nombre)}</td>
+            <td>${PLAN_LABEL[o.plan]}</td>
+            <td><span class="etiqueta estado-${o.is_active ? 'activa' : 'anulada'}">${o.is_active ? 'Activa' : 'Suspendida'}</span></td>
+            <td>
+              <button type="button" class="boton-chico ${o.is_active ? 'peligro' : 'primario'}" data-toggle-org="${o.id}" data-activo="${o.is_active}">
+                ${o.is_active ? 'Suspender' : 'Reactivar'}
+              </button>
+            </td>
+          </tr>`
+        )
+        .join('');
+
+      document.getElementById('tbody-organizaciones').querySelectorAll('[data-toggle-org]').forEach((btn) =>
+        btn.addEventListener('click', () => alternarOrganizacion(btn.dataset.toggleOrg, btn.dataset.activo === 'true'))
+      );
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function alternarOrganizacion(organizationId, activoActual) {
+    const errorEl = document.getElementById('error-organizaciones');
+    mostrarError(errorEl, '');
+    try {
+      await alternarOrganizacionActiva(organizationId, !activoActual);
+      await cargarOrganizaciones();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
   }
 
   iniciar();

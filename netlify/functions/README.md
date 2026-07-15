@@ -6,6 +6,23 @@ Funciones serverless de Netlify, usadas para lo que no puede (o no debe) resolve
 - Envío de email de notificación de cierre de caja (sección 11, plan Completo).
 - Operaciones que requieran la **service role key** de Supabase (bypasea RLS por completo), como activar/desactivar una organización (`organizations.is_active`, sección 16) — ver el trigger `prevent_is_active_change`.
 
-Nada acá todavía — se implementa junto con el módulo de Notificaciones (Fase 9) y el resto del panel de super-admin (Fase 15).
+## `toggle-organizacion.js`
 
-Nota: no todo el panel de super-admin depende de esto. La aprobación de cambios de plan (primer caso de uso de Fase 15) se resolvió sin Netlify Functions, con RLS (tabla `super_admins` + función `is_super_admin()` + policies aditivas) — ver `docs/rls-design.md`. Esta carpeta es para lo que RLS específicamente no puede resolver, como `is_active`.
+Activa/desactiva `organizations.is_active`. Valida el JWT del caller contra
+`super_admins` usando la service role key (bypasea RLS a propósito, por eso
+la validación manual antes de tocar nada) y recién ahí hace el update.
+
+Variables de entorno que necesita, configuradas en Netlify (Site settings →
+Environment variables), **nunca** en el código ni en el repo:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY` (la service role key real — no la anon key
+  que ya usa `public/js/supabaseClient.js`)
+
+Pendiente: envío de emails de alerta de stock bajo y de cierre de caja
+(sección 11, Fase 9) — necesita además elegir un servicio de correo.
+
+Nota: no todo el panel de super-admin depende de Netlify Functions. La
+aprobación de cambios de plan se resolvió sin esto, con RLS (tabla
+`super_admins` + función `is_super_admin()` + policies aditivas) — ver
+`docs/rls-design.md`. Esta carpeta es solo para lo que RLS específicamente
+no puede resolver, como `is_active`.
