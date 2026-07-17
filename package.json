@@ -1,0 +1,9 @@
+{
+  "name": "chaupapel",
+  "private": true,
+  "type": "module",
+  "description": "Dependencias de las Netlify Functions (netlify/functions/). El resto del proyecto es HTML/CSS/JS plano servido como sitio estático, sin build propio.",
+  "dependencies": {
+    "@supabase/supabase-js": "2.110.5"
+  }
+}

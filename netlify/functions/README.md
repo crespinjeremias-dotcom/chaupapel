@@ -18,6 +18,14 @@ Environment variables), **nunca** en el código ni en el repo:
 - `SUPABASE_SERVICE_ROLE_KEY` (la service role key real — no la anon key
   que ya usa `public/js/supabaseClient.js`)
 
+Las dependencias de las funciones (ej. `@supabase/supabase-js`) van en el
+`package.json` de la **raíz del proyecto**, no en uno propio de esta carpeta
+-- Netlify no instala automáticamente el `package.json` de una función salvo
+que se agregue un plugin aparte, así que la raíz es el lugar correcto (y el
+que recomienda el propio mensaje de error de Netlify si esto se rompe).
+Cualquier función nueva que se agregue acá debe usar esa misma dependencia
+compartida, no declarar la suya.
+
 Pendiente: envío de emails de alerta de stock bajo y de cierre de caja
 (sección 11, Fase 9) — necesita además elegir un servicio de correo.
 
