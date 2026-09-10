@@ -99,18 +99,23 @@
       </div>
     </div>
     <p class="mensaje-error" id="error-exportar" hidden></p>
-    <div class="acciones-exportar">
-      <button type="button" class="boton-secundario boton-inline" id="btn-exportar-ventas">Exportar ventas del mes</button>
-      <button type="button" class="boton-secundario boton-inline" id="btn-exportar-cierres">Exportar cierres de caja</button>
-      <button type="button" class="boton-secundario boton-inline" id="btn-exportar-stock">Exportar stock actual</button>
+    <div class="dropdown" id="dropdown-excel">
+      <button type="button" class="boton-chico secundario" id="btn-excel-toggle">Excel ▾</button>
+      <div class="dropdown-menu" id="dropdown-excel-menu" hidden>
+        <button type="button" id="btn-exportar-ventas">Exportar ventas del mes</button>
+        <button type="button" id="btn-exportar-cierres">Exportar cierres de caja</button>
+        <button type="button" id="btn-exportar-stock">Exportar stock actual</button>
+      </div>
     </div>
   </div>
 
   <div class="panel-seccion">
     <h2>Otros reportes</h2>
-    <a class="boton-secundario boton-inline" href="clientes.html">Cuenta corriente de clientes</a>
-    <a class="boton-secundario boton-inline" href="caja.html">Historial de caja</a>
-    <a class="boton-secundario boton-inline" href="historial-ventas.html">Historial de ventas</a>
+    <div class="fila-botones">
+      <a class="boton-secundario boton-inline" href="clientes.html">Cuenta corriente de clientes</a>
+      <a class="boton-secundario boton-inline" href="caja.html">Historial de caja</a>
+      <a class="boton-secundario boton-inline" href="historial-ventas.html">Historial de ventas</a>
+    </div>
   </div>
 </main>
 
@@ -185,6 +190,19 @@
     document.getElementById('btn-exportar-ventas').addEventListener('click', manejarExportarVentas);
     document.getElementById('btn-exportar-cierres').addEventListener('click', manejarExportarCierres);
     document.getElementById('btn-exportar-stock').addEventListener('click', manejarExportarStock);
+
+    // Dropdown "Excel" agrupa las 3 exportaciones en un solo boton -- mismo
+    // patron que productos.html, para no tener 3 botones sueltos compitiendo.
+    const dropdownExcel = document.getElementById('dropdown-excel');
+    const menuExcel = document.getElementById('dropdown-excel-menu');
+    document.getElementById('btn-excel-toggle').addEventListener('click', (e) => {
+      e.stopPropagation();
+      menuExcel.hidden = !menuExcel.hidden;
+    });
+    menuExcel.querySelectorAll('button').forEach((btn) => btn.addEventListener('click', () => (menuExcel.hidden = true)));
+    document.addEventListener('click', (e) => {
+      if (!dropdownExcel.contains(e.target)) menuExcel.hidden = true;
+    });
 
     // Seccion 15: "productos mas vendidos" es Plan Completo.
     if (tieneFeature(usuario, 'estadisticas')) {
