@@ -194,7 +194,7 @@
     document.getElementById('seccion-pendientes').hidden = false;
     document.getElementById('seccion-equipo').hidden = false;
 
-    cargarAlertas();
+    cargarAlertas(usuario);
     cargarCajaHoy();
     cargarResumenMes();
     iniciarSeccionPlan(usuario);
@@ -251,7 +251,7 @@
   // Alertas: reusa exactamente las mismas condiciones que ya se usan en
   // productos.html (stock bajo, por vencer) y proveedores.html (reclamos
   // pendientes) -- solo se muestran juntas y resumidas aca.
-  async function cargarAlertas() {
+  async function cargarAlertas(usuario) {
     try {
       const [productos, reclamos] = await Promise.all([listarProductos({ soloActivos: true }), listarReclamosPendientes()]);
 
