@@ -593,6 +593,7 @@
     mostrarError(document.getElementById('error-reponer'), '');
     document.getElementById('reponer-contexto').textContent = `${producto.nombre} — proveedor: ${proveedorEnFicha.nombre}`;
     document.getElementById('form-reponer').reset();
+    document.getElementById('rp-cantidad').step = producto.permite_cantidad_decimal === false ? '1' : '0.01';
     document.getElementById('modal-reponer').hidden = false;
   }
 
@@ -600,6 +601,11 @@
     e.preventDefault();
     const errorEl = document.getElementById('error-reponer');
     mostrarError(errorEl, '');
+    const cantidad = Number(document.getElementById('rp-cantidad').value);
+    if (productoParaReponer.permite_cantidad_decimal === false && !Number.isInteger(cantidad)) {
+      mostrarError(errorEl, 'Este producto se vende por unidad, no admite cantidades decimales.');
+      return;
+    }
     try {
       await registrarReposicion({
         productoId: productoParaReponer.id,
@@ -607,7 +613,7 @@
         localId: proveedorEnFicha.local_id,
         organizationId: proveedorEnFicha.organization_id,
         usuarioId: usuario.id,
-        cantidad: Number(document.getElementById('rp-cantidad').value),
+        cantidad,
         precioCosto: Number(document.getElementById('rp-precio-costo').value),
       });
       document.getElementById('modal-reponer').hidden = true;

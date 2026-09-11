@@ -23,60 +23,25 @@ export function puedeEditarItems(venta, usuario) {
   return !venta.es_fiado && puedeModificar(venta, usuario);
 }
 
-export async function registrarVenta({ turnoId, usuarioId, localId, organizationId, items, esFiado, clienteId, pagos }) {
-  const total = items.reduce((acc, it) => acc + it.cantidad * it.precioUnitario, 0);
-
-  const { data: venta, error: errorVenta } = await supabase
-    .from('ventas')
-    .insert({
-      local_id: localId,
-      organization_id: organizationId,
-      turno_id: turnoId,
-      usuario_id: usuarioId,
-      cliente_id: esFiado ? clienteId : null,
-      es_fiado: esFiado,
-      total,
-    })
-    .select()
-    .single();
-  if (errorVenta) throw errorVenta;
-
-  const { error: errorItems } = await supabase.from('venta_items').insert(
-    items.map((it) => ({
-      venta_id: venta.id,
-      producto_id: it.productoId,
-      local_id: localId,
-      organization_id: organizationId,
-      cantidad: it.cantidad,
-      precio_unitario: it.precioUnitario,
-    }))
-  );
-  if (errorItems) throw errorItems;
-
-  if (esFiado) {
-    const { error: errorFiado } = await supabase.from('cuenta_corriente_movimientos').insert({
-      cliente_id: clienteId,
-      local_id: localId,
-      organization_id: organizationId,
-      tipo: 'fiado_nuevo',
-      monto: total,
-      venta_id: venta.id,
-      usuario_id: usuarioId,
-    });
-    if (errorFiado) throw errorFiado;
-  } else {
-    const { error: errorPagos } = await supabase.from('venta_pagos').insert(
-      pagos.map((p) => ({
-        venta_id: venta.id,
-        local_id: localId,
-        organization_id: organizationId,
-        metodo: p.metodo,
-        monto: p.monto,
-      }))
-    );
-    if (errorPagos) throw errorPagos;
-  }
-
+// Las 3 escrituras (venta, items, pagos/fiado) viven en un solo RPC
+// transaccional (registrar_venta) -- ya hubo un caso real de una venta que
+// no se completo (fallo de red a mitad de camino) y quedo igual registrada
+// en el historial, sin items ni pago. Con inserts sueltos, un fallo entre
+// el paso 2 y el 3 puede ser peor que un registro fantasma: venta_items ya
+// descuenta stock al insertarse, asi que el stock quedaria mal aunque la
+// venta nunca se haya cobrado. El RPC hace que un fallo en cualquier paso
+// revierta todo (ver migracion 20260912093000).
+export async function registrarVenta({ turnoId, localId, organizationId, items, esFiado, clienteId, pagos }) {
+  const { data: venta, error } = await supabase.rpc('registrar_venta', {
+    p_turno_id: turnoId,
+    p_local_id: localId,
+    p_organization_id: organizationId,
+    p_items: items.map((it) => ({ productoId: it.productoId, cantidad: it.cantidad, precioUnitario: it.precioUnitario })),
+    p_es_fiado: esFiado,
+    p_cliente_id: esFiado ? clienteId : null,
+    p_pagos: esFiado ? [] : pagos.map((p) => ({ metodo: p.metodo, monto: p.monto })),
+  });
+  if (error) throw error;
   return venta;
 }
 
@@ -112,7 +77,7 @@ export async function listarVentas({ desde, hasta, query, usuarioId } = {}) {
 export async function obtenerVentaConDetalle(id) {
   const [{ data: venta, error: errorVenta }, { data: items, error: errorItems }, { data: pagos, error: errorPagos }] = await Promise.all([
     supabase.from('ventas').select('*, usuarios:usuarios!usuario_id(nombre), clientes(nombre)').eq('id', id).single(),
-    supabase.from('venta_items').select('*, productos(nombre, unidad_medida)').eq('venta_id', id).order('created_at'),
+    supabase.from('venta_items').select('*, productos(nombre, unidad_medida, permite_cantidad_decimal)').eq('venta_id', id).order('created_at'),
     supabase.from('venta_pagos').select('*').eq('venta_id', id),
   ]);
   if (errorVenta) throw errorVenta;

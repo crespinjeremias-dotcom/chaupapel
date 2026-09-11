@@ -386,6 +386,7 @@
         nombre: producto.nombre + (producto.presentacion ? ' · ' + producto.presentacion : ''),
         unidadMedida: producto.unidad_medida || '',
         stockActual: producto.stock_actual,
+        permiteCantidadDecimal: producto.permite_cantidad_decimal !== false,
         cantidad: 1,
         precioUnitario: Number(producto.precio_venta_actual),
       });
@@ -413,7 +414,7 @@
         (it, i) => `
         <tr>
           <td>${escapeHtml(it.nombre)}</td>
-          <td><input type="number" class="input-cantidad" min="0.01" max="${it.stockActual}" step="0.01" value="${it.cantidad}" data-index="${i}" /></td>
+          <td><input type="number" class="input-cantidad" min="${it.permiteCantidadDecimal ? '0.01' : '1'}" max="${it.stockActual}" step="${it.permiteCantidadDecimal ? '0.01' : '1'}" value="${it.cantidad}" data-index="${i}" /></td>
           <td>$${it.precioUnitario.toLocaleString('es-AR')}</td>
           <td>$${(it.cantidad * it.precioUnitario).toLocaleString('es-AR')}</td>
           <td><button type="button" class="boton-chico peligro" data-quitar="${i}">Quitar</button></td>
@@ -426,6 +427,7 @@
         const i = Number(e.target.dataset.index);
         let nueva = Number(e.target.value);
         if (nueva > carrito[i].stockActual) nueva = carrito[i].stockActual;
+        if (!carrito[i].permiteCantidadDecimal) nueva = Math.trunc(nueva);
         if (nueva <= 0) {
           carrito.splice(i, 1);
         } else {
@@ -511,6 +513,11 @@
 
     if (carrito.length === 0) {
       mostrarError(errorEl, 'Agregá al menos un producto al carrito.');
+      return;
+    }
+    const itemNoEntero = carrito.find((it) => !it.permiteCantidadDecimal && !Number.isInteger(it.cantidad));
+    if (itemNoEntero) {
+      mostrarError(errorEl, `${itemNoEntero.nombre} se vende por unidad, no admite cantidades decimales.`);
       return;
     }
 

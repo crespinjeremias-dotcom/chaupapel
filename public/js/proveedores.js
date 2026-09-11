@@ -48,7 +48,7 @@ export async function eliminarProveedor(id) {
 export async function listarProductosVinculados(proveedorId) {
   const { data: vinculos, error } = await supabase
     .from('producto_proveedor')
-    .select('id, precio_referencia, productos(id, nombre, presentacion, stock_actual, unidad_medida, activo, deleted_at)')
+    .select('id, precio_referencia, productos(id, nombre, presentacion, stock_actual, unidad_medida, activo, deleted_at, permite_cantidad_decimal)')
     .eq('proveedor_id', proveedorId)
     .order('created_at');
   if (error) throw error;

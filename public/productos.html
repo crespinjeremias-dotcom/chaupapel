@@ -78,6 +78,10 @@
           <input type="text" id="p-unidad" placeholder="Ej: unidad, kg, litros" />
         </div>
       </div>
+      <div class="campo-checkbox">
+        <input type="checkbox" id="p-vende-por-unidad" />
+        <label for="p-vende-por-unidad">Se vende por unidad (no permite cantidades fraccionadas)</label>
+      </div>
       <div class="campo">
         <label for="p-categoria">Categoría</label>
         <div class="campo-con-boton">
@@ -538,6 +542,7 @@
     document.getElementById('p-nombre').value = producto?.nombre || '';
     document.getElementById('p-presentacion').value = producto?.presentacion || '';
     document.getElementById('p-unidad').value = producto?.unidad_medida || '';
+    document.getElementById('p-vende-por-unidad').checked = producto ? producto.permite_cantidad_decimal === false : false;
     document.getElementById('p-categoria').value = producto?.categoria_id || '';
     document.getElementById('p-codigo-barras').value = producto?.codigo_barras || '';
     document.getElementById('p-precio').value = producto?.precio_venta_actual ?? '';
@@ -588,6 +593,7 @@
       nombre: document.getElementById('p-nombre').value.trim(),
       presentacion: document.getElementById('p-presentacion').value.trim() || null,
       unidad_medida: document.getElementById('p-unidad').value.trim() || null,
+      permite_cantidad_decimal: !document.getElementById('p-vende-por-unidad').checked,
       categoria_id: document.getElementById('p-categoria').value || null,
       codigo_barras: document.getElementById('p-codigo-barras').value.trim() || null,
       precio_venta_actual: Number(document.getElementById('p-precio').value),
@@ -645,7 +651,9 @@
     document.getElementById('ajuste-producto-nombre').textContent = producto.nombre;
     document.getElementById('ajuste-stock-actual').textContent = `${producto.stock_actual} ${producto.unidad_medida || ''}`;
     document.getElementById('a-direccion').value = 'sumar';
-    document.getElementById('a-cantidad').value = '';
+    const inputCantidad = document.getElementById('a-cantidad');
+    inputCantidad.step = producto.permite_cantidad_decimal === false ? '1' : '0.01';
+    inputCantidad.value = '';
     document.getElementById('a-motivo').value = MOTIVOS_AJUSTE[0].value;
     document.getElementById('a-comentario').value = '';
     actualizarComentarioObligatorio();
@@ -659,6 +667,10 @@
 
     const direccion = document.getElementById('a-direccion').value;
     const cantidadBase = Number(document.getElementById('a-cantidad').value);
+    if (productoParaAjuste.permite_cantidad_decimal === false && !Number.isInteger(cantidadBase)) {
+      mostrarError(errorEl, 'Este producto se vende por unidad, no admite cantidades decimales.');
+      return;
+    }
     const cantidad = direccion === 'restar' ? -cantidadBase : cantidadBase;
 
     try {
@@ -688,6 +700,7 @@
     mostrarError(errorEl, '');
     document.getElementById('reponer-contexto').textContent = producto.nombre;
     document.getElementById('form-reponer').reset();
+    document.getElementById('rp-cantidad').step = producto.permite_cantidad_decimal === false ? '1' : '0.01';
 
     const selectProveedor = document.getElementById('rp-proveedor');
     const campoProveedor = document.getElementById('campo-reponer-proveedor');
@@ -716,6 +729,11 @@
     e.preventDefault();
     const errorEl = document.getElementById('error-reponer');
     mostrarError(errorEl, '');
+    const cantidad = Number(document.getElementById('rp-cantidad').value);
+    if (productoParaReponer.permite_cantidad_decimal === false && !Number.isInteger(cantidad)) {
+      mostrarError(errorEl, 'Este producto se vende por unidad, no admite cantidades decimales.');
+      return;
+    }
     try {
       await registrarReposicion({
         productoId: productoParaReponer.id,
@@ -723,7 +741,7 @@
         localId: productoParaReponer.local_id,
         organizationId: productoParaReponer.organization_id,
         usuarioId: usuario.id,
-        cantidad: Number(document.getElementById('rp-cantidad').value),
+        cantidad,
         precioCosto: Number(document.getElementById('rp-precio-costo').value),
       });
       document.getElementById('modal-reponer').hidden = true;

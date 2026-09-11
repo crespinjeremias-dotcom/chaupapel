@@ -108,7 +108,7 @@ body {
 
 .campo label {
   display: block;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
   margin-bottom: 6px;
 }
@@ -229,7 +229,7 @@ button {
 .boton-secundario.boton-inline {
   display: inline-block;
   width: auto;
-  padding: 9px 16px;
+  padding: 10px 16px;
 }
 
 /* Acciones de cierre importantes (cerrar turno / caja del dia / mes):
@@ -297,7 +297,7 @@ button {
   flex-direction: column;
   gap: 8px;
   text-align: center;
-  font-size: 0.9rem;
+  font-size: var(--fs-base);
 }
 
 .enlaces a {
@@ -313,8 +313,8 @@ button {
   background: var(--color-error-fondo);
   color: var(--color-error);
   padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 0.88rem;
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-sm);
   margin-bottom: 16px;
 }
 
@@ -322,8 +322,8 @@ button {
   background: var(--color-exito-fondo);
   color: var(--color-exito-texto);
   padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 0.88rem;
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-sm);
   margin-bottom: 16px;
 }
 
@@ -337,8 +337,8 @@ button {
   background: var(--color-aviso-fondo);
   color: var(--color-aviso-texto);
   padding: 12px 14px;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-base);
   margin-bottom: 16px;
 }
 
@@ -352,11 +352,11 @@ button {
 .aviso .acciones button {
   flex: 1;
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: var(--radio-sm);
   border: 1px solid var(--color-aviso-texto);
   background: transparent;
   color: var(--color-aviso-texto);
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
   min-width: 140px;
 }
@@ -452,13 +452,13 @@ button {
 
 .lista-metricas dt {
   color: var(--color-texto-suave);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
 }
 
 .lista-metricas dd {
   margin: 0;
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: var(--fs-lg);
   white-space: nowrap;
 }
 
@@ -472,7 +472,7 @@ button {
 }
 
 .lista-alertas li {
-  font-size: 0.9rem;
+  font-size: var(--fs-base);
   padding: 8px 0;
 }
 
@@ -503,7 +503,7 @@ button {
 }
 
 .panel-seccion h2 {
-  font-size: 1.05rem;
+  font-size: var(--fs-lg);
   margin: 0 0 12px;
 }
 
@@ -522,7 +522,7 @@ button {
   align-items: center;
   padding: 10px 12px;
   background: var(--color-fondo);
-  border-radius: 8px;
+  border-radius: var(--radio-sm);
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -531,15 +531,15 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--color-texto-suave);
 }
 
 .etiqueta {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 0.75rem;
+  border-radius: var(--radio-full);
+  font-size: var(--fs-xs);
   font-weight: 600;
   background: var(--color-neutro-fondo);
   color: var(--color-texto-suave);
@@ -557,18 +557,18 @@ button {
 
 .codigo-generado {
   font-family: ui-monospace, monospace;
-  font-size: 1.3rem;
+  font-size: var(--fs-xl);
   letter-spacing: 2px;
   background: var(--color-fondo);
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--radio-sm);
   text-align: center;
   margin: 12px 0;
 }
 
 .texto-suave {
   color: var(--color-texto-suave);
-  font-size: 0.9rem;
+  font-size: var(--fs-base);
 }
 
 [hidden] {
@@ -583,7 +583,7 @@ button {
 
 .app-header .identidad a {
   color: var(--color-texto-suave);
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   text-decoration: none;
 }
 
@@ -614,9 +614,9 @@ button {
 }
 
 .boton-chico {
-  padding: 9px 14px;
+  padding: 10px 14px;
   border-radius: var(--radio-sm);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -716,7 +716,7 @@ button {
 .tabla th,
 .tabla td {
   text-align: left;
-  padding: 11px 12px;
+  padding: 12px;
   border-bottom: 1px solid var(--color-borde);
   white-space: nowrap;
 }
@@ -795,7 +795,7 @@ button {
 .modal {
   background: var(--color-superficie);
   border-radius: var(--radio-lg);
-  padding: 28px;
+  padding: var(--esp-8);
   width: 100%;
   max-width: 560px;
   margin: auto 0;
@@ -856,8 +856,8 @@ button {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--color-borde);
-  border-radius: 8px;
-  font-size: 1rem;
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-md);
   font-family: inherit;
   resize: vertical;
   min-height: 70px;
@@ -865,7 +865,7 @@ button {
 
 .campo .texto-ayuda {
   color: var(--color-texto-suave);
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   margin: 4px 0 0;
 }
 
@@ -894,15 +894,15 @@ button {
 .campo-valor-solo-lectura {
   padding: 10px 12px;
   background: var(--color-fondo);
-  border-radius: 8px;
-  font-size: 1rem;
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-md);
 }
 
 /* Escaner de camara ------------------------------------------------------ */
 
 .escaner-contenedor {
   position: relative;
-  border-radius: 8px;
+  border-radius: var(--radio-sm);
   overflow: hidden;
   background: #000;
 }
@@ -925,7 +925,7 @@ button {
   width: 78%;
   height: 34%;
   border: 3px solid #ffffffcc;
-  border-radius: 6px;
+  border-radius: var(--radio-sm);
   box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35);
   pointer-events: none;
 }
@@ -948,13 +948,13 @@ button {
 }
 
 .ficha-seccion h3 {
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
   margin: 0 0 10px;
 }
 
 .ficha-seccion .subtitulo-ficha {
   color: var(--color-texto-suave);
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   margin: -6px 0 12px;
 }
 
@@ -973,7 +973,7 @@ button {
   align-items: center;
   padding: 10px 12px;
   background: var(--color-fondo);
-  border-radius: 8px;
+  border-radius: var(--radio-sm);
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -1049,9 +1049,9 @@ button {
   background: var(--color-exito-fondo);
   color: var(--color-exito-texto);
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: var(--radio-sm);
   margin-bottom: 16px;
-  font-size: 0.9rem;
+  font-size: var(--fs-base);
 }
 
 .pantalla-turno-cerrado {
@@ -1079,7 +1079,7 @@ button {
   left: 0;
   right: 0;
   background: var(--color-superficie);
-  border-radius: 8px;
+  border-radius: var(--radio-sm);
   margin-top: 4px;
   max-height: 280px;
   overflow-y: auto;
@@ -1096,7 +1096,7 @@ button {
   border: none;
   border-bottom: 1px solid var(--color-borde);
   text-align: left;
-  font-size: 0.9rem;
+  font-size: var(--fs-base);
 }
 
 .buscador-resultados button:last-child {
@@ -1110,27 +1110,27 @@ button {
 .buscador-resultados .sin-resultados {
   padding: 10px 14px;
   color: var(--color-texto-suave);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
 }
 
 .carrito-vacio {
   text-align: center;
   color: var(--color-texto-suave);
-  padding: 30px 0;
+  padding: var(--esp-8) 0;
 }
 
 .tabla input.input-cantidad {
   width: 70px;
   padding: 6px 8px;
   border: 1px solid var(--color-borde);
-  border-radius: 6px;
+  border-radius: var(--radio-sm);
 }
 
 .total-carrito {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 1.2rem;
+  font-size: var(--fs-xl);
   font-weight: 700;
   padding: 14px 0;
   border-top: 1px solid var(--color-borde);
@@ -1146,7 +1146,7 @@ button {
 .tabs-pago button {
   flex: 1;
   padding: 10px;
-  border-radius: 8px;
+  border-radius: var(--radio-sm);
   border: 1px solid var(--color-borde);
   background: var(--color-fondo);
   color: var(--color-texto-suave);
@@ -1177,7 +1177,7 @@ button {
   align-items: center;
   padding: 10px 12px;
   background: var(--color-fondo);
-  border-radius: 8px;
+  border-radius: var(--radio-sm);
   margin-bottom: 12px;
 }
 
@@ -1192,7 +1192,7 @@ button {
   justify-content: space-between;
   padding: 8px 0;
   border-bottom: 1px solid var(--color-borde);
-  font-size: 0.9rem;
+  font-size: var(--fs-base);
 }
 
 .etiqueta.estado-anulada {
@@ -1228,19 +1228,19 @@ button {
   flex: 1;
   min-width: 180px;
   background: var(--color-fondo);
-  border-radius: 8px;
+  border-radius: var(--radio-sm);
   padding: 14px 16px;
 }
 
 .resumen-saldos .tarjeta-resumen .etiqueta-resumen {
   display: block;
   color: var(--color-texto-suave);
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   margin-bottom: 4px;
 }
 
 .resumen-saldos .tarjeta-resumen .valor-resumen {
-  font-size: 1.3rem;
+  font-size: var(--fs-xl);
   font-weight: 700;
 }
 
@@ -1274,7 +1274,7 @@ button {
   align-items: center;
   padding: 10px 12px;
   background: var(--color-fondo);
-  border-radius: 8px;
+  border-radius: var(--radio-sm);
   flex-wrap: wrap;
   gap: 6px;
 }
@@ -1322,7 +1322,7 @@ button {
 }
 
 .comprobante h1 {
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
   text-align: center;
   margin: 0 0 4px;
 }
@@ -1330,7 +1330,7 @@ button {
 .comprobante .c-fecha,
 .comprobante .c-vendedor {
   text-align: center;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--color-texto-suave);
   margin: 2px 0;
 }
@@ -1339,7 +1339,7 @@ button {
   width: 100%;
   border-collapse: collapse;
   margin: 16px 0;
-  font-size: 0.82rem;
+  font-size: var(--fs-sm);
 }
 
 .c-tabla-items th,
@@ -1350,7 +1350,7 @@ button {
 
 .c-tabla-items thead th {
   border-bottom: 1px dashed var(--color-borde-fuerte);
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   color: var(--color-texto-suave);
 }
@@ -1358,7 +1358,7 @@ button {
 .c-total {
   display: flex;
   justify-content: space-between;
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
   font-weight: 700;
   padding-top: 10px;
   border-top: 1px dashed var(--color-borde-fuerte);
@@ -1366,13 +1366,13 @@ button {
 
 .c-pago {
   margin: 10px 0 0;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   text-align: center;
 }
 
 .c-leyenda {
   margin-top: 18px;
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
   text-align: center;
   color: var(--color-texto-suave);
   border-top: 1px dashed var(--color-borde-fuerte);
@@ -1401,7 +1401,7 @@ button {
 #dev-campos-cambio,
 #dev-diferencia-bloque {
   background: var(--color-fondo);
-  border-radius: 8px;
+  border-radius: var(--radio-sm);
   padding: 14px;
   margin-bottom: 16px;
 }
@@ -1414,7 +1414,7 @@ button {
 /* Caja (cierre de turno / dia / mes) ------------------------------------ */
 
 .subtitulo-historial {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--color-texto-suave);
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -1486,14 +1486,14 @@ button {
 }
 
 .menu-drawer-header h2 {
-  font-size: 1rem;
+  font-size: var(--fs-md);
   margin: 0;
 }
 
 .menu-drawer-header button {
   background: none;
   border: none;
-  font-size: 1.3rem;
+  font-size: var(--fs-xl);
   line-height: 1;
   color: var(--color-texto-suave);
   padding: 4px;
@@ -1505,7 +1505,7 @@ button {
 
 .menu-selector-local label {
   display: block;
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   color: var(--color-texto-suave);
   margin-bottom: 4px;
 }
@@ -1514,8 +1514,8 @@ button {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--color-borde);
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-base);
   background: var(--color-fondo);
 }
 
@@ -1530,12 +1530,12 @@ button {
 .menu-lista li a,
 .menu-lista li .menu-item-proximamente {
   display: block;
-  padding: 13px 18px;
+  padding: 14px 18px;
   margin: 2px 8px;
-  border-radius: 8px;
+  border-radius: var(--radio-sm);
   color: var(--color-texto);
   text-decoration: none;
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
 }
 
 .menu-lista li a:hover {
@@ -1560,12 +1560,12 @@ button {
   width: calc(100% - 16px);
   margin: 2px 8px;
   text-align: left;
-  padding: 13px 10px;
-  border-radius: 8px;
+  padding: 14px 10px;
+  border-radius: var(--radio-sm);
   background: none;
   border: none;
   color: var(--color-error);
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
 }
 
 .menu-lista li.menu-cerrar-sesion button:hover {
