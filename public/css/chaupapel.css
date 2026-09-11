@@ -826,18 +826,18 @@ button {
   }
 }
 
-.modal .campo-checkbox {
+.campo-checkbox {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 16px;
 }
 
-.modal .campo-checkbox input {
+.campo-checkbox input {
   width: auto;
 }
 
-.modal .campo-checkbox label {
+.campo-checkbox label {
   margin: 0;
 }
 

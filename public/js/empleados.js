@@ -1,9 +1,19 @@
 import { supabase } from './supabaseClient.js';
 
 export async function listarLocales() {
-  const { data, error } = await supabase.from('locales').select('id, nombre').order('nombre');
+  const { data, error } = await supabase
+    .from('locales')
+    .select('id, nombre, alerta_stock_email, alerta_cierre_caja_email')
+    .order('nombre');
   if (error) throw error;
   return data;
+}
+
+// Toggles de email por local (seccion 11, Fase 9): alerta_stock_email y
+// alerta_cierre_caja_email. Se editan desde "Mis locales" en panel.html.
+export async function actualizarLocal(localId, cambios) {
+  const { error } = await supabase.from('locales').update(cambios).eq('id', localId);
+  if (error) throw error;
 }
 
 // Alta de un local adicional (seccion 1 y 13, multi-local): la RLS ya exige

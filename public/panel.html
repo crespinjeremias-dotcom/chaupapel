@@ -128,7 +128,7 @@
 
 <script type="module">
   import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
-  import { listarLocales, listarUsuariosOrganizacion, generarInvitacion, aprobarEmpleado, crearLocal } from './js/empleados.js';
+  import { listarLocales, listarUsuariosOrganizacion, generarInvitacion, aprobarEmpleado, crearLocal, actualizarLocal } from './js/empleados.js';
   import { listarProductos } from './js/productos.js';
   import { listarReclamosPendientes } from './js/proveedores.js';
   import { obtenerResumenCajaHoy, obtenerResumenMes } from './js/dashboard.js';
@@ -382,7 +382,7 @@
   // admin baje de plan despues (no se borra nada), solo se bloquea agregar
   // uno nuevo.
   function iniciarSeccionLocales(usuario, locales) {
-    renderListaLocales(locales);
+    renderListaLocales(locales, usuario);
 
     const puedeAgregar = tieneFeature(usuario, 'multi_local');
     document.getElementById('nuevo-local-form').hidden = !puedeAgregar;
@@ -400,7 +400,7 @@
         const nuevo = await crearLocal({ nombre, organizationId: usuario.organization_id });
         locales.push(nuevo);
         locales.sort((a, b) => a.nombre.localeCompare(b.nombre));
-        renderListaLocales(locales);
+        renderListaLocales(locales, usuario);
         document.getElementById('input-nuevo-local').value = '';
       } catch (err) {
         mostrarError(errorEl, err.message);
@@ -408,10 +408,59 @@
     });
   }
 
-  function renderListaLocales(locales) {
-    document.getElementById('lista-locales').innerHTML = locales
-      .map((l) => `<li><span>${escapeHtml(l.nombre)}</span></li>`)
+  // Toggles de email por local (seccion 11, Fase 9): cada uno gateado por su
+  // propia feature de plan (email_stock_bajo = Medio, email_cierre_caja =
+  // Completo) -- si el admin bajo de plan despues de activarlo, el checkbox
+  // deja de mostrarse pero la columna en la base no se toca sola (mismo
+  // criterio que "un local ya existente se sigue viendo" mas arriba).
+  function renderListaLocales(locales, usuario) {
+    const puedeStockEmail = tieneFeature(usuario, 'email_stock_bajo');
+    const puedeCierreEmail = tieneFeature(usuario, 'email_cierre_caja');
+
+    const lista = document.getElementById('lista-locales');
+    lista.innerHTML = locales
+      .map((l) => {
+        const checks = [];
+        if (puedeStockEmail) {
+          checks.push(`
+            <span class="campo-checkbox">
+              <input type="checkbox" id="chk-stock-${l.id}" data-toggle-stock="${l.id}" ${l.alerta_stock_email ? 'checked' : ''} />
+              <label for="chk-stock-${l.id}">Stock bajo por email</label>
+            </span>`);
+        }
+        if (puedeCierreEmail) {
+          checks.push(`
+            <span class="campo-checkbox">
+              <input type="checkbox" id="chk-cierre-${l.id}" data-toggle-cierre="${l.id}" ${l.alerta_cierre_caja_email ? 'checked' : ''} />
+              <label for="chk-cierre-${l.id}">Cierre de caja por email</label>
+            </span>`);
+        }
+        return `<li><span>${escapeHtml(l.nombre)}</span>${checks.join('')}</li>`;
+      })
       .join('');
+
+    const errorEl = document.getElementById('error-locales');
+    const manejarToggle = (atributo, campo) => {
+      lista.querySelectorAll(`[${atributo}]`).forEach((input) => {
+        input.addEventListener('change', async () => {
+          mostrarError(errorEl, '');
+          const localId = input.getAttribute(atributo);
+          input.disabled = true;
+          try {
+            await actualizarLocal(localId, { [campo]: input.checked });
+            const local = locales.find((l) => l.id === localId);
+            if (local) local[campo] = input.checked;
+          } catch (err) {
+            input.checked = !input.checked;
+            mostrarError(errorEl, err.message);
+          } finally {
+            input.disabled = false;
+          }
+        });
+      });
+    };
+    manejarToggle('data-toggle-stock', 'alerta_stock_email');
+    manejarToggle('data-toggle-cierre', 'alerta_cierre_caja_email');
   }
 
   async function cargarListasUsuarios(locales) {

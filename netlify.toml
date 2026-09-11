@@ -4,3 +4,12 @@
 
 [functions]
   node_bundler = "esbuild"
+
+# Digest diario de stock bajo (seccion 11, Fase 9): 12:00 UTC = 9am en
+# Argentina (UTC-3). No pude confirmar esta sintaxis contra la
+# documentacion oficial de Netlify desde este entorno (sin acceso a
+# internet) -- verificar en el dashboard de Netlify, despues del primer
+# deploy, que el schedule haya quedado registrado (Site settings -> Functions
+# -> alertas-stock-email deberia mostrar el cron).
+[functions."alertas-stock-email"]
+  schedule = "0 12 * * *"

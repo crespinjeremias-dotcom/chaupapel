@@ -125,6 +125,24 @@ export async function cerrarCajaDelDia({ localId, organizationId, fechaStr, usua
   if (error) throw error;
 }
 
+// Dispara la notificacion por email del cierre del dia (seccion 11, Fase 9).
+// Se llama despues de que cerrarCajaDelDia ya confirmo el cierre -- si esto
+// falla (falta configurar Resend, el local no tiene el toggle activado,
+// etc.) no debe interpretarse como que el cierre en si fallo, por eso quien
+// llama la trata como best-effort (ver comentario en caja.html).
+export async function notificarCierreCaja({ localId, fecha }) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  const resp = await fetch('/.netlify/functions/notificar-cierre-caja', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ localId, fecha }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || 'No se pudo notificar el cierre de caja.');
+  return data;
+}
+
 export async function listarCierresDiarios(localId) {
   const { data, error } = await supabase.from('cierres_diarios').select('*').eq('local_id', localId).order('fecha', { ascending: false });
   if (error) throw error;

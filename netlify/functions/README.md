@@ -26,8 +26,42 @@ que recomienda el propio mensaje de error de Netlify si esto se rompe).
 Cualquier función nueva que se agregue acá debe usar esa misma dependencia
 compartida, no declarar la suya.
 
-Pendiente: envío de emails de alerta de stock bajo y de cierre de caja
-(sección 11, Fase 9) — necesita además elegir un servicio de correo.
+## `notificar-cierre-caja.js`
+
+Envía el email de "se cerró la caja del día" (sección 11, Plan Completo).
+La llama `js/caja.js` (`notificarCierreCaja`) justo después de que
+`cerrarCajaDelDia` confirma el cierre. A diferencia de `toggle-organizacion.js`
+**no** usa la service role key: arma un cliente de Supabase con el JWT de
+quien llama y deja que RLS decida qué puede leer (es el mismo cierre que ya
+podía ver en `caja.html`, no hay nada que bypasear). Si el local tiene
+`alerta_cierre_caja_email` en `false`, o la organización no tiene el plan
+(`email_cierre_caja`, mínimo Completo), responde `200` sin mandar nada — no
+es un error.
+
+## `alertas-stock-email.js`
+
+Digest diario (no por-evento) de productos con stock bajo, uno por local que
+tenga `alerta_stock_email` activado y el plan lo permita (`email_stock_bajo`,
+mínimo Medio). Se dispara solo por el cron configurado en `netlify.toml`
+(`[functions."alertas-stock-email"]`, 12:00 UTC = 9am Argentina) — recorre
+todas las organizaciones, por eso sí necesita la service role key. No valida
+que la invocación venga realmente del scheduler de Netlify (ver comentario
+en el archivo) — si hace falta cerrar eso, la opción más simple es un
+secreto propio en vez de confiar en un header de Netlify sin confirmar
+contra la documentación oficial.
+
+Ambas funciones de email comparten `lib/resend.js` (llama a la API de Resend
+por `fetch`, sin sumar su SDK como dependencia) y `lib/planes.js` (espeja
+`PLAN_MINIMO_POR_FEATURE` de `public/js/planes.js` — hay que mantener los dos
+sincronizados a mano, ver el comentario ahí).
+
+Variables de entorno adicionales que necesitan (mismo lugar, Site settings →
+Environment variables):
+- `RESEND_API_KEY`
+- `EMAIL_FROM` (opcional) — remitente a usar una vez que haya un dominio
+  propio verificado en Resend. Sin esto cae a `onboarding@resend.dev`, que
+  Resend limita a mandar solo a la casilla con la que se creó la cuenta —
+  sirve para probar, no para producción con clientes reales.
 
 Nota: no todo el panel de super-admin depende de Netlify Functions. La
 aprobación de cambios de plan se resolvió sin esto, con RLS (tabla

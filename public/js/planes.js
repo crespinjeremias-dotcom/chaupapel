@@ -14,8 +14,10 @@ const PLAN_MINIMO_POR_FEATURE = {
   codigo_barras: 'medio', // lectura de codigo de barras por camara o lector fisico
   vencimiento: 'medio', // fecha de vencimiento por producto + alertas
   excel: 'medio', // import/export de productos via Excel
+  email_stock_bajo: 'medio', // alerta de stock bajo tambien por email (seccion 11, Fase 9)
   estadisticas: 'completo', // productos mas vendidos, franja horaria
   multi_local: 'completo', // dashboard consolidado de mas de un local
+  email_cierre_caja: 'completo', // notificacion por email al cerrarse la caja del dia (seccion 11, Fase 9)
 };
 
 // true/false fuerza el flag sin importar el plan; undefined cae al plan

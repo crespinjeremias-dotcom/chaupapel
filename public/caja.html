@@ -98,6 +98,7 @@
   import {
     listarTurnosDelDia,
     cerrarCajaDelDia,
+    notificarCierreCaja,
     listarCierresDiarios,
     calcularResumenMes,
     cerrarCajaDelMes,
@@ -226,11 +227,12 @@
   async function manejarCerrarDia() {
     const errorEl = document.getElementById('error-dia');
     mostrarError(errorEl, '');
+    const fecha = document.getElementById('fecha-dia').value;
     try {
       await cerrarCajaDelDia({
         localId: localIdActivo,
         organizationId: usuario.organization_id,
-        fechaStr: document.getElementById('fecha-dia').value,
+        fechaStr: fecha,
         usuarioId: usuario.id,
       });
       document.getElementById('exito-dia').hidden = false;
@@ -238,6 +240,17 @@
       await Promise.all([cargarDia(), cargarHistorial()]);
     } catch (err) {
       mostrarError(errorEl, err.message);
+      return;
+    }
+
+    // El cierre ya quedo guardado (el catch de arriba solo cubre eso) -- si
+    // la notificacion por email falla (Resend sin configurar, toggle
+    // apagado, etc.) no tiene sentido mostrarlo como si el cierre hubiera
+    // fallado, pero tampoco hay que tragarselo en silencio total.
+    try {
+      await notificarCierreCaja({ localId: localIdActivo, fecha });
+    } catch (err) {
+      console.error('No se pudo enviar la notificación de cierre de caja:', err);
     }
   }
 
