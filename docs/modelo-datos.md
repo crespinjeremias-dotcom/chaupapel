@@ -9,7 +9,7 @@ Casi todas las tablas "de negocio" tienen **`organization_id` y `local_id` denor
 ## Tablas fundacionales
 
 ### `organizations`
-El cliente que se suscribe (sección 1). Tiene `plan` (básico/medio/completo) y `plan_overrides` (jsonb) para excepciones puntuales sin crear una versión de código distinta (sección 15). `is_active` es el corte de acceso manual del super-admin (sección 16), independiente del rol admin de la organización.
+El cliente que se suscribe (sección 1). Tiene `plan` (básico/completo — el Plan Medio intermedio se eliminó, ver sección 15 y la migración `20260911150000_eliminar_plan_medio.sql`) y `plan_overrides` (jsonb) para excepciones puntuales sin crear una versión de código distinta (sección 15). `is_active` es el corte de acceso manual del super-admin (sección 16), independiente del rol admin de la organización.
 
 ### `locales`
 Sucursales de una organización (sección 1). `modo_turno` (`individual` / `compartida`) es la configuración por local de la sección 2. Los flags de email (`alerta_stock_email`, `alerta_cierre_caja_email`) viven acá porque son configuración operativa del local, no del producto ni de la organización entera.
@@ -103,4 +103,5 @@ No hay una tabla `planes` ni `features` separada: `organizations.plan` es un enu
 - ~~Función `crear_organizacion(...)`~~ y ~~`redimir_invitacion(codigo, ...)`~~ y ~~sesión única por dispositivo~~: implementadas en Fase 2, ver `docs/auth-design.md`.
 - Qué pasa con la cuenta corriente al anular una venta fiada que ya tuvo pagos parciales (Fase 6).
 - Cálculo/población de `cierres_diarios` y `cierres_mensuales` (job o acción manual del admin) — las tablas están listas, falta la lógica que las llena (Fase 7).
-- **Selector de local para admin en organizaciones multi-local** (Fase 3, pendiente de Fase 13): el admin no tiene `local_id` propio (ve todos los locales de su organización), así que al día de hoy, cuando crea un producto o categoría, el frontend usa automáticamente el primer local de la organización — no hay todavía un selector para elegir a cuál local pertenece lo que está cargando. Como Básico/Medio son de 1 local, no afecta a la mayoría de los casos; hay que resolverlo cuando se construya el soporte multi-local (Fase 13).
+- **Selector de local para admin en organizaciones multi-local** (Fase 3, pendiente de Fase 13): el admin no tiene `local_id` propio (ve todos los locales de su organización), así que al día de hoy, cuando crea un producto o categoría, el frontend usa automáticamente el primer local de la organización — no hay todavía un selector para elegir a cuál local pertenece lo que está cargando. Como Básico es de 1 local, no afecta a la mayoría de los casos; hay que resolverlo cuando se construya el soporte multi-local (Fase 13).
+- **Turnos con trazabilidad individual y caja diaria consolidada por empleado** (sección 15, Plan Completo): `locales.modo_turno` (`individual`/`compartida`) existe en el schema desde la Fase 1 pero no tiene UI para configurarlo ni ningún gate de plan todavía — queda pendiente de implementar.

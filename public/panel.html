@@ -263,8 +263,9 @@
       const [productos, reclamos] = await Promise.all([listarProductos({ soloActivos: true }), listarReclamosPendientes()]);
 
       const stockBajo = productos.filter((p) => Number(p.stock_actual) <= Number(p.stock_minimo));
-      // Vencimiento es Plan Medio+ (seccion 15): si el plan no lo incluye,
-      // ni se muestra la alerta (aunque hubiera datos viejos de antes de bajar de plan).
+      // Vencimiento es parte de Basico desde que se elimino el Plan Medio
+      // (seccion 15) -- tieneFeature igual se consulta por si un
+      // plan_overrides puntual lo apaga para esta organizacion.
       const porVencer = !tieneFeature(usuario, 'vencimiento')
         ? []
         : productos.filter((p) => {
@@ -415,7 +416,7 @@
     });
   }
 
-  // Toggles de email por local (seccion 11): stock bajo es Plan Medio+,
+  // Toggles de email por local (seccion 11): stock bajo es parte de Basico,
   // cierre de caja es Plan Completo -- si el plan no incluye el feature, el
   // checkbox correspondiente ni se muestra (no solo se deshabilita), mismo
   // criterio que el resto del panel.

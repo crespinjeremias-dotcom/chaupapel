@@ -1,5 +1,6 @@
-// Digest diario de stock bajo (seccion 11, Plan Medio+), disparado por el
-// cron de netlify.toml (12:00 UTC = 9am Argentina). Un producto puede quedar
+// Digest diario de stock bajo (seccion 11, parte de Basico desde que se
+// elimino el Plan Medio), disparado por el cron de netlify.toml (12:00 UTC
+// = 9am Argentina). Un producto puede quedar
 // por debajo del minimo en cualquier venta y seguir ahi por dias hasta que
 // se repone -- mandar un email cada vez que se vende una unidad mas de un
 // producto ya en alerta inundaria al admin, por eso es un resumen diario y

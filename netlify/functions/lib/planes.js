@@ -7,10 +7,11 @@
 // Si se agrega o cambia el plan minimo de email_stock_bajo o
 // email_cierre_caja en public/js/planes.js, hay que actualizar este archivo
 // tambien.
-const ORDEN_PLAN = { basico: 0, medio: 1, completo: 2 };
+// Plan Medio eliminado (seccion 15): ver public/js/planes.js.
+const ORDEN_PLAN = { basico: 0, completo: 1 };
 
 const PLAN_MINIMO_POR_FEATURE = {
-  email_stock_bajo: 'medio',
+  email_stock_bajo: 'basico',
   email_cierre_caja: 'completo',
 };
 

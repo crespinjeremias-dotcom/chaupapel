@@ -306,38 +306,38 @@ El sistema debe funcionar bien en cualquier dispositivo sin depender de uno en p
 
 ## 15. Modelo de planes de suscripción
 
-Se definieron **3 planes**, armados a partir de qué tan imprescindible es cada función para un almacén/kiosco de barrio típico. Las funciones más "core" van en el plan más económico; las más avanzadas o que solo aplican a negocios más grandes, en los planes más altos.
+Se definieron **2 planes** (originalmente eran 3; se eliminó el Plan Medio
+intermedio porque sus features más usadas, en particular código de barras,
+no ameritaban quedar trabadas en un escalón aparte — ver más abajo), armados
+a partir de qué tan imprescindible es cada función para un almacén/kiosco de
+barrio típico. Las funciones más "core" van en el plan más económico; las
+más avanzadas o que solo aplican a negocios más grandes, en el plan alto.
 
 **Importante para el diseño técnico**: esta es una segmentación **comercial**, no debe traducirse en versiones distintas del código. Implementarlo con un sistema de **feature flags por organización** (un campo que indica el plan contratado, validado en front/back para mostrar u ocultar módulos). Todos los clientes comparten el mismo sistema y modelo de datos.
 
 ### Plan Básico
-Para el almacén/kiosco chico, atendido por el dueño solo o con poco personal fijo.
+Para el almacén/kiosco chico, atendido por el dueño solo, con poco personal fijo, o con empleados rotando turnos.
 - Carga de productos (nombre, categoría, precio, stock)
 - Registro de ventas con descuento automático de stock
 - Cierre de caja diario (efectivo/transferencia esperado vs. contado)
-- Alerta de stock bajo (solo dentro de la app)
+- Alerta de stock bajo (dentro de la app y por email)
+- Lectura de código de barras (cámara o lector físico)
+- Fecha de vencimiento por producto + alertas configurables
+- Importación/exportación de productos vía Excel
+- Cuentas individuales por empleado
 - Búsqueda de productos por nombre
 - Listado de proveedores
 - Historial de ventas mensual
 - Cuenta corriente de clientes (fiado y saldo a favor) — se incluye desde este plan por ser una práctica muy típica del almacén de barrio chico
-- 1 local, cuenta de usuario única (sin perfiles individuales por empleado)
-
-### Plan Medio
-Para locales con empleados rotando turnos y/o que manejan productos perecederos.
-Todo lo del Plan Básico, más:
-- Alerta de stock bajo también por email
-- Lectura de código de barras (cámara o lector físico)
-- Fecha de vencimiento por producto + alertas configurables
-- Cuentas individuales por empleado (turnos con trazabilidad y caja diaria consolidada)
-- Importación/exportación de productos vía Excel
-- Sigue siendo 1 local
+- 1 local
 
 ### Plan Completo
 Para locales que ya facturan más en serio, quieren métricas del negocio, o tienen más de un local.
-Todo lo del Plan Medio, más:
+Todo lo del Plan Básico, más:
 - Estadísticas y productos más vendidos (por franja horaria)
 - Notificación de cierre de caja por email
 - Soporte multi-local con dashboard consolidado
+- Turnos con trazabilidad individual y caja diaria consolidada por empleado *(pendiente de implementar — hoy `locales.modo_turno` existe en el schema pero no tiene UI para configurarlo ni gate de plan; no confundir con "cuentas individuales por empleado", que ya funciona en Básico sin restricción)*
 
 ### Funciones que van en los 3 planes por igual (no son un diferencial comercial)
 Son parte del motor interno del sistema, necesarias en cualquier plan para que la operación diaria y la caja funcionen correctamente:
@@ -361,7 +361,7 @@ Esto no es una funcionalidad que use el cliente final (el almacén), sino la ope
 - **Instalación**: al ser un sistema web, no hay instalador tradicional. Se implementa como **PWA (Progressive Web App)**: desde el navegador, tanto en PC como en celular/tablet, hay una opción de "Instalar aplicación" que crea un ícono como si fuera un programa/app nativa. No es obligatorio instalarlo para usar el sistema, queda como comodidad opcional.
 - **Cobro de la suscripción**: manual, vía alias/QR de una billetera virtual. Ciclo de pago del **día 1 al 15 de cada mes**. Pasado el día 15, se aplica un recargo (10-15%, número final a definir junto con el precio de cada plan).
 - **Corte de acceso por falta de pago**: manual — se evalúa caso por caso con el cliente, sin automatización. Requiere un panel de super-admin con un botón para activar/desactivar el acceso de una organización.
-- **Cambio de plan**: el propio admin de cada organización puede subir o bajar de plan (Básico/Medio/Completo) desde su panel, sin intervención del dueño del SaaS.
+- **Cambio de plan**: el propio admin de cada organización puede subir o bajar de plan (Básico/Completo) desde su panel, sin intervención del dueño del SaaS.
 - **Nota de escalabilidad futura**: si más adelante se necesita sumar facturación fiscal (integración con ARCA) para algún local, es viable agregarla como un módulo adicional sin rediseñar lo ya construido — cada venta ya guarda toda la información necesaria (productos, cantidades, precios, fecha, total) gracias al historial de precios.
 
 ---
@@ -424,6 +424,6 @@ Quien desarrolla este proyecto ya tiene un proyecto previo en producción (gesti
 ## 19. Puntos que quedan abiertos para definir en la etapa de diseño técnico
 
 - Número exacto del recargo por pago tardío de la suscripción (10-15%, a definir junto con el precio final de cada plan).
-- Precio en pesos de cada plan (Básico/Medio/Completo).
+- Precio en pesos de cada plan (Básico/Completo).
 - Nombre/marca del producto.
 - Diseño visual/UI concreto (más allá del requisito de ser responsive).

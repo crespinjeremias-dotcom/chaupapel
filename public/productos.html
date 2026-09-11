@@ -303,8 +303,9 @@
     document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
     montarMenu(usuario);
 
-    // Seccion 15: codigo de barras y Excel son Plan Medio+, vencimiento
-    // tambien -- se ocultan por completo si el plan contratado no llega.
+    // Seccion 15: codigo de barras, Excel y vencimiento son parte de Basico
+    // desde que se elimino el Plan Medio -- tieneFeature igual se consulta
+    // aca por si alguna organizacion tiene un plan_overrides que los apague.
     const tieneCodigoBarras = tieneFeature(usuario, 'codigo_barras');
     const tieneExcel = tieneFeature(usuario, 'excel');
     const tieneVencimiento = tieneFeature(usuario, 'vencimiento');

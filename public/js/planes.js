@@ -5,16 +5,20 @@ import { supabase } from './supabaseClient.js';
 // minimo que la incluye (segun el spec); plan_overrides permite excepciones
 // puntuales por organizacion (ej. destrabar algo para un cliente puntual sin
 // subirle el plan entero).
-export const PLANES = ['basico', 'medio', 'completo'];
-export const PLAN_LABEL = { basico: 'Básico', medio: 'Medio', completo: 'Completo' };
+// Plan Medio eliminado (seccion 15): sus features pasaron a Basico -- el
+// codigo de barras en particular es demasiado usado como para dejarlo en un
+// escalon intermedio. Ver docs/modelo-datos.md para el detalle de la
+// migracion de schema (plan_type ya no incluye 'medio').
+export const PLANES = ['basico', 'completo'];
+export const PLAN_LABEL = { basico: 'Básico', completo: 'Completo' };
 
-const ORDEN_PLAN = { basico: 0, medio: 1, completo: 2 };
+const ORDEN_PLAN = { basico: 0, completo: 1 };
 
 const PLAN_MINIMO_POR_FEATURE = {
-  codigo_barras: 'medio', // lectura de codigo de barras por camara o lector fisico
-  vencimiento: 'medio', // fecha de vencimiento por producto + alertas
-  excel: 'medio', // import/export de productos via Excel
-  email_stock_bajo: 'medio', // alerta de stock bajo tambien por email (seccion 11)
+  codigo_barras: 'basico', // lectura de codigo de barras por camara o lector fisico
+  vencimiento: 'basico', // fecha de vencimiento por producto + alertas
+  excel: 'basico', // import/export de productos via Excel
+  email_stock_bajo: 'basico', // alerta de stock bajo tambien por email (seccion 11)
   estadisticas: 'completo', // productos mas vendidos, franja horaria
   multi_local: 'completo', // dashboard consolidado de mas de un local
   email_cierre_caja: 'completo', // notificacion de cierre de caja por email (seccion 11)

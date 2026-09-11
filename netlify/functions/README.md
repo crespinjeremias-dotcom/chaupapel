@@ -40,7 +40,8 @@ nada y responde `200 { ok: true, enviado: false }` — no es un error.
 
 Digest diario (cron en `netlify.toml`, 12:00 UTC = 9am Argentina) de
 productos con stock bajo por local, para organizaciones con el toggle
-`alerta_stock_email` prendido y plan Medio+. No hay un usuario logueado del
+`alerta_stock_email` prendido (parte de Basico desde que se eliminó el Plan
+Medio). No hay un usuario logueado del
 que tomar un JWT — recorre todas las organizaciones en una sola corrida —
 por eso sí usa la service role key, igual que `toggle-organizacion.js`. Ver
 `docs/notificaciones-email.md` para el detalle de las decisiones (servicio

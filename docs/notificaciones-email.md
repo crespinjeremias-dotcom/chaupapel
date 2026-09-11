@@ -1,9 +1,10 @@
 # Notificaciones por email — Fase 9
 
 Implementa lo que quedaba pendiente de la sección 11: alerta de stock bajo
-por email (Plan Medio+) y notificación de cierre de caja por email (Plan
-Completo). Ver también `netlify/functions/README.md` para el detalle de
-cada función.
+por email (en su momento Plan Medio+; el Plan Medio se eliminó después, ver
+nota más abajo — hoy es parte de Básico) y notificación de cierre de caja
+por email (Plan Completo). Ver también `netlify/functions/README.md` para
+el detalle de cada función.
 
 ## Servicio de email: Resend
 
@@ -42,8 +43,9 @@ sí tiene sentido notificar al toque.
 ## Feature flags de plan nuevos
 
 `public/js/planes.js` (`PLAN_MINIMO_POR_FEATURE`): `email_stock_bajo`
-(Medio) y `email_cierre_caja` (Completo), tal como los define la sección
-15. `netlify/functions/lib/planes.js` espeja el mismo mapa para esas dos
+(Básico — originalmente Medio, reasignado cuando se eliminó ese plan) y
+`email_cierre_caja` (Completo), tal como los define la sección 15.
+`netlify/functions/lib/planes.js` espeja el mismo mapa para esas dos
 claves — no se puede importar `planes.js` directo desde una function
 porque `supabaseClient.js` importa `@supabase/supabase-js` desde una URL
 de CDN, y Node no resuelve imports por URL. **Si se agrega o cambia el
