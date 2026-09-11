@@ -36,6 +36,13 @@
     <p class="texto-suave">Tu cuenta está activa.</p>
   </div>
 
+  <div class="panel-seccion" id="seccion-local-bloqueado" hidden>
+    <h2>Local desactivado</h2>
+    <p class="texto-suave">
+      Tu local fue desactivado porque el plan de tu organización bajó de nivel. Contactá a tu administrador.
+    </p>
+  </div>
+
   <div class="campo" id="campo-local-dashboard" hidden>
     <label for="select-local-dashboard">Ver</label>
     <select id="select-local-dashboard">
@@ -182,6 +189,10 @@
     }
 
     if (usuario.role === 'empleado') {
+      if (usuario.locales?.bloqueado_por_plan) {
+        document.getElementById('seccion-local-bloqueado').hidden = false;
+        return;
+      }
       document.getElementById('seccion-empleado').hidden = false;
       return;
     }
@@ -420,6 +431,11 @@
   // cierre de caja es Plan Completo -- si el plan no incluye el feature, el
   // checkbox correspondiente ni se muestra (no solo se deshabilita), mismo
   // criterio que el resto del panel.
+  //
+  // "Mis locales" es la unica pantalla que sigue mostrando los locales
+  // bloqueados por plan (marcados aparte) -- en cualquier otro lado
+  // (selector de local activo en el menu, caja/productos/ventas/etc.) se
+  // usa listarLocalesOperables(), que ya los excluye.
   function renderListaLocales(locales, usuario) {
     const puedeStock = tieneFeature(usuario, 'email_stock_bajo');
     const puedeCierre = tieneFeature(usuario, 'email_cierre_caja');
@@ -441,7 +457,8 @@
               <label for="chk-cierre-${l.id}">Email cierre de caja</label>
             </span>`);
         }
-        return `<li><span>${escapeHtml(l.nombre)}</span>${toggles.length ? `<span class="local-toggles-email">${toggles.join('')}</span>` : ''}</li>`;
+        const marcaBloqueado = l.bloqueado_por_plan ? ' <span class="etiqueta inactivo">Bloqueado por tu plan actual</span>' : '';
+        return `<li><span>${escapeHtml(l.nombre)}${marcaBloqueado}</span>${toggles.length ? `<span class="local-toggles-email">${toggles.join('')}</span>` : ''}</li>`;
       })
       .join('');
 

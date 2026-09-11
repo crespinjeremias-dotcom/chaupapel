@@ -68,7 +68,7 @@ export async function obtenerUsuarioActual() {
   const { data, error } = await supabase
     .from('usuarios')
     .select(
-      'id, nombre, role, status, local_id, organization_id, organizations(nombre, plan, plan_overrides, is_active), locales(nombre, fiado_habilitado)'
+      'id, nombre, role, status, local_id, organization_id, organizations(nombre, plan, plan_overrides, is_active), locales(nombre, fiado_habilitado, bloqueado_por_plan)'
     )
     .eq('id', sessionData.session.user.id)
     .maybeSingle();
@@ -119,5 +119,6 @@ export function pantallaDeEntrada(usuario) {
   if (!usuario) return 'index.html';
   if (usuario.status !== 'approved') return 'panel.html';
   if (usuario.organizations?.is_active === false) return 'panel.html';
+  if (usuario.locales?.bloqueado_por_plan === true) return 'panel.html';
   return usuario.role === 'empleado' ? 'ventas.html' : 'panel.html';
 }

@@ -93,7 +93,7 @@
 
 <script type="module">
   import { requireSession, obtenerUsuarioActual, obtenerAccessToken, logout } from './js/auth.js';
-  import { listarLocales } from './js/empleados.js';
+  import { listarLocalesOperables } from './js/empleados.js';
   import { obtenerLocalActivo, establecerLocalActivo } from './js/localActivo.js';
   import {
     listarTurnosDelDia,
@@ -123,7 +123,7 @@
     if (!session) return;
 
     usuario = await obtenerUsuarioActual();
-    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false) {
+    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false || usuario.locales?.bloqueado_por_plan === true) {
       window.location.href = 'panel.html';
       return;
     }
@@ -135,7 +135,7 @@
     document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
     montarMenu(usuario);
 
-    const locales = await listarLocales();
+    const locales = await listarLocalesOperables();
     localIdActivo = obtenerLocalActivo(locales);
     if (locales.length > 1) {
       const select = document.getElementById('select-local');

@@ -122,35 +122,22 @@ export async function obtenerVentaConDetalle(id) {
   return { venta, items, pagos };
 }
 
-// Productos mas vendidos (seccion 12): agrupa venta_items por producto en un
-// rango de fechas, con filtro opcional de franja horaria (hora local, ej.
-// 8-14). Se trae el detalle y se agrupa en el cliente porque PostgREST no
-// puede filtrar por "hora del dia" de una columna timestamptz directamente.
+// Productos mas vendidos (seccion 12, Plan Completo): agregado por producto
+// en un rango de fechas, con filtro opcional de franja horaria. Vive en el
+// RPC obtener_productos_mas_vendidos (no en un query directo a venta_items)
+// porque esas tablas tienen que seguir siendo legibles para el resto de la
+// operacion y no se pueden restringir por plan -- el RPC valida el plan
+// antes de calcular el agregado (ver la migracion 20260911210000).
 export async function productosMasVendidos({ desde, hasta, horaDesde, horaHasta }) {
-  const { data, error } = await supabase
-    .from('venta_items')
-    .select('cantidad, producto_id, productos(nombre), ventas!inner(fecha, estado)')
-    .gte('ventas.fecha', desde)
-    .lt('ventas.fecha', hasta)
-    .neq('ventas.estado', 'anulada');
+  const { data, error } = await supabase.rpc('obtener_productos_mas_vendidos', {
+    p_desde: desde,
+    p_hasta: hasta,
+    p_hora_desde: horaDesde ?? null,
+    p_hora_hasta: horaHasta ?? null,
+  });
   if (error) throw error;
 
-  const filtrados =
-    horaDesde == null || horaHasta == null
-      ? data
-      : data.filter((it) => {
-          const hora = new Date(it.ventas.fecha).getHours();
-          return hora >= horaDesde && hora < horaHasta;
-        });
-
-  const porProducto = new Map();
-  for (const it of filtrados) {
-    const actual = porProducto.get(it.producto_id) || { nombre: it.productos?.nombre || 'Producto eliminado', cantidad: 0 };
-    actual.cantidad += Number(it.cantidad);
-    porProducto.set(it.producto_id, actual);
-  }
-
-  return [...porProducto.values()].sort((a, b) => b.cantidad - a.cantidad);
+  return data.map((r) => ({ nombre: r.nombre, cantidad: Number(r.cantidad) }));
 }
 
 // Reemplaza items y pagos por completo (borra + inserta de nuevo) en vez de

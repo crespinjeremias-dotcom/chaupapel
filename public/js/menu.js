@@ -1,5 +1,5 @@
 import { logout } from './auth.js';
-import { listarLocales } from './empleados.js';
+import { listarLocalesOperables } from './empleados.js';
 import { obtenerLocalActivo, establecerLocalActivo } from './localActivo.js';
 import { escapeHtml } from './utils.js';
 
@@ -42,13 +42,15 @@ export async function montarMenu(usuario) {
   const items = construirItems(usuario);
 
   // Selector de local activo (seccion 1 y 13, multi-local): solo tiene
-  // sentido si el admin realmente tiene mas de un local. Se guarda en
-  // localStorage y recarga la pagina para que la logica de cada pantalla
-  // (que lee obtenerLocalActivo al iniciar) tome el cambio.
+  // sentido si el admin realmente tiene mas de un local operable. Se guarda
+  // en localStorage y recarga la pagina para que la logica de cada pantalla
+  // (que lee obtenerLocalActivo al iniciar) tome el cambio. Los locales
+  // bloqueados por plan no se ofrecen aca -- no se puede "trabajar" en uno
+  // bloqueado (seccion 15); siguen visibles solo en "Mis locales", panel.html.
   let locales = [];
   if (usuario.role === 'admin') {
     try {
-      locales = await listarLocales();
+      locales = await listarLocalesOperables();
     } catch {
       // si falla, simplemente no se muestra el selector
     }

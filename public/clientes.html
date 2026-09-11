@@ -134,7 +134,7 @@
 
 <script type="module">
   import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
-  import { listarLocales } from './js/empleados.js';
+  import { listarLocalesOperables } from './js/empleados.js';
   import { obtenerLocalActivo } from './js/localActivo.js';
   import {
     listarClientes,
@@ -174,7 +174,7 @@
     if (!session) return;
 
     usuario = await obtenerUsuarioActual();
-    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false) {
+    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false || usuario.locales?.bloqueado_por_plan === true) {
       window.location.href = 'panel.html';
       return;
     }
@@ -183,7 +183,7 @@
     montarMenu(usuario);
 
     if (usuario.role === 'admin') {
-      const locales = await listarLocales();
+      const locales = await listarLocalesOperables();
       localIdActivo = obtenerLocalActivo(locales);
     } else {
       localIdActivo = usuario.local_id;

@@ -58,7 +58,7 @@
     if (!session) return;
 
     const usuario = await obtenerUsuarioActual();
-    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false) {
+    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false || usuario.locales?.bloqueado_por_plan === true) {
       window.location.href = 'panel.html';
       return;
     }
