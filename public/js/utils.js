@@ -17,6 +17,25 @@ export function escapeHtml(texto) {
   return String(texto ?? '').replace(/[&<>"']/g, (c) => ESCAPES_HTML[c]);
 }
 
+// Cantidad cargada contra un producto (venta, ajuste, reposicion,
+// devolucion): valida el texto tal cual lo escribio el usuario. No usar
+// Number()/parseFloat() para esto -- son demasiado permisivos (Number('') es
+// 0, no NaN; parseFloat('1,5') es 1, no un error) y type="number" no
+// bloquea de forma confiable comas o texto invalido en todos los
+// navegadores/mobile (el valor puede llegar como '' aunque el usuario haya
+// tipeado algo). Devuelve null si no es valido -- nunca "corrige" en
+// silencio un valor que no se pueda interpretar con certeza.
+export function parseCantidad(texto, permiteDecimal) {
+  const valor = String(texto ?? '').trim();
+  if (permiteDecimal) {
+    if (!/^\d+(\.\d+)?$/.test(valor)) return null;
+  } else if (!/^[1-9]\d*$/.test(valor)) {
+    return null;
+  }
+  const n = Number(valor);
+  return n > 0 ? n : null;
+}
+
 export function mostrarError(el, mensaje) {
   el.textContent = mensaje;
   el.hidden = !mensaje;

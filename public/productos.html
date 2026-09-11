@@ -179,7 +179,7 @@
         </div>
         <div class="campo">
           <label for="a-cantidad">Cantidad</label>
-          <input type="number" id="a-cantidad" min="0.01" step="0.01" required />
+          <input type="text" inputmode="decimal" id="a-cantidad" required />
         </div>
       </div>
       <div class="campo">
@@ -211,7 +211,7 @@
       <div class="campos-en-fila">
         <div class="campo">
           <label for="rp-cantidad">Cantidad que llegó</label>
-          <input type="number" id="rp-cantidad" min="0.01" step="0.01" required />
+          <input type="text" inputmode="decimal" id="rp-cantidad" required />
         </div>
         <div class="campo">
           <label for="rp-precio-costo">Precio de costo pagado</label>
@@ -273,7 +273,7 @@
   import { exportarProductos, descargarPlantilla, leerArchivoProductos } from './js/excel.js';
   import { montarMenu } from './js/menu.js';
   import { tieneFeature } from './js/planes.js';
-  import { mostrarError, escapeHtml } from './js/utils.js';
+  import { mostrarError, escapeHtml, parseCantidad } from './js/utils.js';
 
   let usuario = null;
   // El admin no tiene un local propio (ve todos los de su organizacion).
@@ -652,7 +652,7 @@
     document.getElementById('ajuste-stock-actual').textContent = `${producto.stock_actual} ${producto.unidad_medida || ''}`;
     document.getElementById('a-direccion').value = 'sumar';
     const inputCantidad = document.getElementById('a-cantidad');
-    inputCantidad.step = producto.permite_cantidad_decimal === false ? '1' : '0.01';
+    inputCantidad.inputMode = producto.permite_cantidad_decimal === false ? 'numeric' : 'decimal';
     inputCantidad.value = '';
     document.getElementById('a-motivo').value = MOTIVOS_AJUSTE[0].value;
     document.getElementById('a-comentario').value = '';
@@ -666,9 +666,14 @@
     mostrarError(errorEl, '');
 
     const direccion = document.getElementById('a-direccion').value;
-    const cantidadBase = Number(document.getElementById('a-cantidad').value);
-    if (productoParaAjuste.permite_cantidad_decimal === false && !Number.isInteger(cantidadBase)) {
-      mostrarError(errorEl, 'Este producto se vende por unidad, no admite cantidades decimales.');
+    const cantidadBase = parseCantidad(document.getElementById('a-cantidad').value, productoParaAjuste.permite_cantidad_decimal !== false);
+    if (cantidadBase === null) {
+      mostrarError(
+        errorEl,
+        productoParaAjuste.permite_cantidad_decimal === false
+          ? 'Este producto se vende por unidad, no admite cantidades decimales.'
+          : 'Cargá una cantidad válida.'
+      );
       return;
     }
     const cantidad = direccion === 'restar' ? -cantidadBase : cantidadBase;
@@ -700,7 +705,7 @@
     mostrarError(errorEl, '');
     document.getElementById('reponer-contexto').textContent = producto.nombre;
     document.getElementById('form-reponer').reset();
-    document.getElementById('rp-cantidad').step = producto.permite_cantidad_decimal === false ? '1' : '0.01';
+    document.getElementById('rp-cantidad').inputMode = producto.permite_cantidad_decimal === false ? 'numeric' : 'decimal';
 
     const selectProveedor = document.getElementById('rp-proveedor');
     const campoProveedor = document.getElementById('campo-reponer-proveedor');
@@ -729,9 +734,14 @@
     e.preventDefault();
     const errorEl = document.getElementById('error-reponer');
     mostrarError(errorEl, '');
-    const cantidad = Number(document.getElementById('rp-cantidad').value);
-    if (productoParaReponer.permite_cantidad_decimal === false && !Number.isInteger(cantidad)) {
-      mostrarError(errorEl, 'Este producto se vende por unidad, no admite cantidades decimales.');
+    const cantidad = parseCantidad(document.getElementById('rp-cantidad').value, productoParaReponer.permite_cantidad_decimal !== false);
+    if (cantidad === null) {
+      mostrarError(
+        errorEl,
+        productoParaReponer.permite_cantidad_decimal === false
+          ? 'Este producto se vende por unidad, no admite cantidades decimales.'
+          : 'Cargá una cantidad válida.'
+      );
       return;
     }
     try {

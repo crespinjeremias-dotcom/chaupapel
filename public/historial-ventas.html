@@ -85,7 +85,7 @@
     </div>
     <div class="campo">
       <label for="dev-cantidad">Cantidad</label>
-      <input type="number" id="dev-cantidad" min="0.01" step="0.01" />
+      <input type="text" inputmode="decimal" id="dev-cantidad" />
     </div>
     <div class="campo">
       <label for="dev-motivo">Motivo</label>
@@ -105,7 +105,7 @@
       <p class="texto-suave" id="dev-producto-nuevo-elegido" hidden></p>
       <div class="campo">
         <label for="dev-cantidad-nueva">Cantidad del producto nuevo</label>
-        <input type="number" id="dev-cantidad-nueva" min="0.01" step="0.01" value="1" />
+        <input type="text" inputmode="decimal" id="dev-cantidad-nueva" value="1" />
       </div>
     </div>
 
@@ -222,7 +222,7 @@
   import { registrarDevolucionCambio, listarDevolucionesDeVenta } from './js/devoluciones.js';
   import { buscarClientes, crearClienteRapido } from './js/clientes.js';
   import { montarMenu } from './js/menu.js';
-  import { mostrarError, escapeHtml } from './js/utils.js';
+  import { mostrarError, escapeHtml, parseCantidad } from './js/utils.js';
 
   const ETIQUETA_ESTADO = { activa: 'Activa', editada: 'Editada', anulada: 'Anulada' };
   const ETIQUETA_METODO = { efectivo: 'Efectivo', transferencia: 'Transferencia' };
@@ -274,9 +274,8 @@
     document.getElementById('btn-confirmar-devolucion').addEventListener('click', confirmarDevolucion);
     document.getElementById('dev-item').addEventListener('change', () => {
       const item = itemsDetalleActual[document.getElementById('dev-item').value];
-      document.getElementById('dev-cantidad').max = item.cantidad;
       document.getElementById('dev-cantidad').value = item.cantidad;
-      document.getElementById('dev-cantidad').step = item.productos?.permite_cantidad_decimal === false ? '1' : '0.01';
+      document.getElementById('dev-cantidad').inputMode = item.productos?.permite_cantidad_decimal === false ? 'numeric' : 'decimal';
       recalcularDiferencia();
     });
     document.getElementById('dev-cantidad').addEventListener('input', recalcularDiferencia);
@@ -472,6 +471,7 @@
     document.getElementById('dev-producto-nuevo-elegido').hidden = true;
     document.getElementById('dev-buscador-nuevo').value = '';
     document.getElementById('dev-cantidad-nueva').value = '1';
+    document.getElementById('dev-cantidad-nueva').inputMode = 'decimal';
     document.getElementById('dev-resolucion').value = 'resuelto_ahora';
     document.getElementById('dev-campo-cliente').hidden = true;
     document.getElementById('dev-cliente-seleccionado').hidden = true;
@@ -487,9 +487,8 @@
       )
       .join('');
     const primerItem = itemsDetalleActual[0];
-    document.getElementById('dev-cantidad').max = primerItem.cantidad;
     document.getElementById('dev-cantidad').value = primerItem.cantidad;
-    document.getElementById('dev-cantidad').step = primerItem.productos?.permite_cantidad_decimal === false ? '1' : '0.01';
+    document.getElementById('dev-cantidad').inputMode = primerItem.productos?.permite_cantidad_decimal === false ? 'numeric' : 'decimal';
 
     document.getElementById('modal-devolucion').hidden = false;
   }
@@ -521,7 +520,7 @@
           document.getElementById('dev-producto-nuevo-elegido').textContent = `Elegido: ${productoNuevoElegido.nombre} ($${Number(
             productoNuevoElegido.precio_venta_actual
           ).toLocaleString('es-AR')} c/u)`;
-          document.getElementById('dev-cantidad-nueva').step = productoNuevoElegido.permite_cantidad_decimal === false ? '1' : '0.01';
+          document.getElementById('dev-cantidad-nueva').inputMode = productoNuevoElegido.permite_cantidad_decimal === false ? 'numeric' : 'decimal';
           document.getElementById('dev-buscador-nuevo').value = '';
           contenedor.hidden = true;
           recalcularDiferencia();
@@ -541,8 +540,9 @@
       return;
     }
     const item = itemsDetalleActual[document.getElementById('dev-item').value];
-    const cantidad = Number(document.getElementById('dev-cantidad').value) || 0;
-    const cantidadNueva = Number(document.getElementById('dev-cantidad-nueva').value) || 0;
+    const cantidad = parseCantidad(document.getElementById('dev-cantidad').value, item.productos?.permite_cantidad_decimal !== false) || 0;
+    const cantidadNueva =
+      parseCantidad(document.getElementById('dev-cantidad-nueva').value, productoNuevoElegido.permite_cantidad_decimal !== false) || 0;
     const totalOriginal = cantidad * Number(item.precio_unitario);
     const totalNuevo = cantidadNueva * Number(productoNuevoElegido.precio_venta_actual);
     const diferencia = totalNuevo - totalOriginal;
@@ -603,16 +603,21 @@
     mostrarError(errorEl, '');
 
     const item = itemsDetalleActual[document.getElementById('dev-item').value];
-    const cantidad = Number(document.getElementById('dev-cantidad').value) || 0;
     const motivo = document.getElementById('dev-motivo').value.trim();
     const esCambio = document.getElementById('dev-es-cambio').checked;
 
-    if (cantidad <= 0 || cantidad > Number(item.cantidad)) {
-      mostrarError(errorEl, `La cantidad tiene que ser mayor a 0 y no puede superar la cantidad vendida (${item.cantidad}).`);
+    const cantidad = parseCantidad(document.getElementById('dev-cantidad').value, item.productos?.permite_cantidad_decimal !== false);
+    if (cantidad === null) {
+      mostrarError(
+        errorEl,
+        item.productos?.permite_cantidad_decimal === false
+          ? 'Este producto se vende por unidad, no admite cantidades decimales.'
+          : 'Cargá una cantidad válida.'
+      );
       return;
     }
-    if (item.productos?.permite_cantidad_decimal === false && !Number.isInteger(cantidad)) {
-      mostrarError(errorEl, 'Este producto se vende por unidad, no admite cantidades decimales.');
+    if (cantidad > Number(item.cantidad)) {
+      mostrarError(errorEl, `La cantidad no puede superar la cantidad vendida (${item.cantidad}).`);
       return;
     }
     if (!motivo) {
@@ -623,13 +628,16 @@
       mostrarError(errorEl, 'Elegí el producto nuevo del cambio.');
       return;
     }
-    const cantidadNueva = esCambio ? Number(document.getElementById('dev-cantidad-nueva').value) || 0 : null;
-    if (esCambio && cantidadNueva <= 0) {
-      mostrarError(errorEl, 'Cargá una cantidad válida para el producto nuevo.');
-      return;
-    }
-    if (esCambio && productoNuevoElegido.permite_cantidad_decimal === false && !Number.isInteger(cantidadNueva)) {
-      mostrarError(errorEl, 'El producto nuevo se vende por unidad, no admite cantidades decimales.');
+    const cantidadNueva = esCambio
+      ? parseCantidad(document.getElementById('dev-cantidad-nueva').value, productoNuevoElegido.permite_cantidad_decimal !== false)
+      : null;
+    if (esCambio && cantidadNueva === null) {
+      mostrarError(
+        errorEl,
+        productoNuevoElegido.permite_cantidad_decimal === false
+          ? 'El producto nuevo se vende por unidad, no admite cantidades decimales.'
+          : 'Cargá una cantidad válida para el producto nuevo.'
+      );
       return;
     }
 
@@ -755,7 +763,7 @@
         (it, i) => `
         <tr>
           <td>${escapeHtml(it.nombre)}</td>
-          <td><input type="number" class="input-cantidad" min="${it.permiteCantidadDecimal ? '0.01' : '1'}" step="${it.permiteCantidadDecimal ? '0.01' : '1'}" value="${it.cantidad}" data-index="${i}" /></td>
+          <td><input type="text" inputmode="${it.permiteCantidadDecimal ? 'decimal' : 'numeric'}" class="input-cantidad" value="${it.cantidad}" data-index="${i}" /></td>
           <td>$${it.precioUnitario.toLocaleString('es-AR')}</td>
           <td>$${(it.cantidad * it.precioUnitario).toLocaleString('es-AR')}</td>
           <td><button type="button" class="boton-chico peligro" data-quitar="${i}">Quitar</button></td>
@@ -766,10 +774,18 @@
     tbody.querySelectorAll('.input-cantidad').forEach((input) =>
       input.addEventListener('change', (e) => {
         const i = Number(e.target.dataset.index);
-        let nueva = Number(e.target.value);
-        if (!itemsEdicion[i].permiteCantidadDecimal) nueva = Math.trunc(nueva);
-        if (nueva <= 0) itemsEdicion.splice(i, 1);
-        else itemsEdicion[i].cantidad = nueva;
+        const item = itemsEdicion[i];
+        const nueva = parseCantidad(e.target.value, item.permiteCantidadDecimal);
+        if (nueva === null) {
+          mostrarError(
+            document.getElementById('error-editar'),
+            item.permiteCantidadDecimal ? 'Cantidad inválida.' : `${item.nombre} se vende por unidad, no admite cantidades decimales.`
+          );
+          renderItemsEdicion();
+          return;
+        }
+        mostrarError(document.getElementById('error-editar'), '');
+        item.cantidad = nueva;
         renderItemsEdicion();
       })
     );

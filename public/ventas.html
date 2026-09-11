@@ -171,7 +171,7 @@
   import { iniciarEscaneo, detenerEscaneo } from './js/barcode.js';
   import { montarMenu } from './js/menu.js';
   import { tieneFeature } from './js/planes.js';
-  import { mostrarError, escapeHtml } from './js/utils.js';
+  import { mostrarError, escapeHtml, parseCantidad } from './js/utils.js';
 
   let usuario = null;
   // El admin no tiene local_id propio (ve todos los de su organizacion) --
@@ -414,7 +414,7 @@
         (it, i) => `
         <tr>
           <td>${escapeHtml(it.nombre)}</td>
-          <td><input type="number" class="input-cantidad" min="${it.permiteCantidadDecimal ? '0.01' : '1'}" max="${it.stockActual}" step="${it.permiteCantidadDecimal ? '0.01' : '1'}" value="${it.cantidad}" data-index="${i}" /></td>
+          <td><input type="text" inputmode="${it.permiteCantidadDecimal ? 'decimal' : 'numeric'}" class="input-cantidad" value="${it.cantidad}" data-index="${i}" /></td>
           <td>$${it.precioUnitario.toLocaleString('es-AR')}</td>
           <td>$${(it.cantidad * it.precioUnitario).toLocaleString('es-AR')}</td>
           <td><button type="button" class="boton-chico peligro" data-quitar="${i}">Quitar</button></td>
@@ -425,14 +425,18 @@
     tbody.querySelectorAll('.input-cantidad').forEach((input) =>
       input.addEventListener('change', (e) => {
         const i = Number(e.target.dataset.index);
-        let nueva = Number(e.target.value);
-        if (nueva > carrito[i].stockActual) nueva = carrito[i].stockActual;
-        if (!carrito[i].permiteCantidadDecimal) nueva = Math.trunc(nueva);
-        if (nueva <= 0) {
-          carrito.splice(i, 1);
-        } else {
-          carrito[i].cantidad = nueva;
+        const item = carrito[i];
+        const nueva = parseCantidad(e.target.value, item.permiteCantidadDecimal);
+        if (nueva === null) {
+          mostrarError(
+            document.getElementById('error-checkout'),
+            item.permiteCantidadDecimal ? 'Cantidad inválida.' : `${item.nombre} se vende por unidad, no admite cantidades decimales.`
+          );
+          renderCarrito();
+          return;
         }
+        mostrarError(document.getElementById('error-checkout'), '');
+        item.cantidad = Math.min(nueva, item.stockActual);
         renderCarrito();
       })
     );
