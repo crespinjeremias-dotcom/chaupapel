@@ -823,7 +823,8 @@
             perecedero: String(fila['Perecedero (SI/NO)'] || '').trim().toUpperCase() === 'SI',
           });
           creados++;
-        } catch {
+        } catch (err) {
+          console.error('Fila de importación salteada:', fila, err);
           errores++;
         }
       }
