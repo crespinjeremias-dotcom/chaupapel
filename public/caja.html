@@ -92,7 +92,7 @@
 </main>
 
 <script type="module">
-  import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
+  import { requireSession, obtenerUsuarioActual, obtenerAccessToken, logout } from './js/auth.js';
   import { listarLocales } from './js/empleados.js';
   import { obtenerLocalActivo, establecerLocalActivo } from './js/localActivo.js';
   import {
@@ -227,17 +227,37 @@
     const errorEl = document.getElementById('error-dia');
     mostrarError(errorEl, '');
     try {
+      const fechaStr = document.getElementById('fecha-dia').value;
       await cerrarCajaDelDia({
         localId: localIdActivo,
         organizationId: usuario.organization_id,
-        fechaStr: document.getElementById('fecha-dia').value,
+        fechaStr,
         usuarioId: usuario.id,
       });
       document.getElementById('exito-dia').hidden = false;
       document.getElementById('exito-dia').textContent = 'Caja del día cerrada.';
+      notificarCierreCajaPorEmail(fechaStr);
       await Promise.all([cargarDia(), cargarHistorial()]);
     } catch (err) {
       mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Best-effort (seccion 11, Plan Completo): la caja ya se cerro y se le
+  // mostro al admin -- si Resend esta caido o todavia no se configuro
+  // RESEND_API_KEY, eso no tiene que impedirle ver que el cierre funciono.
+  // La function decide sola si corresponde mandar algo (toggle del local,
+  // plan de la organizacion).
+  async function notificarCierreCajaPorEmail(fecha) {
+    try {
+      const token = await obtenerAccessToken();
+      await fetch('/.netlify/functions/notificar-cierre-caja', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ localId: localIdActivo, fecha }),
+      });
+    } catch (err) {
+      console.error('No se pudo notificar el cierre de caja por email:', err);
     }
   }
 

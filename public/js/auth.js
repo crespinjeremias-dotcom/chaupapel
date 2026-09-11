@@ -93,6 +93,13 @@ export async function obtenerSuperAdminActual() {
   return data;
 }
 
+// Access token de la sesion actual, para llamar a Netlify Functions que
+// necesitan el JWT del usuario logueado (ej. notificar-cierre-caja).
+export async function obtenerAccessToken() {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token || null;
+}
+
 // Guard simple para paginas que requieren sesion iniciada.
 export async function requireSession() {
   const { data } = await supabase.auth.getSession();

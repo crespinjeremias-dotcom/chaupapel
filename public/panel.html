@@ -128,7 +128,14 @@
 
 <script type="module">
   import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
-  import { listarLocales, listarUsuariosOrganizacion, generarInvitacion, aprobarEmpleado, crearLocal } from './js/empleados.js';
+  import {
+    listarLocales,
+    listarUsuariosOrganizacion,
+    generarInvitacion,
+    aprobarEmpleado,
+    crearLocal,
+    actualizarAlertasEmailLocal,
+  } from './js/empleados.js';
   import { listarProductos } from './js/productos.js';
   import { listarReclamosPendientes } from './js/proveedores.js';
   import { obtenerResumenCajaHoy, obtenerResumenMes } from './js/dashboard.js';
@@ -382,7 +389,7 @@
   // admin baje de plan despues (no se borra nada), solo se bloquea agregar
   // uno nuevo.
   function iniciarSeccionLocales(usuario, locales) {
-    renderListaLocales(locales);
+    renderListaLocales(locales, usuario);
 
     const puedeAgregar = tieneFeature(usuario, 'multi_local');
     document.getElementById('nuevo-local-form').hidden = !puedeAgregar;
@@ -400,7 +407,7 @@
         const nuevo = await crearLocal({ nombre, organizationId: usuario.organization_id });
         locales.push(nuevo);
         locales.sort((a, b) => a.nombre.localeCompare(b.nombre));
-        renderListaLocales(locales);
+        renderListaLocales(locales, usuario);
         document.getElementById('input-nuevo-local').value = '';
       } catch (err) {
         mostrarError(errorEl, err.message);
@@ -408,10 +415,51 @@
     });
   }
 
-  function renderListaLocales(locales) {
+  // Toggles de email por local (seccion 11): stock bajo es Plan Medio+,
+  // cierre de caja es Plan Completo -- si el plan no incluye el feature, el
+  // checkbox correspondiente ni se muestra (no solo se deshabilita), mismo
+  // criterio que el resto del panel.
+  function renderListaLocales(locales, usuario) {
+    const puedeStock = tieneFeature(usuario, 'email_stock_bajo');
+    const puedeCierre = tieneFeature(usuario, 'email_cierre_caja');
+
     document.getElementById('lista-locales').innerHTML = locales
-      .map((l) => `<li><span>${escapeHtml(l.nombre)}</span></li>`)
+      .map((l) => {
+        const toggles = [];
+        if (puedeStock) {
+          toggles.push(`
+            <span class="campo-checkbox">
+              <input type="checkbox" id="chk-stock-${l.id}" data-toggle-local="${l.id}" data-campo="alerta_stock_email" ${l.alerta_stock_email ? 'checked' : ''} />
+              <label for="chk-stock-${l.id}">Email stock bajo</label>
+            </span>`);
+        }
+        if (puedeCierre) {
+          toggles.push(`
+            <span class="campo-checkbox">
+              <input type="checkbox" id="chk-cierre-${l.id}" data-toggle-local="${l.id}" data-campo="alerta_cierre_caja_email" ${l.alerta_cierre_caja_email ? 'checked' : ''} />
+              <label for="chk-cierre-${l.id}">Email cierre de caja</label>
+            </span>`);
+        }
+        return `<li><span>${escapeHtml(l.nombre)}</span>${toggles.length ? `<span class="local-toggles-email">${toggles.join('')}</span>` : ''}</li>`;
+      })
       .join('');
+
+    document.getElementById('lista-locales').querySelectorAll('[data-toggle-local]').forEach((input) => {
+      input.addEventListener('change', async () => {
+        const localId = input.getAttribute('data-toggle-local');
+        const campo = input.getAttribute('data-campo');
+        const errorEl = document.getElementById('error-locales');
+        mostrarError(errorEl, '');
+        try {
+          await actualizarAlertasEmailLocal(localId, { [campo]: input.checked });
+          const local = locales.find((l) => l.id === localId);
+          if (local) local[campo] = input.checked;
+        } catch (err) {
+          input.checked = !input.checked;
+          mostrarError(errorEl, err.message);
+        }
+      });
+    });
   }
 
   async function cargarListasUsuarios(locales) {

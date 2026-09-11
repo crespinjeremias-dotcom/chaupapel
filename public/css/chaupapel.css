@@ -527,6 +527,14 @@ button {
   gap: 8px;
 }
 
+.local-toggles-email {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: var(--color-texto-suave);
+}
+
 .etiqueta {
   display: inline-block;
   padding: 2px 8px;
@@ -826,19 +834,22 @@ button {
   }
 }
 
-.modal .campo-checkbox {
+.campo-checkbox {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
 }
 
-.modal .campo-checkbox input {
+.campo-checkbox input {
   width: auto;
 }
 
-.modal .campo-checkbox label {
+.campo-checkbox label {
   margin: 0;
+}
+
+.modal .campo-checkbox {
+  margin-bottom: 16px;
 }
 
 .campo textarea {
