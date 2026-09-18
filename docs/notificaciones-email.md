@@ -63,6 +63,32 @@ feature, el checkbox correspondiente ni se muestra (no solo se
 deshabilita). También se revalida server-side (`tieneFeatureServer`) por si
 el toggle quedó prendido de antes de una baja de plan.
 
+## Locales bloqueados por plan
+
+La migración `20260911200000_bloqueo_locales_por_plan.sql` (sección 15)
+agregó `locales.bloqueado_por_plan` + `local_is_active()`, pero solo se
+sumó a las policies de **insert/update/delete** — no a las de `select`. Las
+dos funciones de email hacen `select`, así que RLS no las filtra solas:
+cada una chequea `bloqueado_por_plan` a mano antes de procesar el local.
+
+- `alertas-stock-email.js`: lo trae en el mismo `select` de `locales` y lo
+  excluye en el filtro de `localesElegibles`, junto con `is_active` y el
+  feature de plan. Hace falta explícito acá porque `alerta_stock_email` no
+  se apaga sola cuando un local queda bloqueado — un local bloqueado puede
+  perfectamente seguir teniendo el toggle en `true`.
+- `notificar-cierre-caja.js`: en la práctica esto no debería disparase para
+  un local bloqueado, porque `cerrarCajaDelDia()` ya no puede insertar en
+  `cierres_diarios` para ese local (misma migración, policy de insert). Se
+  revalida igual porque esta función es un endpoint aparte, alcanzable con
+  cualquier `localId`/`fecha` que el caller mande.
+
+`panel.html` no oculta ni deshabilita los toggles de un local bloqueado en
+"Mis locales" (sí los marca con la etiqueta "Bloqueado por tu plan
+actual") — es coherente con el resto del sistema (ver comentario en
+`empleados.js`: un local existente sigue viendo/editando su configuración
+aunque esté bloqueado, por si se desbloquea después) y las dos funciones ya
+no le mandan nada mientras siga bloqueado.
+
 ## Destinatarios
 
 Se le manda a todos los `usuarios` con `role = 'admin'` y

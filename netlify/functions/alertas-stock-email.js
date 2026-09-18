@@ -42,13 +42,18 @@ export async function handler(event) {
 
   const { data: locales, error: localesError } = await admin
     .from('locales')
-    .select('id, nombre, organization_id, organizations(plan, plan_overrides, is_active)')
+    .select('id, nombre, organization_id, bloqueado_por_plan, organizations(plan, plan_overrides, is_active)')
     .eq('alerta_stock_email', true)
     .eq('activo', true);
   if (localesError) return respuesta(500, { error: localesError.message });
 
+  // bloqueado_por_plan (seccion 15) no se resetea solo cuando se apaga el
+  // toggle -- un local puede quedar bloqueado con alerta_stock_email todavia
+  // en true. local_is_active() no esta en las policies de select (solo en
+  // insert/update/delete, ver migracion 20260911200000), asi que hay que
+  // chequear la columna a mano aca.
   const localesElegibles = (locales || []).filter(
-    (l) => l.organizations?.is_active !== false && tieneFeatureServer(l.organizations, 'email_stock_bajo')
+    (l) => !l.bloqueado_por_plan && l.organizations?.is_active !== false && tieneFeatureServer(l.organizations, 'email_stock_bajo')
   );
 
   let digestsEnviados = 0;
