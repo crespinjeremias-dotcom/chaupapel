@@ -102,6 +102,7 @@
     <h2>Mis locales</h2>
     <ul class="lista-usuarios" id="lista-locales"></ul>
     <div id="nuevo-local-bloqueado" class="texto-suave" hidden>Para tener más de un local necesitás el Plan Completo.</div>
+    <div id="nuevo-local-limite" class="texto-suave" hidden>Alcanzaste el máximo de locales de tu plan.</div>
     <div class="campo-con-boton" id="nuevo-local-form" hidden>
       <input type="text" id="input-nuevo-local" placeholder="Nombre del nuevo local" />
       <button type="button" class="boton-chico primario" id="btn-crear-local">+ Agregar local</button>
@@ -400,12 +401,17 @@
   // Completo. Un local ya existente se puede seguir viendo/usando aunque el
   // admin baje de plan despues (no se borra nada), solo se bloquea agregar
   // uno nuevo.
+  const LIMITE_LOCALES_MULTI_LOCAL = 3; // igual al maximo que valida validar_limite_locales() en la base
+
   function iniciarSeccionLocales(usuario, locales) {
     renderListaLocales(locales, usuario);
 
-    const puedeAgregar = tieneFeature(usuario, 'multi_local');
+    const tieneMultiLocal = tieneFeature(usuario, 'multi_local');
+    const alcanzoLimite = tieneMultiLocal && locales.length >= LIMITE_LOCALES_MULTI_LOCAL;
+    const puedeAgregar = tieneMultiLocal && !alcanzoLimite;
     document.getElementById('nuevo-local-form').hidden = !puedeAgregar;
-    document.getElementById('nuevo-local-bloqueado').hidden = puedeAgregar;
+    document.getElementById('nuevo-local-bloqueado').hidden = tieneMultiLocal;
+    document.getElementById('nuevo-local-limite').hidden = !alcanzoLimite;
 
     document.getElementById('btn-crear-local').addEventListener('click', async () => {
       const errorEl = document.getElementById('error-locales');
