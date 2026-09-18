@@ -21,6 +21,7 @@
 <main class="app-main ancho">
   <div class="tabs-pago" id="tabs-superadmin">
     <button type="button" class="activo" id="tab-cambios-plan">Cambios de plan</button>
+    <button type="button" id="tab-altas">Altas pendientes</button>
     <button type="button" id="tab-organizaciones">Organizaciones</button>
     <button type="button" disabled title="Todavía no está construido">Suscripciones y cobros (próximamente)</button>
   </div>
@@ -66,6 +67,33 @@
     </div>
   </div>
 
+  <div id="seccion-altas" hidden>
+    <div class="panel-seccion">
+      <h2>Organizaciones nuevas pendientes de aprobación</h2>
+      <p class="texto-suave">
+        Ninguna organización nueva puede operar hasta que se apruebe acá (o desde el email que llega a
+        SUPER_ADMIN_EMAIL apenas se registra).
+      </p>
+      <p class="mensaje-error" id="error-altas" hidden></p>
+      <p class="mensaje-exito" id="exito-altas" hidden></p>
+      <div class="tabla-contenedor">
+        <table class="tabla" id="tabla-altas" hidden>
+          <thead>
+            <tr>
+              <th>Organización</th>
+              <th>Admin</th>
+              <th>Email</th>
+              <th>Fecha</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-altas"></tbody>
+        </table>
+        <p class="texto-suave" id="altas-vacio">No hay organizaciones pendientes de aprobación.</p>
+      </div>
+    </div>
+  </div>
+
   <div id="seccion-organizaciones" hidden>
     <div class="panel-seccion">
       <h2>Organizaciones</h2>
@@ -97,11 +125,15 @@
     rechazarSolicitud,
     listarOrganizaciones,
     alternarOrganizacionActiva,
+    listarOrganizacionesPendientesAprobacion,
+    aprobarOrganizacion,
+    rechazarOrganizacion,
   } from './js/superadmin.js';
   import { PLAN_LABEL } from './js/planes.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
   const ETIQUETA_ESTADO = { aprobada: 'Aprobada', rechazada: 'Rechazada' };
+  const ETIQUETA_ESTADO_APROBACION = { pendiente: 'Pendiente de aprobación', rechazada: 'Rechazada' };
 
   document.getElementById('btn-logout').addEventListener('click', async () => {
     await logout();
@@ -123,6 +155,7 @@
     document.getElementById('superadmin-nombre').textContent = superAdmin.nombre;
 
     document.getElementById('tab-cambios-plan').addEventListener('click', () => cambiarTab('cambios-plan'));
+    document.getElementById('tab-altas').addEventListener('click', () => cambiarTab('altas'));
     document.getElementById('tab-organizaciones').addEventListener('click', () => cambiarTab('organizaciones'));
 
     await Promise.all([cargarPendientes(), cargarHistorial()]);
@@ -130,10 +163,71 @@
 
   function cambiarTab(tab) {
     document.getElementById('tab-cambios-plan').classList.toggle('activo', tab === 'cambios-plan');
+    document.getElementById('tab-altas').classList.toggle('activo', tab === 'altas');
     document.getElementById('tab-organizaciones').classList.toggle('activo', tab === 'organizaciones');
     document.getElementById('seccion-cambios-plan').hidden = tab !== 'cambios-plan';
+    document.getElementById('seccion-altas').hidden = tab !== 'altas';
     document.getElementById('seccion-organizaciones').hidden = tab !== 'organizaciones';
+    if (tab === 'altas') cargarAltas();
     if (tab === 'organizaciones') cargarOrganizaciones();
+  }
+
+  async function cargarAltas() {
+    const errorEl = document.getElementById('error-altas');
+    mostrarError(errorEl, '');
+    try {
+      const pendientes = await listarOrganizacionesPendientesAprobacion();
+      const tabla = document.getElementById('tabla-altas');
+      const vacio = document.getElementById('altas-vacio');
+
+      if (pendientes.length === 0) {
+        tabla.hidden = true;
+        vacio.hidden = false;
+        return;
+      }
+      tabla.hidden = false;
+      vacio.hidden = true;
+
+      document.getElementById('tbody-altas').innerHTML = pendientes
+        .map(
+          (o) => `
+          <tr>
+            <td>${escapeHtml(o.nombre)}</td>
+            <td>${escapeHtml(o.admin?.nombre || '—')}</td>
+            <td>${escapeHtml(o.admin?.email || '—')}</td>
+            <td>${new Date(o.created_at).toLocaleString('es-AR')}</td>
+            <td class="celda-acciones">
+              <button type="button" class="boton-chico primario" data-aprobar-org="${o.id}">Aprobar</button>
+              <button type="button" class="boton-chico peligro" data-rechazar-org="${o.id}">Rechazar</button>
+            </td>
+          </tr>`
+        )
+        .join('');
+
+      document.getElementById('tbody-altas').querySelectorAll('[data-aprobar-org]').forEach((btn) =>
+        btn.addEventListener('click', () => resolverAlta(btn.dataset.aprobarOrg, aprobarOrganizacion, 'Organización aprobada.'))
+      );
+      document.getElementById('tbody-altas').querySelectorAll('[data-rechazar-org]').forEach((btn) =>
+        btn.addEventListener('click', () => resolverAlta(btn.dataset.rechazarOrg, rechazarOrganizacion, 'Organización rechazada.'))
+      );
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function resolverAlta(id, accion, mensajeExito) {
+    const errorEl = document.getElementById('error-altas');
+    const exitoEl = document.getElementById('exito-altas');
+    mostrarError(errorEl, '');
+    exitoEl.hidden = true;
+    try {
+      await accion(id);
+      exitoEl.hidden = false;
+      exitoEl.textContent = mensajeExito;
+      await cargarAltas();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
   }
 
   async function cargarPendientes() {
@@ -237,19 +331,33 @@
       vacio.hidden = true;
 
       document.getElementById('tbody-organizaciones').innerHTML = organizaciones
-        .map(
-          (o) => `
-          <tr>
-            <td>${escapeHtml(o.nombre)}</td>
-            <td>${PLAN_LABEL[o.plan]}</td>
-            <td><span class="etiqueta estado-${o.is_active ? 'activa' : 'anulada'}">${o.is_active ? 'Activa' : 'Suspendida'}</span></td>
-            <td>
-              <button type="button" class="boton-chico ${o.is_active ? 'peligro' : 'primario'}" data-toggle-org="${o.id}" data-activo="${o.is_active}">
-                ${o.is_active ? 'Suspender' : 'Reactivar'}
-              </button>
-            </td>
-          </tr>`
-        )
+        .map((o) => {
+          // Mientras no este aprobada, el estado que importa es ese, no
+          // is_active (que sigue en true por default aunque nunca haya sido
+          // aprobada) -- y el toggle de suspender/reactivar no tiene sentido
+          // todavia (esta funcion se resuelve desde la pestaña "Altas
+          // pendientes").
+          if (o.estado_aprobacion !== 'aprobada') {
+            return `
+              <tr>
+                <td>${escapeHtml(o.nombre)}</td>
+                <td>${PLAN_LABEL[o.plan]}</td>
+                <td><span class="etiqueta estado-anulada">${ETIQUETA_ESTADO_APROBACION[o.estado_aprobacion]}</span></td>
+                <td class="texto-suave">—</td>
+              </tr>`;
+          }
+          return `
+            <tr>
+              <td>${escapeHtml(o.nombre)}</td>
+              <td>${PLAN_LABEL[o.plan]}</td>
+              <td><span class="etiqueta estado-${o.is_active ? 'activa' : 'anulada'}">${o.is_active ? 'Activa' : 'Suspendida'}</span></td>
+              <td>
+                <button type="button" class="boton-chico ${o.is_active ? 'peligro' : 'primario'}" data-toggle-org="${o.id}" data-activo="${o.is_active}">
+                  ${o.is_active ? 'Suspender' : 'Reactivar'}
+                </button>
+              </td>
+            </tr>`;
+        })
         .join('');
 
       document.getElementById('tbody-organizaciones').querySelectorAll('[data-toggle-org]').forEach((btn) =>

@@ -3,20 +3,31 @@ import { supabase } from './supabaseClient.js';
 export async function listarLocales() {
   const { data, error } = await supabase
     .from('locales')
-    .select('id, nombre, alerta_stock_email, alerta_cierre_caja_email, bloqueado_por_plan')
+    .select('id, nombre, alerta_stock_email, alerta_cierre_caja_email, bloqueado_por_plan, activo')
     .order('nombre');
   if (error) throw error;
   return data;
 }
 
-// Locales que se pueden ofrecer para trabajar ahi (seccion 15): excluye los
-// bloqueados por plan. Usar esta funcion, no listarLocales(), en cualquier
-// selector de "local activo" para operar (menu.js, caja/productos/ventas/
-// proveedores/clientes) -- panel.html es la unica excepcion, porque "Mis
-// locales" tiene que seguir mostrando los bloqueados con su marca.
+// Locales que se pueden ofrecer para trabajar ahi (seccion 15 y 1/13):
+// excluye los bloqueados por plan y los archivados. Usar esta funcion, no
+// listarLocales(), en cualquier selector de "local activo" para operar
+// (menu.js, caja/productos/ventas/proveedores/clientes) -- panel.html es la
+// unica excepcion, porque "Mis locales" tiene que seguir mostrando los
+// bloqueados/archivados con su marca.
 export async function listarLocalesOperables() {
   const locales = await listarLocales();
-  return locales.filter((l) => !l.bloqueado_por_plan);
+  return locales.filter((l) => !l.bloqueado_por_plan && l.activo);
+}
+
+// Archivar/desarchivar un local (seccion 1/13): reversible, a diferencia de
+// bloqueado_por_plan que se recalcula solo. Un UPDATE directo alcanza (RLS
+// ya exige admin de la organizacion) -- la restriccion de no poder archivar
+// el ultimo local operable la valida el trigger validar_archivado_local en
+// la base, no hace falta duplicarla aca.
+export async function alternarArchivadoLocal(localId, activo) {
+  const { error } = await supabase.from('locales').update({ activo }).eq('id', localId);
+  if (error) throw error;
 }
 
 // Toggles de email por local (seccion 11): el admin los prende/apaga desde

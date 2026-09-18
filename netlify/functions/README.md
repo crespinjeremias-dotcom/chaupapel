@@ -4,6 +4,7 @@ Funciones serverless de Netlify, usadas para lo que no puede (o no debe) resolve
 
 - Envío de emails de alerta de stock bajo (sección 11).
 - Envío de email de notificación de cierre de caja (sección 11, plan Completo).
+- Envío de email al super-admin cuando se registra una organización nueva (sección 16, gate de aprobación).
 - Operaciones que requieran la **service role key** de Supabase (bypasea RLS por completo), como activar/desactivar una organización (`organizations.is_active`, sección 16) — ver el trigger `prevent_is_active_change`.
 
 ## `toggle-organizacion.js`
@@ -36,6 +37,20 @@ podía ver en `caja.html`. Si el toggle del local (`alerta_cierre_caja_email`)
 está apagado, o el plan de la organización no incluye el feature, no manda
 nada y responde `200 { ok: true, enviado: false }` — no es un error.
 
+## `notificar-organizacion-nueva.js`
+
+Avisa por email al super-admin de la plataforma (`SUPER_ADMIN_EMAIL`) cuando
+se registra una organización nueva (sección 16, gate de aprobación). La
+dispara el cliente justo después de que `crear_organizacion()` RPC devuelve
+éxito en `registrarOrganizacion()` (`public/js/auth.js`) -- mismo patrón que
+`notificar-cierre-caja.js`: JWT del usuario recién creado + anon key, deja
+que RLS decida qué puede leer (leer la propia organización y su admin
+funciona igual aunque esté pendiente de aprobación -- `organizations_select`
+y `usuarios_select` no tienen condición de `org_is_active()`). Si falla, no
+hace fallar el registro: la organización ya quedó creada igual, solo
+pendiente. Ver `docs/aprobacion-organizaciones.md` para el resto del diseño
+(campo de estado, RPCs de aprobar/rechazar, qué pasa si se rechaza).
+
 ## `alertas-stock-email.js`
 
 Digest diario (cron en `netlify.toml`, 12:00 UTC = 9am Argentina) de
@@ -48,15 +63,20 @@ por eso sí usa la service role key, igual que `toggle-organizacion.js`. Ver
 de email elegido, por qué digest y no email por evento, y qué falta
 verificar en vivo contra el dashboard de Netlify).
 
-Variables de entorno adicionales que necesitan estas dos funciones:
-- `RESEND_API_KEY` (obligatoria — sin esto ninguna de las dos puede mandar
-  un email).
+Variables de entorno adicionales que necesitan estas tres funciones:
+- `RESEND_API_KEY` (obligatoria — sin esto ninguna puede mandar un email).
 - `RESEND_FROM` (opcional; sin esto usa el remitente sandbox de Resend, que
   solo entrega a la casilla del dueño de la cuenta — hace falta un dominio
   verificado en Resend y esta variable para mandarle a los admins reales).
 - `ALERTAS_STOCK_SECRET` (opcional; permite invocar `alertas-stock-email` a
   mano con `?secret=...` mientras se prueba el setup, sin depender de que el
   cron ya esté andando).
+- `SUPER_ADMIN_EMAIL` (obligatoria para `notificar-organizacion-nueva.js` —
+  sin esto esa función devuelve error 500 y lo loguea bien visible, no hay
+  ningún fallback razonable como con `RESEND_FROM`. Hoy alcanza con una sola
+  dirección porque hay un solo super-admin cargado a mano; si en el futuro
+  hay más de uno, hay que reemplazar esto por una consulta a `super_admins`
+  + `auth.users` vía service role).
 
 Nota: no todo el panel de super-admin depende de Netlify Functions. La
 aprobación de cambios de plan se resolvió sin esto, con RLS (tabla

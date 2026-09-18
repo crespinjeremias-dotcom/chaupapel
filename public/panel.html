@@ -27,6 +27,22 @@
     </p>
   </div>
 
+  <div class="panel-seccion" id="seccion-org-pendiente" hidden>
+    <h2>Organización pendiente de aprobación</h2>
+    <p class="texto-suave">
+      Tu organización todavía no fue aprobada por el administrador de la plataforma. Vas a poder ingresar en cuanto
+      se apruebe.
+    </p>
+  </div>
+
+  <div class="panel-seccion" id="seccion-org-rechazada" hidden>
+    <h2>Organización no aprobada</h2>
+    <p class="texto-suave">
+      Tu organización no fue aprobada para operar en la plataforma. Si creés que es un error, contactá al
+      administrador del sistema.
+    </p>
+  </div>
+
   <div class="aviso" id="aviso-pendiente" hidden>
     Tu cuenta está pendiente de aprobación del administrador. Vas a poder ingresar en cuanto te aprueben.
   </div>
@@ -143,6 +159,7 @@
     aprobarEmpleado,
     crearLocal,
     actualizarAlertasEmailLocal,
+    alternarArchivadoLocal,
   } from './js/empleados.js';
   import { listarProductos } from './js/productos.js';
   import { listarReclamosPendientes } from './js/proveedores.js';
@@ -174,6 +191,20 @@
 
     if (usuario.organizations && usuario.organizations.is_active === false) {
       document.getElementById('seccion-suspendida').hidden = false;
+      document.getElementById('header').hidden = false;
+      document.getElementById('nombre-local').textContent = usuario.organizations.nombre;
+      return;
+    }
+
+    if (usuario.organizations && usuario.organizations.estado_aprobacion === 'pendiente') {
+      document.getElementById('seccion-org-pendiente').hidden = false;
+      document.getElementById('header').hidden = false;
+      document.getElementById('nombre-local').textContent = usuario.organizations.nombre;
+      return;
+    }
+
+    if (usuario.organizations && usuario.organizations.estado_aprobacion === 'rechazada') {
+      document.getElementById('seccion-org-rechazada').hidden = false;
       document.getElementById('header').hidden = false;
       document.getElementById('nombre-local').textContent = usuario.organizations.nombre;
       return;
@@ -439,12 +470,18 @@
   // criterio que el resto del panel.
   //
   // "Mis locales" es la unica pantalla que sigue mostrando los locales
-  // bloqueados por plan (marcados aparte) -- en cualquier otro lado
-  // (selector de local activo en el menu, caja/productos/ventas/etc.) se
-  // usa listarLocalesOperables(), que ya los excluye.
+  // bloqueados por plan o archivados (marcados aparte, con boton para
+  // archivar/desarchivar) -- en cualquier otro lado (selector de local activo
+  // en el menu, caja/productos/ventas/etc.) se usa listarLocalesOperables(),
+  // que ya los excluye.
   function renderListaLocales(locales, usuario) {
     const puedeStock = tieneFeature(usuario, 'email_stock_bajo');
     const puedeCierre = tieneFeature(usuario, 'email_cierre_caja');
+    // "Operable de verdad" (activo Y no bloqueado_por_plan) -- mismo criterio
+    // que valida el trigger validar_archivado_local en la base. Se usa para
+    // deshabilitar "Archivar" en el ultimo local operable, en vez de dejar
+    // que el admin choque a ciegas con el error del servidor.
+    const operables = locales.filter((x) => x.activo && !x.bloqueado_por_plan).length;
 
     document.getElementById('lista-locales').innerHTML = locales
       .map((l) => {
@@ -463,8 +500,14 @@
               <label for="chk-cierre-${l.id}">Email cierre de caja</label>
             </span>`);
         }
+        const esUltimoOperable = l.activo && !l.bloqueado_por_plan && operables <= 1;
+        toggles.push(`
+          <button type="button" class="boton-secundario boton-inline" data-archivar-local="${l.id}" data-nuevo-estado="${!l.activo}" ${esUltimoOperable ? 'disabled title="Es el único local operable de la organización"' : ''}>
+            ${l.activo ? 'Archivar' : 'Desarchivar'}
+          </button>`);
         const marcaBloqueado = l.bloqueado_por_plan ? ' <span class="etiqueta inactivo">Bloqueado por tu plan actual</span>' : '';
-        return `<li><span>${escapeHtml(l.nombre)}${marcaBloqueado}</span>${toggles.length ? `<span class="local-toggles-email">${toggles.join('')}</span>` : ''}</li>`;
+        const marcaArchivado = !l.activo ? ' <span class="etiqueta inactivo">Archivado</span>' : '';
+        return `<li><span>${escapeHtml(l.nombre)}${marcaBloqueado}${marcaArchivado}</span><span class="local-toggles-email">${toggles.join('')}</span></li>`;
       })
       .join('');
 
@@ -481,6 +524,25 @@
         } catch (err) {
           input.checked = !input.checked;
           mostrarError(errorEl, err.message);
+        }
+      });
+    });
+
+    document.getElementById('lista-locales').querySelectorAll('[data-archivar-local]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const localId = btn.getAttribute('data-archivar-local');
+        const nuevoEstado = btn.getAttribute('data-nuevo-estado') === 'true';
+        const errorEl = document.getElementById('error-locales');
+        mostrarError(errorEl, '');
+        btn.disabled = true;
+        try {
+          await alternarArchivadoLocal(localId, nuevoEstado);
+          const local = locales.find((x) => x.id === localId);
+          if (local) local.activo = nuevoEstado;
+          renderListaLocales(locales, usuario);
+        } catch (err) {
+          mostrarError(errorEl, err.message);
+          btn.disabled = false;
         }
       });
     });

@@ -34,7 +34,35 @@ export async function registrarOrganizacion({ nombreNegocio, nombreAdmin, email,
     p_nombre_admin: nombreAdmin,
     p_telefono: telefono || null,
   });
+
+  // crear_organizacion() esta declarada "returns table(...)" -- PostgREST
+  // siempre devuelve eso como un array (una fila en este caso), no un objeto
+  // suelto.
+  const organizationId = data?.[0]?.organization_id;
+
+  // Best-effort: si el aviso al super-admin falla, la organizacion ya quedo
+  // creada igual (solo pendiente de aprobacion) -- no tiene sentido hacer
+  // fallar el registro por esto. No se espera con await bloqueante: el envio
+  // corre en paralelo, el error (si hay) solo se loguea en la consola.
+  if (!error && organizationId && signUpData.session) {
+    notificarOrganizacionNueva(organizationId, signUpData.session.access_token).catch((err) =>
+      console.error('No se pudo avisar de la organización nueva:', err)
+    );
+  }
+
   return { data, error, session: signUpData.session };
+}
+
+async function notificarOrganizacionNueva(organizationId, accessToken) {
+  const resp = await fetch('/.netlify/functions/notificar-organizacion-nueva', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ organizationId }),
+  });
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}));
+    throw new Error(data.error || `Resp ${resp.status}`);
+  }
 }
 
 export async function redimirInvitacion({ codigo, nombre, telefono, email, password }) {
@@ -68,7 +96,7 @@ export async function obtenerUsuarioActual() {
   const { data, error } = await supabase
     .from('usuarios')
     .select(
-      'id, nombre, role, status, local_id, organization_id, organizations(nombre, plan, plan_overrides, is_active), locales(nombre, fiado_habilitado, bloqueado_por_plan)'
+      'id, nombre, role, status, local_id, organization_id, organizations(nombre, plan, plan_overrides, is_active, estado_aprobacion), locales(nombre, fiado_habilitado, bloqueado_por_plan)'
     )
     .eq('id', sessionData.session.user.id)
     .maybeSingle();
@@ -119,6 +147,7 @@ export function pantallaDeEntrada(usuario) {
   if (!usuario) return 'index.html';
   if (usuario.status !== 'approved') return 'panel.html';
   if (usuario.organizations?.is_active === false) return 'panel.html';
+  if (usuario.organizations?.estado_aprobacion && usuario.organizations.estado_aprobacion !== 'aprobada') return 'panel.html';
   if (usuario.locales?.bloqueado_por_plan === true) return 'panel.html';
   return usuario.role === 'empleado' ? 'ventas.html' : 'panel.html';
 }

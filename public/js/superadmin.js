@@ -41,9 +41,49 @@ export async function rechazarSolicitud(id) {
 // RLS (policy organizations_select_superadmin), no hace falta la Netlify
 // Function -- esa function solo hace falta para escribir is_active.
 export async function listarOrganizaciones() {
-  const { data, error } = await supabase.from('organizations').select('id, nombre, plan, is_active, created_at').order('nombre');
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('id, nombre, plan, is_active, estado_aprobacion, created_at')
+    .order('nombre');
   if (error) throw error;
   return data;
+}
+
+// Organizaciones nuevas pendientes de aprobacion (seccion 16). Se hacen dos
+// consultas en vez de un embed (organizations -> usuarios es de a muchos, y
+// el embed inverso de PostgREST complica el filtro por role=admin) y se
+// mezclan en JS -- mas simple. usuarios_select_superadmin (nueva policy) es
+// lo que permite leer usuarios de cualquier organizacion desde este panel.
+export async function listarOrganizacionesPendientesAprobacion() {
+  const { data: orgs, error } = await supabase
+    .from('organizations')
+    .select('id, nombre, created_at')
+    .eq('estado_aprobacion', 'pendiente')
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  if (orgs.length === 0) return [];
+
+  const { data: admins, error: adminsError } = await supabase
+    .from('usuarios')
+    .select('organization_id, nombre, email')
+    .eq('role', 'admin')
+    .in('organization_id', orgs.map((o) => o.id));
+  if (adminsError) throw adminsError;
+
+  return orgs.map((o) => ({ ...o, admin: admins.find((a) => a.organization_id === o.id) || null }));
+}
+
+// aprobar/rechazar via RPC (security definer) -- mismo patron que
+// aprobar_solicitud_plan/rechazar_solicitud_plan, nunca un UPDATE directo
+// (ver prevent_estado_aprobacion_change_directo).
+export async function aprobarOrganizacion(id) {
+  const { error } = await supabase.rpc('aprobar_organizacion', { p_organization_id: id });
+  if (error) throw error;
+}
+
+export async function rechazarOrganizacion(id) {
+  const { error } = await supabase.rpc('rechazar_organizacion', { p_organization_id: id });
+  if (error) throw error;
 }
 
 // activar/desactivar si pasa por la Netlify Function: es la unica columna
