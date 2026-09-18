@@ -13,6 +13,22 @@ export async function enviarEmail({ to, subject, html }) {
   // el unico que la cuenta deja usar, y solo para mandarle a la propia
   // casilla del dueño de la cuenta -- sirve para probar el circuito antes
   // de verificar un dominio real. RESEND_FROM permite pisarlo en produccion.
+  if (!process.env.RESEND_FROM) {
+    // Si esto se ve en los logs de produccion, los emails se estan mandando
+    // con el remitente sandbox de Resend -- solo le llegan a la casilla del
+    // dueño de la cuenta de Resend, no a los admins reales. No lo tapamos
+    // con un fallback silencioso: hay que configurar RESEND_FROM (dominio
+    // verificado) en Netlify.
+    console.error(
+      '########################################################\n' +
+      '# ALERTA: falta configurar RESEND_FROM en Netlify.\n' +
+      '# Los emails se mandan con el remitente sandbox de Resend\n' +
+      '# (onboarding@resend.dev), que SOLO entrega a la casilla\n' +
+      '# del dueño de la cuenta de Resend -- no a los admins reales.\n' +
+      '# Configurar RESEND_FROM con un dominio verificado en Resend.\n' +
+      '########################################################'
+    );
+  }
   const from = process.env.RESEND_FROM || 'Chaupapel <onboarding@resend.dev>';
 
   const res = await fetch(RESEND_API_URL, {
