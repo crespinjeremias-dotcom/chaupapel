@@ -39,11 +39,20 @@ export async function handler(event) {
 
   const { data: local, error: localError } = await supabase
     .from('locales')
-    .select('id, nombre, organization_id, alerta_cierre_caja_email')
+    .select('id, nombre, organization_id, alerta_cierre_caja_email, bloqueado_por_plan')
     .eq('id', localId)
     .maybeSingle();
   if (localError) return respuesta(500, { error: localError.message });
   if (!local) return respuesta(404, { error: 'Local no encontrado' });
+
+  // En la practica esto no deberia pasar -- cerrarCajaDelDia() ya no puede
+  // insertar en cierres_diarios para un local bloqueado (local_is_active()
+  // en la policy de insert, migracion 20260911200000). Pero esta funcion es
+  // un endpoint aparte que un caller podria golpear directo con un
+  // localId/fecha viejos, asi que se revalida igual en vez de asumirlo.
+  if (local.bloqueado_por_plan) {
+    return respuesta(200, { ok: true, enviado: false });
+  }
 
   // No es un error -- el toggle esta apagado, no hay nada que mandar.
   if (!local.alerta_cierre_caja_email) {
