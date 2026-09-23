@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "chaupapel-web",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8888", "--directory", "public"],
+      "runtimeExecutable": "node",
+      "runtimeArgs": [".claude/serve-public.mjs"],
       "port": 8888
     }
   ]

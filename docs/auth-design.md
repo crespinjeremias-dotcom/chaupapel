@@ -36,3 +36,8 @@ Limitación conocida y aceptada para el MVP: si se abren tres sesiones seguidas 
 - Probar el flujo completo de "restablecer contraseña" con un link real de email (no se pudo simular sin acceso a una casilla real en este entorno de pruebas). El código sigue el patrón estándar de Supabase (`onAuthStateChange` con evento `PASSWORD_RECOVERY`), pero no quedó verificado en vivo end-to-end.
 - Plantillas de email de Supabase (confirmación, recuperación) están con el diseño default — personalizarlas es cosmético, no bloquea funcionalidad.
 - Panel de super-admin: la aprobación de cambios de plan ya está (Fase 15, primer caso de uso — ver `docs/rls-design.md`, sección "Panel de super-admin del SaaS"). Falta activar/desactivar `is_active` por falta de pago, que sigue atado a `service_role` y necesita una Netlify Function.
+
+## Código de activación y sesión única (migraciones 20260923*)
+
+- **Alta de organización con código**: `crear_organizacion(nombre, nombre_admin, telefono, codigo)` exige un código de `codigos_activacion` (generado por el super-admin desde su panel; un solo uso y 30 días de vigencia por defecto, `max_usos`/`expira_at` configurables). Lo valida y consume en la misma transacción, con lock de fila. El front lo valida antes del `signUp` con `validar_codigo_activacion()` (callable sin sesión) para no dejar cuentas de auth huérfanas. La firma vieja de 3 parámetros y la policy `organizations_insert` se eliminaron: no hay camino de alta sin código.
+- **Sesión única**: `logout()` libera `usuarios.current_session_id`, pero solo si la sesión registrada es la propia — así no se muestra el aviso "ya había una sesión abierta" después de un cierre de sesión normal. Cerrar la pestaña sin hacer logout no lo libera.

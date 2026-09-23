@@ -19,6 +19,10 @@
 
     <form id="form-registro">
       <div class="campo">
+        <label for="codigo">Código de activación</label>
+        <input type="text" id="codigo" required autocomplete="off" autocapitalize="characters" placeholder="XXXXX-XXXXX" />
+      </div>
+      <div class="campo">
         <label for="nombre-negocio">Nombre del local</label>
         <input type="text" id="nombre-negocio" required placeholder="Ej: Almacén Don Juan" />
       </div>
@@ -55,12 +59,17 @@
   const errorEl = document.getElementById('error');
   const btnSubmit = document.getElementById('btn-submit');
 
+  // El link que genera el super-admin trae el codigo: registro.html?codigo=...
+  const codigoDelLink = new URLSearchParams(window.location.search).get('codigo');
+  if (codigoDelLink) document.getElementById('codigo').value = codigoDelLink;
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     mostrarError(errorEl, '');
     mostrarCargando(btnSubmit, true, 'Crear mi cuenta');
 
     const { error } = await registrarOrganizacion({
+      codigo: document.getElementById('codigo').value.trim(),
       nombreNegocio: document.getElementById('nombre-negocio').value.trim(),
       nombreAdmin: document.getElementById('nombre-admin').value.trim(),
       email: document.getElementById('email').value.trim(),

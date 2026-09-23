@@ -101,15 +101,34 @@
       // si falla el chequeo de sesion unica, no bloqueamos el login por eso
     }
 
-    await irAPantallaDeEntrada();
+    try {
+      await irAPantallaDeEntrada();
+    } catch (err) {
+      mostrarError(errorEl, `No se pudo continuar: ${err.message}`);
+      mostrarCargando(btnSubmit, false, 'Iniciar sesión');
+    }
   });
 
-  document.getElementById('btn-cerrar-anterior').addEventListener('click', async () => {
-    await cerrarSesionesAnteriores();
-    await irAPantallaDeEntrada();
-  });
+  // Los dos botones terminan en irAPantallaDeEntrada(), que consulta la base y
+  // puede fallar (ej. error de red o de la consulta). Sin este manejo el
+  // error quedaba como promesa rechazada sin capturar: el usuario veia los
+  // botones sin reaccion y sin ningun mensaje.
+  async function continuarDesdeAvisoDeSesion(accionPrevia) {
+    const botones = avisoSesion.querySelectorAll('button');
+    mostrarError(errorEl, '');
+    botones.forEach((b) => (b.disabled = true));
+    try {
+      if (accionPrevia) {
+        const { error } = await accionPrevia();
+        if (error) throw error;
+      }
+      await irAPantallaDeEntrada();
+    } catch (err) {
+      mostrarError(errorEl, `No se pudo continuar: ${err.message}`);
+      botones.forEach((b) => (b.disabled = false));
+    }
+  }
 
-  document.getElementById('btn-mantener-ambas').addEventListener('click', async () => {
-    await irAPantallaDeEntrada();
-  });
+  document.getElementById('btn-cerrar-anterior').addEventListener('click', () => continuarDesdeAvisoDeSesion(cerrarSesionesAnteriores));
+  document.getElementById('btn-mantener-ambas').addEventListener('click', () => continuarDesdeAvisoDeSesion(null));
 </script>

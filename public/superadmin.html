@@ -22,6 +22,7 @@
   <div class="tabs-pago" id="tabs-superadmin">
     <button type="button" class="activo" id="tab-cambios-plan">Cambios de plan</button>
     <button type="button" id="tab-organizaciones">Organizaciones</button>
+    <button type="button" id="tab-codigos">Códigos de activación</button>
     <button type="button" disabled title="Todavía no está construido">Suscripciones y cobros (próximamente)</button>
   </div>
 
@@ -86,6 +87,51 @@
       </div>
     </div>
   </div>
+
+  <div id="seccion-codigos" hidden>
+    <div class="panel-seccion">
+      <h2>Generar código de activación</h2>
+      <p class="texto-suave">Sin un código válido nadie puede crear una organización nueva. Por defecto es de un solo uso y vence a los 30 días.</p>
+      <form id="form-codigo">
+        <div class="campo">
+          <label for="codigo-nota">Nota (para quién es)</label>
+          <input type="text" id="codigo-nota" placeholder="Ej: Almacén Don Juan" />
+        </div>
+        <div class="campo">
+          <label for="codigo-dias">Vence en (días, vacío = no vence)</label>
+          <input type="number" id="codigo-dias" min="1" step="1" value="30" />
+        </div>
+        <div class="campo">
+          <label for="codigo-max-usos">Usos permitidos</label>
+          <input type="number" id="codigo-max-usos" min="1" step="1" value="1" />
+        </div>
+        <button type="submit" class="boton-primario" id="btn-generar-codigo">Generar código</button>
+      </form>
+      <p class="mensaje-error" id="error-codigos" hidden></p>
+      <p class="mensaje-exito" id="exito-codigos" hidden></p>
+    </div>
+
+    <div class="panel-seccion">
+      <h2>Códigos</h2>
+      <div class="tabla-contenedor">
+        <table class="tabla" id="tabla-codigos" hidden>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Nota</th>
+              <th>Estado</th>
+              <th>Usos</th>
+              <th>Vence</th>
+              <th>Usado por</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-codigos"></tbody>
+        </table>
+        <p class="texto-suave" id="codigos-vacio">Todavía no generaste ningún código.</p>
+      </div>
+    </div>
+  </div>
 </main>
 
 <script type="module">
@@ -97,11 +143,19 @@
     rechazarSolicitud,
     listarOrganizaciones,
     alternarOrganizacionActiva,
+    listarCodigosActivacion,
+    generarCodigoActivacion,
+    revocarCodigoActivacion,
+    formatearCodigo,
+    estadoCodigo,
   } from './js/superadmin.js';
   import { PLAN_LABEL } from './js/planes.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
   const ETIQUETA_ESTADO = { aprobada: 'Aprobada', rechazada: 'Rechazada' };
+  const ETIQUETA_CODIGO = { disponible: 'Disponible', usado: 'Usado', vencido: 'Vencido', revocado: 'Revocado' };
+  const CLASE_CODIGO = { disponible: 'activa', usado: 'editada', vencido: 'anulada', revocado: 'anulada' };
+  let superAdminActual = null;
 
   document.getElementById('btn-logout').addEventListener('click', async () => {
     await logout();
@@ -120,10 +174,13 @@
       return;
     }
 
+    superAdminActual = superAdmin;
     document.getElementById('superadmin-nombre').textContent = superAdmin.nombre;
 
     document.getElementById('tab-cambios-plan').addEventListener('click', () => cambiarTab('cambios-plan'));
     document.getElementById('tab-organizaciones').addEventListener('click', () => cambiarTab('organizaciones'));
+    document.getElementById('tab-codigos').addEventListener('click', () => cambiarTab('codigos'));
+    document.getElementById('form-codigo').addEventListener('submit', onGenerarCodigo);
 
     await Promise.all([cargarPendientes(), cargarHistorial()]);
   }
@@ -133,7 +190,10 @@
     document.getElementById('tab-organizaciones').classList.toggle('activo', tab === 'organizaciones');
     document.getElementById('seccion-cambios-plan').hidden = tab !== 'cambios-plan';
     document.getElementById('seccion-organizaciones').hidden = tab !== 'organizaciones';
+    document.getElementById('tab-codigos').classList.toggle('activo', tab === 'codigos');
+    document.getElementById('seccion-codigos').hidden = tab !== 'codigos';
     if (tab === 'organizaciones') cargarOrganizaciones();
+    if (tab === 'codigos') cargarCodigos();
   }
 
   async function cargarPendientes() {
@@ -266,6 +326,124 @@
     try {
       await alternarOrganizacionActiva(organizationId, !activoActual);
       await cargarOrganizaciones();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Codigos de activacion ---------------------------------------------------
+
+  function linkDeRegistro(codigo) {
+    const url = new URL('registro.html', window.location.href);
+    url.searchParams.set('codigo', formatearCodigo(codigo));
+    return url.toString();
+  }
+
+  async function copiarAlPortapapeles(texto, mensajeExito) {
+    const exitoEl = document.getElementById('exito-codigos');
+    const errorEl = document.getElementById('error-codigos');
+    mostrarError(errorEl, '');
+    try {
+      await navigator.clipboard.writeText(texto);
+      exitoEl.hidden = false;
+      exitoEl.textContent = mensajeExito;
+    } catch {
+      exitoEl.hidden = true;
+      mostrarError(errorEl, 'No se pudo copiar automáticamente. Copialo a mano: ' + texto);
+    }
+  }
+
+  async function onGenerarCodigo(e) {
+    e.preventDefault();
+    const errorEl = document.getElementById('error-codigos');
+    const exitoEl = document.getElementById('exito-codigos');
+    const boton = document.getElementById('btn-generar-codigo');
+    mostrarError(errorEl, '');
+    exitoEl.hidden = true;
+
+    const diasTexto = document.getElementById('codigo-dias').value.trim();
+    const diasVencimiento = diasTexto === '' ? null : Number(diasTexto);
+    const maxUsos = Number(document.getElementById('codigo-max-usos').value);
+    if ((diasVencimiento !== null && !(Number.isInteger(diasVencimiento) && diasVencimiento >= 1)) || !(Number.isInteger(maxUsos) && maxUsos >= 1)) {
+      mostrarError(errorEl, 'Días de vencimiento y usos permitidos tienen que ser números enteros de 1 o más.');
+      return;
+    }
+
+    boton.disabled = true;
+    try {
+      const nuevo = await generarCodigoActivacion({
+        nota: document.getElementById('codigo-nota').value.trim(),
+        diasVencimiento,
+        maxUsos,
+        creadoPor: superAdminActual.id,
+      });
+      document.getElementById('codigo-nota').value = '';
+      await cargarCodigos();
+      exitoEl.hidden = false;
+      exitoEl.textContent = `Código generado: ${formatearCodigo(nuevo.codigo)}`;
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    } finally {
+      boton.disabled = false;
+    }
+  }
+
+  async function cargarCodigos() {
+    const errorEl = document.getElementById('error-codigos');
+    try {
+      const codigos = await listarCodigosActivacion();
+      const tabla = document.getElementById('tabla-codigos');
+      const vacio = document.getElementById('codigos-vacio');
+
+      if (codigos.length === 0) {
+        tabla.hidden = true;
+        vacio.hidden = false;
+        return;
+      }
+      tabla.hidden = false;
+      vacio.hidden = true;
+
+      document.getElementById('tbody-codigos').innerHTML = codigos
+        .map((c) => {
+          const estado = estadoCodigo(c);
+          const usadoPor = (c.organizations || []).map((o) => escapeHtml(o.nombre)).join(', ') || '—';
+          const acciones =
+            estado === 'disponible'
+              ? `<button type="button" class="boton-chico secundario" data-copiar-link="${c.codigo}">Copiar link</button>
+                 <button type="button" class="boton-chico peligro" data-revocar="${c.id}">Revocar</button>`
+              : '';
+          return `
+            <tr>
+              <td><code>${formatearCodigo(c.codigo)}</code></td>
+              <td>${escapeHtml(c.nota || '—')}</td>
+              <td><span class="etiqueta estado-${CLASE_CODIGO[estado]}">${ETIQUETA_CODIGO[estado]}</span></td>
+              <td>${c.usos} / ${c.max_usos}</td>
+              <td>${c.expira_at ? new Date(c.expira_at).toLocaleDateString('es-AR') : 'No vence'}</td>
+              <td>${usadoPor}</td>
+              <td class="celda-acciones">${acciones}</td>
+            </tr>`;
+        })
+        .join('');
+
+      const tbody = document.getElementById('tbody-codigos');
+      tbody.querySelectorAll('[data-copiar-link]').forEach((btn) =>
+        btn.addEventListener('click', () => copiarAlPortapapeles(linkDeRegistro(btn.dataset.copiarLink), 'Link de registro copiado.'))
+      );
+      tbody.querySelectorAll('[data-revocar]').forEach((btn) =>
+        btn.addEventListener('click', () => revocarCodigo(btn.dataset.revocar))
+      );
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function revocarCodigo(id) {
+    const errorEl = document.getElementById('error-codigos');
+    mostrarError(errorEl, '');
+    if (!window.confirm('¿Revocar este código? Nadie más va a poder usarlo para registrarse.')) return;
+    try {
+      await revocarCodigoActivacion(id);
+      await cargarCodigos();
     } catch (err) {
       mostrarError(errorEl, err.message);
     }
