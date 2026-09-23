@@ -39,7 +39,7 @@
   <div class="panel-seccion" id="seccion-local-bloqueado" hidden>
     <h2>Local desactivado</h2>
     <p class="texto-suave">
-      Tu local fue desactivado porque el plan de tu organización bajó de nivel. Contactá a tu administrador.
+      Tu local fue desactivado (por un cambio de plan de tu organización o porque tu administrador lo archivó). Contactá a tu administrador.
     </p>
   </div>
 
@@ -101,12 +101,18 @@
   <div class="panel-seccion" id="seccion-locales" hidden>
     <h2>Mis locales</h2>
     <ul class="lista-usuarios" id="lista-locales"></ul>
-    <div id="nuevo-local-bloqueado" class="texto-suave" hidden>Para tener más de un local necesitás el Plan Completo.</div>
+    <div id="nuevo-local-bloqueado" class="texto-suave" hidden></div>
     <div class="campo-con-boton" id="nuevo-local-form" hidden>
       <input type="text" id="input-nuevo-local" placeholder="Nombre del nuevo local" />
       <button type="button" class="boton-chico primario" id="btn-crear-local">+ Agregar local</button>
     </div>
     <p class="mensaje-error" id="error-locales" hidden></p>
+
+    <div id="locales-archivados" hidden>
+      <h3>Locales archivados</h3>
+      <p class="texto-suave">Ocultos y sin operar, con sus ventas, stock e historial intactos. Restaurar uno vuelve a usar un lugar de tu plan.</p>
+      <ul class="lista-usuarios" id="lista-locales-archivados"></ul>
+    </div>
   </div>
 
   <div class="panel-seccion" id="seccion-invitar" hidden>
@@ -134,9 +140,12 @@
 </main>
 
 <script type="module">
-  import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
+  import { requireSession, obtenerUsuarioActual, logout, localNoOperable } from './js/auth.js';
   import {
     listarLocales,
+    listarLocalesArchivados,
+    archivarLocal,
+    restaurarLocal,
     listarUsuariosOrganizacion,
     generarInvitacion,
     aprobarEmpleado,
@@ -148,7 +157,15 @@
   import { obtenerResumenCajaHoy, obtenerResumenMes } from './js/dashboard.js';
   import { montarMenu } from './js/menu.js';
   import { obtenerLocalActivo } from './js/localActivo.js';
-  import { tieneFeature, PLANES, PLAN_LABEL, solicitarCambioPlan, obtenerUltimaSolicitudPlan } from './js/planes.js';
+  import {
+    tieneFeature,
+    maxLocales,
+    mensajeLimiteLocales,
+    PLANES,
+    PLAN_LABEL,
+    solicitarCambioPlan,
+    obtenerUltimaSolicitudPlan,
+  } from './js/planes.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
   const formatoMoneda = (n) => `$${Number(n).toLocaleString('es-AR')}`;
@@ -189,7 +206,7 @@
     }
 
     if (usuario.role === 'empleado') {
-      if (usuario.locales?.bloqueado_por_plan) {
+      if (localNoOperable(usuario)) {
         document.getElementById('seccion-local-bloqueado').hidden = false;
         return;
       }
@@ -397,15 +414,14 @@
   }
 
   // Mis locales (seccion 1 y 13, multi-local): tener mas de un local es Plan
-  // Completo. Un local ya existente se puede seguir viendo/usando aunque el
+  // Completo, hasta un maximo de 3 (maxLocales, planes.js) sin contar los
+  // archivados. Un local ya existente se puede seguir viendo/usando aunque el
   // admin baje de plan despues (no se borra nada), solo se bloquea agregar
-  // uno nuevo.
+  // uno nuevo. `locales` son los NO archivados (listarLocales los excluye).
   function iniciarSeccionLocales(usuario, locales) {
     renderListaLocales(locales, usuario);
-
-    const puedeAgregar = tieneFeature(usuario, 'multi_local');
-    document.getElementById('nuevo-local-form').hidden = !puedeAgregar;
-    document.getElementById('nuevo-local-bloqueado').hidden = puedeAgregar;
+    actualizarFormNuevoLocal(usuario, locales);
+    cargarLocalesArchivados();
 
     document.getElementById('btn-crear-local').addEventListener('click', async () => {
       const errorEl = document.getElementById('error-locales');
@@ -420,10 +436,60 @@
         locales.push(nuevo);
         locales.sort((a, b) => a.nombre.localeCompare(b.nombre));
         renderListaLocales(locales, usuario);
+        actualizarFormNuevoLocal(usuario, locales);
         document.getElementById('input-nuevo-local').value = '';
       } catch (err) {
-        mostrarError(errorEl, err.message);
+        // 42501 = la policy locales_insert rechazo el insert (cupo del plan
+        // lleno, ver migracion 20260923090000) -- el mensaje crudo de
+        // Postgres ("new row violates row-level security policy") no le dice
+        // nada al admin.
+        mostrarError(errorEl, err.code === '42501' ? mensajeLimiteLocales(usuario) : err.message);
       }
+    });
+  }
+
+  // Sin cupo (o sin el feature multi_local) no se ofrece el form: se muestra
+  // el motivo. La policy locales_insert es la barrera real; esto solo evita
+  // que el admin choque contra ella.
+  function actualizarFormNuevoLocal(usuario, locales) {
+    const cupoLleno = locales.length >= maxLocales(usuario);
+    document.getElementById('nuevo-local-form').hidden = cupoLleno;
+    const aviso = document.getElementById('nuevo-local-bloqueado');
+    aviso.hidden = !cupoLleno;
+    aviso.textContent = mensajeLimiteLocales(usuario);
+  }
+
+  // Archivar / restaurar recargan la pagina: el listado de locales alimenta
+  // varios selectores (dashboard, invitar, empleados pendientes) que se
+  // arman una sola vez al iniciar.
+  async function cargarLocalesArchivados() {
+    const errorEl = document.getElementById('error-locales');
+    let archivados;
+    try {
+      archivados = await listarLocalesArchivados();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+      return;
+    }
+    document.getElementById('locales-archivados').hidden = archivados.length === 0;
+    const lista = document.getElementById('lista-locales-archivados');
+    lista.innerHTML = archivados
+      .map(
+        (l) => `<li><span>${escapeHtml(l.nombre)}</span><button type="button" class="boton-chico secundario" data-restaurar="${l.id}">Restaurar</button></li>`
+      )
+      .join('');
+    lista.querySelectorAll('[data-restaurar]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        mostrarError(errorEl, '');
+        btn.disabled = true;
+        try {
+          await restaurarLocal(btn.getAttribute('data-restaurar'));
+          window.location.reload();
+        } catch (err) {
+          btn.disabled = false;
+          mostrarError(errorEl, err.message);
+        }
+      });
     });
   }
 
@@ -458,9 +524,31 @@
             </span>`);
         }
         const marcaBloqueado = l.bloqueado_por_plan ? ' <span class="etiqueta inactivo">Bloqueado por tu plan actual</span>' : '';
-        return `<li><span>${escapeHtml(l.nombre)}${marcaBloqueado}</span>${toggles.length ? `<span class="local-toggles-email">${toggles.join('')}</span>` : ''}</li>`;
+        const btnArchivar = `<button type="button" class="boton-chico peligro" data-archivar="${l.id}">Archivar</button>`;
+        return `<li><span>${escapeHtml(l.nombre)}${marcaBloqueado}</span>${toggles.length ? `<span class="local-toggles-email">${toggles.join('')}</span>` : ''}${btnArchivar}</li>`;
       })
       .join('');
+
+    document.getElementById('lista-locales').querySelectorAll('[data-archivar]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const localId = btn.getAttribute('data-archivar');
+        const local = locales.find((l) => l.id === localId);
+        const errorEl = document.getElementById('error-locales');
+        mostrarError(errorEl, '');
+        const ok = window.confirm(
+          `¿Archivar "${local?.nombre}"? Queda oculto y nadie puede operar en él (los empleados asignados no van a poder ingresar), pero conserva todas sus ventas, stock e historial. Podés restaurarlo cuando quieras.`
+        );
+        if (!ok) return;
+        btn.disabled = true;
+        try {
+          await archivarLocal(localId);
+          window.location.reload();
+        } catch (err) {
+          btn.disabled = false;
+          mostrarError(errorEl, err.message);
+        }
+      });
+    });
 
     document.getElementById('lista-locales').querySelectorAll('[data-toggle-local]').forEach((input) => {
       input.addEventListener('change', async () => {

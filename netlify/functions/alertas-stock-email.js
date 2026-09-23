@@ -44,7 +44,8 @@ export async function handler(event) {
     .from('locales')
     .select('id, nombre, organization_id, bloqueado_por_plan, organizations(plan, plan_overrides, is_active)')
     .eq('alerta_stock_email', true)
-    .eq('activo', true);
+    .eq('activo', true)
+    .eq('archivado', false);
   if (localesError) return respuesta(500, { error: localesError.message });
 
   // bloqueado_por_plan (seccion 15) no se resetea solo cuando se apaga el

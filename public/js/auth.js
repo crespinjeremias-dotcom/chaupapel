@@ -68,7 +68,7 @@ export async function obtenerUsuarioActual() {
   const { data, error } = await supabase
     .from('usuarios')
     .select(
-      'id, nombre, role, status, local_id, organization_id, organizations(nombre, plan, plan_overrides, is_active), locales(nombre, fiado_habilitado, bloqueado_por_plan)'
+      'id, nombre, role, status, local_id, organization_id, organizations(nombre, plan, plan_overrides, is_active), locales(nombre, fiado_habilitado, bloqueado_por_plan, archivado)'
     )
     .eq('id', sessionData.session.user.id)
     .maybeSingle();
@@ -110,6 +110,13 @@ export async function requireSession() {
   return data.session;
 }
 
+// El local propio del empleado no se puede usar: bloqueado por el plan
+// (seccion 15) o archivado por el dueno. Para el admin siempre es false --
+// no tiene local propio (usuario.locales es null).
+export function localNoOperable(usuario) {
+  return usuario?.locales?.bloqueado_por_plan === true || usuario?.locales?.archivado === true;
+}
+
 // A donde va cada quien despues de iniciar sesion (no despues de registrarse
 // -- un admin recien creado o un empleado pending siguen yendo a panel.html,
 // que ya maneja esos estados). Empleado entra directo al punto de venta;
@@ -119,6 +126,6 @@ export function pantallaDeEntrada(usuario) {
   if (!usuario) return 'index.html';
   if (usuario.status !== 'approved') return 'panel.html';
   if (usuario.organizations?.is_active === false) return 'panel.html';
-  if (usuario.locales?.bloqueado_por_plan === true) return 'panel.html';
+  if (localNoOperable(usuario)) return 'panel.html';
   return usuario.role === 'empleado' ? 'ventas.html' : 'panel.html';
 }

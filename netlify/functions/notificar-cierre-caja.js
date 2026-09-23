@@ -39,7 +39,7 @@ export async function handler(event) {
 
   const { data: local, error: localError } = await supabase
     .from('locales')
-    .select('id, nombre, organization_id, alerta_cierre_caja_email, bloqueado_por_plan')
+    .select('id, nombre, organization_id, alerta_cierre_caja_email, bloqueado_por_plan, archivado')
     .eq('id', localId)
     .maybeSingle();
   if (localError) return respuesta(500, { error: localError.message });
@@ -50,7 +50,7 @@ export async function handler(event) {
   // en la policy de insert, migracion 20260911200000). Pero esta funcion es
   // un endpoint aparte que un caller podria golpear directo con un
   // localId/fecha viejos, asi que se revalida igual en vez de asumirlo.
-  if (local.bloqueado_por_plan) {
+  if (local.bloqueado_por_plan || local.archivado) {
     return respuesta(200, { ok: true, enviado: false });
   }
 

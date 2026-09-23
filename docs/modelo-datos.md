@@ -14,6 +14,8 @@ El cliente que se suscribe (sección 1). Tiene `plan` (básico/completo — el P
 ### `locales`
 Sucursales de una organización (sección 1). `modo_turno` (`individual` / `compartida`) es la configuración por local de la sección 2. Los flags de email (`alerta_stock_email`, `alerta_cierre_caja_email`) viven acá porque son configuración operativa del local, no del producto ni de la organización entera.
 
+**Tres formas de que un local no sea operable**, las dos primeras reflejadas en `local_is_active()` (que ya usan las policies de insert/update/delete): `bloqueado_por_plan` (lo decide el plan, sección 15), `archivado` (lo decide el dueño: oculto, con todos sus datos intactos, reversible; solo cambia vía las RPC `archivar_local()` / `restaurar_local()`, y no se puede archivar el único local operable de la organización ni uno con un turno abierto) y `activo` (pausa administrativa sin UI, no gatea nada). El límite de locales por plan (3 con `multi_local`, 1 sin él, contando solo los no archivados) se valida en la policy `locales_insert` vía `puede_crear_local()` / `max_locales()`. Migración `20260923090000_archivar_locales_y_limite_por_plan.sql`.
+
 ### `usuarios`
 Perfil de aplicación 1 a 1 con `auth.users` (mismo `id`). Guarda `organization_id`, `local_id` (null para admin, que ve todos los locales), `role` (admin/empleado) y `status` (pending/approved/rejected, sección 3). `current_session_id` y `last_login_at` son la base de datos para la sesión única por dispositivo (sección 3) — la lógica de invalidar la sesión anterior se implementa en Fase 2 con la Admin API de Supabase.
 

@@ -37,6 +37,21 @@ export function tieneFeature(usuario, feature) {
   return ORDEN_PLAN[plan] >= ORDEN_PLAN[minimo];
 }
 
+// Cupo de locales no archivados segun el plan. Espejo de max_locales() en la
+// base (migracion 20260923090000) -- la barrera real es la policy
+// locales_insert; esto solo sirve para ocultar el boton y redactar el mensaje.
+const MAX_LOCALES_MULTI_LOCAL = 3; // el principal + dos adicionales
+
+export function maxLocales(usuario) {
+  return tieneFeature(usuario, 'multi_local') ? MAX_LOCALES_MULTI_LOCAL : 1;
+}
+
+export function mensajeLimiteLocales(usuario) {
+  const max = maxLocales(usuario);
+  if (max === 1) return 'Para tener más de un local necesitás el Plan Completo.';
+  return `Tu plan permite hasta ${max} locales (el principal y ${max - 1} adicionales) y ya tenés ${max}. Archivá uno para poder crear otro.`;
+}
+
 // Cambio de plan con aprobacion (seccion 15 y 16): el admin ya no cambia su
 // propio plan directo (eso permitia auto-upgrade gratis sin pasar por el
 // cobro manual) -- ahora crea una solicitud pendiente. La aprueba/rechaza el

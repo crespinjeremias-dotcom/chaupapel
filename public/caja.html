@@ -92,7 +92,7 @@
 </main>
 
 <script type="module">
-  import { requireSession, obtenerUsuarioActual, obtenerAccessToken, logout } from './js/auth.js';
+  import { requireSession, obtenerUsuarioActual, obtenerAccessToken, logout, localNoOperable } from './js/auth.js';
   import { listarLocalesOperables } from './js/empleados.js';
   import { obtenerLocalActivo, establecerLocalActivo } from './js/localActivo.js';
   import {
@@ -123,7 +123,7 @@
     if (!session) return;
 
     usuario = await obtenerUsuarioActual();
-    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false || usuario.locales?.bloqueado_por_plan === true) {
+    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false || localNoOperable(usuario)) {
       window.location.href = 'panel.html';
       return;
     }

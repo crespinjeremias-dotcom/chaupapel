@@ -216,7 +216,7 @@
 </div>
 
 <script type="module">
-  import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
+  import { requireSession, obtenerUsuarioActual, logout, localNoOperable } from './js/auth.js';
   import { listarProductos } from './js/productos.js';
   import { listarVentas, obtenerVentaConDetalle, actualizarVenta, anularVenta, puedeModificar, puedeEditarItems } from './js/ventas.js';
   import { registrarDevolucionCambio, listarDevolucionesDeVenta } from './js/devoluciones.js';
@@ -249,7 +249,7 @@
     if (!session) return;
 
     usuario = await obtenerUsuarioActual();
-    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false || usuario.locales?.bloqueado_por_plan === true) {
+    if (!usuario || usuario.status !== 'approved' || usuario.organizations?.is_active === false || localNoOperable(usuario)) {
       window.location.href = 'panel.html';
       return;
     }

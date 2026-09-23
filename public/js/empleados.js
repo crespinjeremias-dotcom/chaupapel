@@ -1,16 +1,39 @@
 import { supabase } from './supabaseClient.js';
 
+// No incluye los locales archivados (quedan ocultos en toda la app) -- para
+// verlos y restaurarlos, listarLocalesArchivados().
 export async function listarLocales() {
   const { data, error } = await supabase
     .from('locales')
     .select('id, nombre, alerta_stock_email, alerta_cierre_caja_email, bloqueado_por_plan')
+    .eq('archivado', false)
     .order('nombre');
   if (error) throw error;
   return data;
 }
 
+export async function listarLocalesArchivados() {
+  const { data, error } = await supabase.from('locales').select('id, nombre').eq('archivado', true).order('nombre');
+  if (error) throw error;
+  return data;
+}
+
+// Archivar/restaurar van por RPC (no un update directo): la regla de "no se
+// puede archivar el ultimo local activo" y el cupo del plan al restaurar
+// viven en la base -- ver migracion 20260923090000. Los errores de esas
+// reglas ya vienen redactados para el usuario en error.message.
+export async function archivarLocal(localId) {
+  const { error } = await supabase.rpc('archivar_local', { p_local_id: localId });
+  if (error) throw error;
+}
+
+export async function restaurarLocal(localId) {
+  const { error } = await supabase.rpc('restaurar_local', { p_local_id: localId });
+  if (error) throw error;
+}
+
 // Locales que se pueden ofrecer para trabajar ahi (seccion 15): excluye los
-// bloqueados por plan. Usar esta funcion, no listarLocales(), en cualquier
+// bloqueados por plan (los archivados ya los excluye listarLocales()). Usar esta funcion, no listarLocales(), en cualquier
 // selector de "local activo" para operar (menu.js, caja/productos/ventas/
 // proveedores/clientes) -- panel.html es la unica excepcion, porque "Mis
 // locales" tiene que seguir mostrando los bloqueados con su marca.
