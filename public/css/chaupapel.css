@@ -535,6 +535,22 @@ button {
   color: var(--color-texto-suave);
 }
 
+/* Botones de un local en "Locales archivados" (panel.html) */
+.local-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Bloques de configuracion-local.html */
+.zona-peligro {
+  border: 1px solid var(--color-error);
+}
+
+.zona-peligro h2 {
+  color: var(--color-error);
+}
+
 .etiqueta {
   display: inline-block;
   padding: 2px 8px;

@@ -7,7 +7,8 @@ import { escapeHtml } from './utils.js';
 // proximamente quedan visibles pero deshabilitados -- todavia no existe esa
 // pantalla (Fases futuras), y prefiero mostrar la estructura completa que
 // pide el menu antes que ocultar secciones sin avisar que van a existir.
-function construirItems(usuario) {
+// fiadoHabilitado: del local con el que se esta trabajando (ver montarMenu).
+function construirItems(usuario, fiadoHabilitado) {
   const esAdmin = usuario.role === 'admin';
   const items = [];
 
@@ -16,7 +17,7 @@ function construirItems(usuario) {
   items.push({ label: 'Panel de ventas', href: 'ventas.html' });
   items.push({ label: esAdmin ? 'Historial de ventas' : 'Historial de mis ventas', href: 'historial-ventas.html' });
 
-  if (usuario.locales?.fiado_habilitado !== false) {
+  if (fiadoHabilitado) {
     items.push({ label: 'Cuenta corriente de clientes', href: 'clientes.html' });
   }
 
@@ -29,7 +30,7 @@ function construirItems(usuario) {
   if (esAdmin) {
     items.push({ label: 'Reportes y estadísticas', href: 'reportes.html' });
     items.push({ label: 'Gestión de empleados', href: 'panel.html' });
-    items.push({ label: 'Configuración del local', proximamente: true });
+    items.push({ label: 'Configuración del local', href: 'configuracion-local.html' });
   }
 
   return items;
@@ -38,8 +39,6 @@ function construirItems(usuario) {
 export async function montarMenu(usuario) {
   const header = document.querySelector('.app-header');
   if (!header) return;
-
-  const items = construirItems(usuario);
 
   // Selector de local activo (seccion 1 y 13, multi-local): solo tiene
   // sentido si el admin realmente tiene mas de un local operable. Se guarda
@@ -55,6 +54,18 @@ export async function montarMenu(usuario) {
       // si falla, simplemente no se muestra el selector
     }
   }
+
+  // "Cuenta corriente" se oculta si el local con el que se trabaja tiene
+  // fiado_habilitado = false. Un empleado tiene un local propio
+  // (usuario.locales); el admin no (su local_id es null a proposito), asi que
+  // se mira el local activo del selector -- el mismo que usan las pantallas.
+  let fiadoHabilitado = usuario.locales?.fiado_habilitado !== false;
+  if (usuario.role === 'admin' && locales.length > 0) {
+    const localActivo = locales.find((l) => l.id === obtenerLocalActivo(locales));
+    fiadoHabilitado = localActivo?.fiado_habilitado !== false;
+  }
+
+  const items = construirItems(usuario, fiadoHabilitado);
 
   const boton = document.createElement('button');
   boton.type = 'button';

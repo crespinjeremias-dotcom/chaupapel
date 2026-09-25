@@ -182,11 +182,29 @@
     document.getElementById('nombre-local').textContent = usuario.locales?.nombre || usuario.organizations?.nombre || '';
     montarMenu(usuario);
 
+    // fiado_habilitado (configuracion-local.html): el menu ya oculta esta
+    // pantalla, pero la URL directa tambien tiene que respetarlo. Un empleado
+    // tiene local propio; el admin no, se mira el local activo.
+    let fiadoHabilitado = usuario.locales?.fiado_habilitado !== false;
     if (usuario.role === 'admin') {
       const locales = await listarLocalesOperables();
       localIdActivo = obtenerLocalActivo(locales);
+      fiadoHabilitado = locales.find((l) => l.id === localIdActivo)?.fiado_habilitado !== false;
     } else {
       localIdActivo = usuario.local_id;
+    }
+
+    if (!fiadoHabilitado) {
+      const ayuda =
+        usuario.role === 'admin'
+          ? 'Podés volver a activarla en <a href="configuracion-local.html">Configuración del local</a>.'
+          : 'Consultá con tu administrador.';
+      document.querySelector('.app-main').innerHTML = `
+        <div class="panel-seccion">
+          <h2>Cuenta corriente desactivada</h2>
+          <p class="texto-suave">Este local no usa cuenta corriente de clientes. ${ayuda}</p>
+        </div>`;
+      return;
     }
 
     turnoAbierto = await obtenerTurnoAbierto(usuario.id);

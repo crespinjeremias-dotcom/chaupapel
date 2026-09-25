@@ -5,15 +5,17 @@ import { supabase } from './supabaseClient.js';
 export async function listarLocales() {
   const { data, error } = await supabase
     .from('locales')
-    .select('id, nombre, alerta_stock_email, alerta_cierre_caja_email, bloqueado_por_plan')
+    .select('id, nombre, alerta_stock_email, alerta_cierre_caja_email, bloqueado_por_plan, fiado_habilitado')
     .eq('archivado', false)
     .order('nombre');
   if (error) throw error;
   return data;
 }
 
+// eliminar_en: fecha de la eliminacion definitiva si el dueno ya la programo
+// (null = solo archivado). Ver programarEliminacionLocal().
 export async function listarLocalesArchivados() {
-  const { data, error } = await supabase.from('locales').select('id, nombre').eq('archivado', true).order('nombre');
+  const { data, error } = await supabase.from('locales').select('id, nombre, eliminar_en').eq('archivado', true).order('nombre');
   if (error) throw error;
   return data;
 }
@@ -32,6 +34,25 @@ export async function restaurarLocal(localId) {
   if (error) throw error;
 }
 
+// Eliminar un local archivado (migracion 20260925090000): no lo borra en el
+// momento -- lo programa para dentro de 30 dias, y hasta entonces se puede
+// cancelar o restaurar. El borrado real lo hace un cron en la base. El
+// servidor vuelve a validar que el nombre coincida (no confia en el
+// frontend). Devuelve la fecha (ISO) en la que se va a eliminar.
+export async function programarEliminacionLocal(localId, nombreConfirmacion) {
+  const { data, error } = await supabase.rpc('programar_eliminacion_local', {
+    p_local_id: localId,
+    p_nombre_confirmacion: nombreConfirmacion,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function cancelarEliminacionLocal(localId) {
+  const { error } = await supabase.rpc('cancelar_eliminacion_local', { p_local_id: localId });
+  if (error) throw error;
+}
+
 // Locales que se pueden ofrecer para trabajar ahi (seccion 15): excluye los
 // bloqueados por plan (los archivados ya los excluye listarLocales()). Usar esta funcion, no listarLocales(), en cualquier
 // selector de "local activo" para operar (menu.js, caja/productos/ventas/
@@ -42,10 +63,10 @@ export async function listarLocalesOperables() {
   return locales.filter((l) => !l.bloqueado_por_plan);
 }
 
-// Toggles de email por local (seccion 11): el admin los prende/apaga desde
-// "Mis locales" en panel.html, gateados alli por el mismo tieneFeature que
-// el resto del panel.
-export async function actualizarAlertasEmailLocal(localId, cambios) {
+// Configuracion por local (configuracion-local.html): nombre, fiado_habilitado
+// y los toggles de email (seccion 11). La RLS ya exige admin de la
+// organizacion, asi que un update directo alcanza.
+export async function actualizarLocal(localId, cambios) {
   const { error } = await supabase.from('locales').update(cambios).eq('id', localId);
   if (error) throw error;
 }

@@ -1,0 +1,225 @@
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Configuración del local</title>
+<link rel="stylesheet" href="css/chaupapel.css" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#1f6f50" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<script type="module">
+  import { registrarServiceWorker } from './js/pwa.js';
+  registrarServiceWorker();
+</script>
+
+<header class="app-header">
+  <div class="identidad">
+    <h1 id="nombre-local"></h1>
+    <p><a href="panel.html">← Volver al panel</a></p>
+  </div>
+  <button class="boton-secundario boton-inline" id="btn-logout">Cerrar sesión</button>
+</header>
+
+<main class="app-main ancho">
+  <p class="texto-suave" id="cargando">Cargando configuración...</p>
+  <p class="mensaje-error" id="error-config" hidden></p>
+
+  <div id="contenido" hidden>
+    <p class="texto-suave">
+      Configuración de <strong id="config-local-nombre"></strong>. Para configurar otro local, elegilo en "Local activo" del menú.
+    </p>
+
+    <div class="panel-seccion">
+      <h2>Nombre del local</h2>
+      <form class="campo-con-boton" id="form-nombre">
+        <input type="text" id="input-nombre" maxlength="80" required aria-label="Nombre del local" />
+        <button type="submit" class="boton-chico primario" id="btn-guardar-nombre">Guardar</button>
+      </form>
+      <p class="mensaje-error" id="error-nombre" hidden></p>
+      <p class="mensaje-exito" id="exito-nombre" hidden></p>
+    </div>
+
+    <div class="panel-seccion">
+      <h2>Cuenta corriente de clientes</h2>
+      <span class="campo-checkbox">
+        <input type="checkbox" id="chk-fiado" />
+        <label for="chk-fiado">Este local usa cuenta corriente (fiado)</label>
+      </span>
+      <p class="texto-suave">
+        Si la desactivás, "Cuenta corriente de clientes" deja de aparecer en el menú y la pantalla no se puede abrir. Los
+        saldos y movimientos ya cargados se conservan y vuelven a verse si la reactivás.
+      </p>
+      <p class="mensaje-error" id="error-fiado" hidden></p>
+    </div>
+
+    <div class="panel-seccion" id="seccion-emails" hidden>
+      <h2>Alertas por email</h2>
+      <div class="local-toggles-email">
+        <span class="campo-checkbox" id="campo-email-stock" hidden>
+          <input type="checkbox" id="chk-email-stock" />
+          <label for="chk-email-stock">Email de stock bajo (resumen diario)</label>
+        </span>
+        <span class="campo-checkbox" id="campo-email-cierre" hidden>
+          <input type="checkbox" id="chk-email-cierre" />
+          <label for="chk-email-cierre">Email de cierre de caja</label>
+        </span>
+      </div>
+      <p class="mensaje-error" id="error-emails" hidden></p>
+    </div>
+
+    <div class="panel-seccion zona-peligro">
+      <h2>Zona de peligro</h2>
+      <p>
+        <strong>Archivar este local</strong> lo oculta y nadie puede operar en él (los empleados asignados no van a poder
+        ingresar), pero conserva todas sus ventas, stock e historial. Podés restaurarlo cuando quieras.
+      </p>
+      <p class="texto-suave">
+        No se puede archivar el único local activo de la organización. Para eliminarlo definitivamente, primero archivalo:
+        después aparece la opción en <a href="panel.html">Mis locales → Locales archivados</a> (se conserva 30 días antes de
+        borrarse).
+      </p>
+      <p class="mensaje-error" id="error-archivar" hidden></p>
+      <button type="button" class="boton-chico peligro" id="btn-archivar">Archivar este local</button>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+  import { requireSession, obtenerUsuarioActual, logout } from './js/auth.js';
+  import { listarLocalesOperables, actualizarLocal, archivarLocal } from './js/empleados.js';
+  import { obtenerLocalActivo } from './js/localActivo.js';
+  import { montarMenu } from './js/menu.js';
+  import { tieneFeature } from './js/planes.js';
+  import { mostrarError } from './js/utils.js';
+
+  let local = null;
+
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await logout();
+    window.location.href = 'index.html';
+  });
+
+  async function iniciar() {
+    const session = await requireSession();
+    if (!session) return;
+
+    const usuario = await obtenerUsuarioActual();
+    // Solo el admin configura locales (la RLS tambien lo exige); a los demas
+    // los devuelve al panel, que ya maneja cada estado (pendiente, suspendida...).
+    if (!usuario || usuario.role !== 'admin' || usuario.status !== 'approved' || usuario.organizations?.is_active === false) {
+      window.location.href = 'panel.html';
+      return;
+    }
+
+    document.getElementById('nombre-local').textContent = usuario.organizations?.nombre || '';
+    await montarMenu(usuario);
+
+    const errorEl = document.getElementById('error-config');
+    let locales;
+    try {
+      locales = await listarLocalesOperables();
+    } catch (err) {
+      document.getElementById('cargando').hidden = true;
+      mostrarError(errorEl, err.message);
+      return;
+    }
+    if (locales.length === 0) {
+      window.location.href = 'panel.html';
+      return;
+    }
+    local = locales.find((l) => l.id === obtenerLocalActivo(locales));
+
+    document.getElementById('cargando').hidden = true;
+    document.getElementById('contenido').hidden = false;
+    document.getElementById('config-local-nombre').textContent = local.nombre;
+    document.getElementById('input-nombre').value = local.nombre;
+    document.getElementById('chk-fiado').checked = local.fiado_habilitado !== false;
+
+    // Los toggles de email siguen el mismo gate de plan que antes en "Mis
+    // locales": si el plan no incluye el feature, ni se muestra.
+    const puedeStock = tieneFeature(usuario, 'email_stock_bajo');
+    const puedeCierre = tieneFeature(usuario, 'email_cierre_caja');
+    document.getElementById('campo-email-stock').hidden = !puedeStock;
+    document.getElementById('campo-email-cierre').hidden = !puedeCierre;
+    document.getElementById('seccion-emails').hidden = !puedeStock && !puedeCierre;
+    document.getElementById('chk-email-stock').checked = !!local.alerta_stock_email;
+    document.getElementById('chk-email-cierre').checked = !!local.alerta_cierre_caja_email;
+
+    document.getElementById('form-nombre').addEventListener('submit', guardarNombre);
+    conectarToggle('chk-fiado', 'fiado_habilitado', 'error-fiado');
+    conectarToggle('chk-email-stock', 'alerta_stock_email', 'error-emails');
+    conectarToggle('chk-email-cierre', 'alerta_cierre_caja_email', 'error-emails');
+    document.getElementById('btn-archivar').addEventListener('click', archivar);
+  }
+
+  async function guardarNombre(e) {
+    e.preventDefault();
+    const errorEl = document.getElementById('error-nombre');
+    const exitoEl = document.getElementById('exito-nombre');
+    const btn = document.getElementById('btn-guardar-nombre');
+    mostrarError(errorEl, '');
+    mostrarError(exitoEl, '');
+
+    const nombre = document.getElementById('input-nombre').value.trim();
+    if (!nombre) {
+      mostrarError(errorEl, 'El local necesita un nombre.');
+      return;
+    }
+    if (nombre === local.nombre) return;
+
+    btn.disabled = true;
+    try {
+      await actualizarLocal(local.id, { nombre });
+      local.nombre = nombre;
+      document.getElementById('config-local-nombre').textContent = nombre;
+      document.getElementById('input-nombre').value = nombre;
+      // el selector "Local activo" del menu ya se armo con el nombre viejo
+      const opcion = document.querySelector(`#menu-select-local option[value="${local.id}"]`);
+      if (opcion) opcion.textContent = nombre;
+      mostrarError(exitoEl, 'Nombre actualizado.');
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // Los toggles se guardan al cambiar; si falla, vuelven a su valor anterior.
+  function conectarToggle(inputId, campo, errorId) {
+    const input = document.getElementById(inputId);
+    input.addEventListener('change', async () => {
+      const errorEl = document.getElementById(errorId);
+      mostrarError(errorEl, '');
+      input.disabled = true;
+      try {
+        await actualizarLocal(local.id, { [campo]: input.checked });
+        local[campo] = input.checked;
+        // "Cuenta corriente" del menu se decide al montarlo: recargar para que refleje el cambio
+        if (campo === 'fiado_habilitado') window.location.reload();
+      } catch (err) {
+        input.checked = !input.checked;
+        mostrarError(errorEl, err.message);
+      } finally {
+        input.disabled = false;
+      }
+    });
+  }
+
+  async function archivar() {
+    const errorEl = document.getElementById('error-archivar');
+    const btn = document.getElementById('btn-archivar');
+    mostrarError(errorEl, '');
+    const ok = window.confirm(
+      `¿Archivar "${local.nombre}"? Queda oculto y nadie puede operar en él (los empleados asignados no van a poder ingresar), pero conserva todas sus ventas, stock e historial. Podés restaurarlo cuando quieras.`
+    );
+    if (!ok) return;
+    btn.disabled = true;
+    try {
+      await archivarLocal(local.id);
+      window.location.href = 'panel.html';
+    } catch (err) {
+      btn.disabled = false;
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  iniciar();
+</script>

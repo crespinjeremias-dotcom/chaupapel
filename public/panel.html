@@ -110,7 +110,7 @@
 
     <div id="locales-archivados" hidden>
       <h3>Locales archivados</h3>
-      <p class="texto-suave">Ocultos y sin operar, con sus ventas, stock e historial intactos. Restaurar uno vuelve a usar un lugar de tu plan.</p>
+      <p class="texto-suave">Ocultos y sin operar, con sus ventas, stock e historial intactos. Restaurar uno vuelve a usar un lugar de tu plan. Si ya no lo necesitás, podés eliminarlo definitivamente: se conserva 30 días (podés arrepentirte) y después se borra con todos sus datos.</p>
       <ul class="lista-usuarios" id="lista-locales-archivados"></ul>
     </div>
   </div>
@@ -139,6 +139,32 @@
   </div>
 </main>
 
+<div class="modal-overlay" id="modal-eliminar-local" hidden>
+  <div class="modal">
+    <h2>Eliminar local definitivamente</h2>
+    <p class="mensaje-error" id="error-eliminar-local" hidden></p>
+    <p>
+      Vas a programar la eliminación de <strong id="eliminar-local-nombre"></strong>. Se borra de verdad el
+      <strong id="eliminar-local-fecha"></strong> (dentro de 30 días) y no hay forma de recuperarlo después.
+    </p>
+    <p class="texto-suave">
+      Se borran sus ventas, stock, productos, clientes y cuentas corrientes, caja, proveedores e historial. Los empleados
+      asignados a este local vuelven a "pendientes de aprobación" para que los asignes a otro local.
+    </p>
+    <p class="texto-suave">Hasta esa fecha podés cancelar la eliminación o restaurar el local desde "Locales archivados".</p>
+    <form id="form-eliminar-local" autocomplete="off">
+      <div class="campo">
+        <label for="eliminar-local-confirmacion">Para confirmar, escribí el nombre del local: <strong id="eliminar-local-nombre-ref"></strong></label>
+        <input type="text" id="eliminar-local-confirmacion" autocomplete="off" />
+      </div>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario" id="btn-cancelar-eliminar-local">Cancelar</button>
+        <button type="submit" class="boton-peligro" id="btn-confirmar-eliminar-local" disabled>Eliminar definitivamente</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script type="module">
   import { requireSession, obtenerUsuarioActual, logout, localNoOperable } from './js/auth.js';
   import {
@@ -150,7 +176,8 @@
     generarInvitacion,
     aprobarEmpleado,
     crearLocal,
-    actualizarAlertasEmailLocal,
+    programarEliminacionLocal,
+    cancelarEliminacionLocal,
   } from './js/empleados.js';
   import { listarProductos } from './js/productos.js';
   import { listarReclamosPendientes } from './js/proveedores.js';
@@ -474,58 +501,112 @@
     document.getElementById('locales-archivados').hidden = archivados.length === 0;
     const lista = document.getElementById('lista-locales-archivados');
     lista.innerHTML = archivados
-      .map(
-        (l) => `<li><span>${escapeHtml(l.nombre)}</span><button type="button" class="boton-chico secundario" data-restaurar="${l.id}">Restaurar</button></li>`
-      )
+      .map((l) => {
+        // Con eliminacion programada: se ofrece cancelarla (el local sigue
+        // archivado) o restaurarlo. Sin ella: restaurar o eliminar.
+        const marca = l.eliminar_en
+          ? ` <span class="etiqueta inactivo">Se elimina el ${formatoFecha(l.eliminar_en)} (${textoDiasRestantes(l.eliminar_en)})</span>`
+          : '';
+        const acciones = l.eliminar_en
+          ? `<button type="button" class="boton-chico secundario" data-cancelar-eliminacion="${l.id}">Cancelar eliminación</button>`
+          : `<button type="button" class="boton-chico peligro" data-eliminar="${l.id}">Eliminar definitivamente</button>`;
+        return `<li><span>${escapeHtml(l.nombre)}${marca}</span><span class="local-acciones"><button type="button" class="boton-chico secundario" data-restaurar="${l.id}">Restaurar</button>${acciones}</span></li>`;
+      })
       .join('');
+
+    async function ejecutar(btn, accion) {
+      mostrarError(errorEl, '');
+      btn.disabled = true;
+      try {
+        await accion();
+        window.location.reload();
+      } catch (err) {
+        btn.disabled = false;
+        mostrarError(errorEl, err.message);
+      }
+    }
+
     lista.querySelectorAll('[data-restaurar]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        mostrarError(errorEl, '');
-        btn.disabled = true;
-        try {
-          await restaurarLocal(btn.getAttribute('data-restaurar'));
-          window.location.reload();
-        } catch (err) {
-          btn.disabled = false;
-          mostrarError(errorEl, err.message);
-        }
+      btn.addEventListener('click', () => ejecutar(btn, () => restaurarLocal(btn.getAttribute('data-restaurar'))));
+    });
+    lista.querySelectorAll('[data-cancelar-eliminacion]').forEach((btn) => {
+      btn.addEventListener('click', () =>
+        ejecutar(btn, () => cancelarEliminacionLocal(btn.getAttribute('data-cancelar-eliminacion')))
+      );
+    });
+    lista.querySelectorAll('[data-eliminar]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const local = archivados.find((l) => l.id === btn.getAttribute('data-eliminar'));
+        if (local) abrirModalEliminar(local);
       });
     });
   }
 
-  // Toggles de email por local (seccion 11): stock bajo es parte de Basico,
-  // cierre de caja es Plan Completo -- si el plan no incluye el feature, el
-  // checkbox correspondiente ni se muestra (no solo se deshabilita), mismo
-  // criterio que el resto del panel.
-  //
+  function formatoFecha(iso) {
+    return new Date(iso).toLocaleDateString('es-AR');
+  }
+
+  function textoDiasRestantes(iso) {
+    const dias = Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+    if (dias <= 0) return 'se borra en la próxima corrida diaria';
+    return dias === 1 ? 'falta 1 día' : `faltan ${dias} días`;
+  }
+
+  // Eliminar (migracion 20260925090000): confirmacion fuerte -- hay que
+  // escribir el nombre del local. El servidor lo valida de nuevo. No borra
+  // en el momento: programa la eliminacion a 30 dias.
+  let localAEliminar = null;
+
+  function abrirModalEliminar(local) {
+    localAEliminar = local;
+    const dentroDe30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    document.getElementById('eliminar-local-nombre').textContent = `"${local.nombre}"`;
+    document.getElementById('eliminar-local-nombre-ref').textContent = local.nombre;
+    document.getElementById('eliminar-local-fecha').textContent = dentroDe30.toLocaleDateString('es-AR');
+    document.getElementById('eliminar-local-confirmacion').value = '';
+    document.getElementById('btn-confirmar-eliminar-local').disabled = true;
+    mostrarError(document.getElementById('error-eliminar-local'), '');
+    document.getElementById('modal-eliminar-local').hidden = false;
+    document.getElementById('eliminar-local-confirmacion').focus();
+  }
+
+  function cerrarModalEliminar() {
+    document.getElementById('modal-eliminar-local').hidden = true;
+    localAEliminar = null;
+  }
+
+  document.getElementById('eliminar-local-confirmacion').addEventListener('input', (e) => {
+    document.getElementById('btn-confirmar-eliminar-local').disabled =
+      !localAEliminar || e.target.value.trim() !== localAEliminar.nombre.trim();
+  });
+  document.getElementById('btn-cancelar-eliminar-local').addEventListener('click', cerrarModalEliminar);
+  document.getElementById('form-eliminar-local').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!localAEliminar) return;
+    const errorEl = document.getElementById('error-eliminar-local');
+    const btn = document.getElementById('btn-confirmar-eliminar-local');
+    mostrarError(errorEl, '');
+    btn.disabled = true;
+    try {
+      await programarEliminacionLocal(localAEliminar.id, document.getElementById('eliminar-local-confirmacion').value.trim());
+      window.location.reload();
+    } catch (err) {
+      btn.disabled = false;
+      mostrarError(errorEl, err.message);
+    }
+  });
+
   // "Mis locales" es la unica pantalla que sigue mostrando los locales
   // bloqueados por plan (marcados aparte) -- en cualquier otro lado
   // (selector de local activo en el menu, caja/productos/ventas/etc.) se
-  // usa listarLocalesOperables(), que ya los excluye.
+  // usa listarLocalesOperables(), que ya los excluye. Los toggles de email y
+  // el resto de la configuracion por local viven en configuracion-local.html.
   function renderListaLocales(locales, usuario) {
-    const puedeStock = tieneFeature(usuario, 'email_stock_bajo');
-    const puedeCierre = tieneFeature(usuario, 'email_cierre_caja');
-
     document.getElementById('lista-locales').innerHTML = locales
       .map((l) => {
-        const toggles = [];
-        if (puedeStock) {
-          toggles.push(`
-            <span class="campo-checkbox">
-              <input type="checkbox" id="chk-stock-${l.id}" data-toggle-local="${l.id}" data-campo="alerta_stock_email" ${l.alerta_stock_email ? 'checked' : ''} />
-              <label for="chk-stock-${l.id}">Email stock bajo</label>
-            </span>`);
-        }
-        if (puedeCierre) {
-          toggles.push(`
-            <span class="campo-checkbox">
-              <input type="checkbox" id="chk-cierre-${l.id}" data-toggle-local="${l.id}" data-campo="alerta_cierre_caja_email" ${l.alerta_cierre_caja_email ? 'checked' : ''} />
-              <label for="chk-cierre-${l.id}">Email cierre de caja</label>
-            </span>`);
-        }
         const marcaBloqueado = l.bloqueado_por_plan ? ' <span class="etiqueta inactivo">Bloqueado por tu plan actual</span>' : '';
         const btnArchivar = `<button type="button" class="boton-chico peligro" data-archivar="${l.id}">Archivar</button>`;
-        return `<li><span>${escapeHtml(l.nombre)}${marcaBloqueado}</span>${toggles.length ? `<span class="local-toggles-email">${toggles.join('')}</span>` : ''}${btnArchivar}</li>`;
+        return `<li><span>${escapeHtml(l.nombre)}${marcaBloqueado}</span>${btnArchivar}</li>`;
       })
       .join('');
 
@@ -545,23 +626,6 @@
           window.location.reload();
         } catch (err) {
           btn.disabled = false;
-          mostrarError(errorEl, err.message);
-        }
-      });
-    });
-
-    document.getElementById('lista-locales').querySelectorAll('[data-toggle-local]').forEach((input) => {
-      input.addEventListener('change', async () => {
-        const localId = input.getAttribute('data-toggle-local');
-        const campo = input.getAttribute('data-campo');
-        const errorEl = document.getElementById('error-locales');
-        mostrarError(errorEl, '');
-        try {
-          await actualizarAlertasEmailLocal(localId, { [campo]: input.checked });
-          const local = locales.find((l) => l.id === localId);
-          if (local) local[campo] = input.checked;
-        } catch (err) {
-          input.checked = !input.checked;
           mostrarError(errorEl, err.message);
         }
       });
