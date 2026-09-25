@@ -1,0 +1,52 @@
+-- DIAGNOSTICO (solo lectura, no modifica nada): que migraciones de supabase/migrations/
+-- ya estan reflejadas en esta base y cuales faltan. Generado a partir de las migraciones;
+-- cada fila evalua un "marcador" (existe tal tabla / columna / funcion / policy).
+-- Correlo en el SQL Editor y mira la columna "estado".
+select version, nombre,
+       case when aplicada then 'aplicada' else 'FALTA' end as estado
+from (values
+  ('20260709120000', 'extensions_types', to_regtype('public.estado_reclamo_type') is not null),
+  ('20260709120100', 'organizations', to_regclass('public.organizations') is not null),
+  ('20260709120200', 'locales', to_regclass('public.locales') is not null),
+  ('20260709120300', 'usuarios', to_regclass('public.usuarios') is not null),
+  ('20260709120400', 'auth_helpers', exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace where ns.nspname = 'public' and p.proname = 'org_is_active')),
+  ('20260709120500', 'rls_core', exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'locales' and policyname = 'locales_select')),
+  ('20260709120600', 'invitaciones', to_regclass('public.invitaciones') is not null),
+  ('20260709120700', 'categorias_productos', to_regclass('public.productos') is not null),
+  ('20260709120800', 'historial_precios_venta', to_regclass('public.historial_precios_venta') is not null),
+  ('20260709120900', 'proveedores', to_regclass('public.producto_proveedor') is not null),
+  ('20260709121000', 'stock_movimientos', to_regclass('public.ajustes_stock') is not null),
+  ('20260709121100', 'turnos', to_regclass('public.turnos') is not null),
+  ('20260709121200', 'clientes', to_regclass('public.clientes') is not null),
+  ('20260709121300', 'ventas', to_regclass('public.venta_pagos') is not null),
+  ('20260709121400', 'cuenta_corriente_movimientos', to_regclass('public.cuenta_corriente_movimientos') is not null),
+  ('20260709121500', 'devoluciones_reclamos', to_regclass('public.reclamos_proveedor') is not null),
+  ('20260709121600', 'cierres_caja', to_regclass('public.cierres_mensuales') is not null),
+  ('20260709121700', 'updated_at_triggers', exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace where ns.nspname = 'public' and p.proname = 'set_updated_at')),
+  ('20260710090000', 'invitaciones_codigo_default', exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace where ns.nspname = 'public' and p.proname = 'generar_codigo_invitacion')),
+  ('20260710090100', 'fn_crear_organizacion', exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace where ns.nspname = 'public' and p.proname = 'crear_organizacion')),
+  ('20260710090200', 'fn_redimir_invitacion', exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace where ns.nspname = 'public' and p.proname = 'redimir_invitacion')),
+  ('20260710090300', 'usuarios_local_requerido', exists (select 1 from pg_constraint where conname = 'usuarios_empleado_approved_requiere_local')),
+  ('20260710090400', 'fn_registrar_sesion', exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace where ns.nspname = 'public' and p.proname = 'registrar_sesion')),
+  ('20260710090500', 'grants_authenticated', true),
+  ('20260710090600', 'organizations_is_active_solo_service_role', exists (select 1 from pg_trigger where tgname = 'trg_prevent_is_active_change' and not tgisinternal)),
+  ('20260711080000', 'productos_categorias_admin_only', exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'productos' and policyname = 'productos_insert' and coalesce(with_check, qual) like '%is_admin()%')),
+  ('20260712080000', 'proveedores_admin_only', exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'proveedores' and policyname = 'proveedores_insert' and coalesce(with_check, qual) like '%is_admin()%')),
+  ('20260713080000', 'soft_delete_productos_proveedores', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'productos' and column_name = 'deleted_at')),
+  ('20260714080000', 'fiado_anulado_enum', exists (select 1 from pg_enum e join pg_type ty on ty.oid = e.enumtypid where ty.typname = 'tipo_movimiento_cc_type' and e.enumlabel = 'fiado_anulado')),
+  ('20260714080100', 'anulacion_venta_reversa_fiado', exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace where ns.nspname = 'public' and p.proname = 'aplicar_anulacion_venta' and pg_get_functiondef(p.oid) like '%fiado_anulado%')),
+  ('20260715080000', 'oferta_descuento_venta_items', true),
+  ('20260715080100', 'fiado_habilitado_y_reclamos_admin', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'locales' and column_name = 'fiado_habilitado')),
+  ('20260716080000', 'revertir_oferta_descuento_venta_items', not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'venta_items' and column_name = 'precio_lista')),
+  ('20260717080000', 'super_admins', to_regclass('public.super_admins') is not null),
+  ('20260717080100', 'solicitudes_cambio_plan', to_regclass('public.solicitudes_cambio_plan') is not null),
+  ('20260911150000', 'eliminar_plan_medio', to_regtype('public.plan_type') is not null and not exists (select 1 from pg_enum e join pg_type ty on ty.oid = e.enumtypid where ty.typname = 'plan_type' and e.enumlabel = 'medio') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'solicitudes_cambio_plan' and column_name = 'plan_actual' and data_type = 'text')),
+  ('20260911200000', 'bloqueo_locales_por_plan', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'locales' and column_name = 'bloqueado_por_plan')),
+  ('20260911200100', 'backfill_locales_bloqueados', true),
+  ('20260911210000', 'rpc_productos_mas_vendidos', exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace where ns.nspname = 'public' and p.proname = 'obtener_productos_mas_vendidos')),
+  ('20260912090000', 'permite_cantidad_decimal', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'productos' and column_name = 'permite_cantidad_decimal')),
+  ('20260912093000', 'rpc_registrar_venta', exists (select 1 from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace where ns.nspname = 'public' and p.proname = 'registrar_venta')),
+  ('20260923090000', 'archivar_locales_y_limite_por_plan', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'locales' and column_name = 'archivado')),
+  ('20260923100000', 'codigos_activacion', to_regclass('public.codigos_activacion') is not null)
+) as m(version, nombre, aplicada)
+order by version;
