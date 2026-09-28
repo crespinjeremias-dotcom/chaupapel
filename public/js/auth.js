@@ -107,7 +107,7 @@ export async function obtenerUsuarioActual() {
   const { data, error } = await supabase
     .from('usuarios')
     .select(
-      'id, nombre, role, status, local_id, organization_id, organizations(nombre, plan, plan_overrides, is_active), locales!usuarios_local_id_fkey(nombre, fiado_habilitado, bloqueado_por_plan, archivado)'
+      'id, nombre, role, status, local_id, organization_id, organizations(nombre, plan, plan_overrides, is_active, cobro_habilitado), locales!usuarios_local_id_fkey(nombre, fiado_habilitado, bloqueado_por_plan, archivado)'
     )
     .eq('id', sessionData.session.user.id)
     .maybeSingle();

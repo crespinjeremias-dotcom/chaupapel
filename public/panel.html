@@ -99,6 +99,29 @@
     <p class="mensaje-exito" id="exito-plan" hidden></p>
   </div>
 
+  <div class="panel-seccion" id="seccion-cobros" hidden>
+    <h2>Cobros y suscripciones</h2>
+    <p class="texto-suave">Precio de tu plan actual: <strong id="cobros-precio-plan">—</strong> por mes.</p>
+    <p class="texto-suave">El cobro es manual: pagás por transferencia, subís el comprobante acá y lo confirmamos del otro lado.</p>
+    <p class="mensaje-error" id="error-cobros" hidden></p>
+    <p class="mensaje-exito" id="exito-cobros" hidden></p>
+    <div class="tabla-contenedor">
+      <table class="tabla" id="tabla-cobros" hidden>
+        <thead>
+          <tr>
+            <th>Período</th>
+            <th>Monto</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody-cobros"></tbody>
+      </table>
+      <p class="texto-suave" id="cobros-vacio" hidden>Todavía no se generó ningún cobro.</p>
+    </div>
+    <input type="file" id="input-comprobante" accept="image/*,application/pdf" hidden />
+  </div>
+
   <div class="panel-seccion" id="seccion-locales" hidden>
     <h2>Mis locales</h2>
     <ul class="lista-usuarios" id="lista-locales"></ul>
@@ -194,6 +217,7 @@
     solicitarCambioPlan,
     obtenerUltimaSolicitudPlan,
   } from './js/planes.js';
+  import { listarPreciosPlanes, listarCobrosOrganizacion, subirComprobante, ESTADO_COBRO_LABEL, ESTADO_COBRO_CLASE } from './js/cobros.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
   const formatoMoneda = (n) => `$${Number(n).toLocaleString('es-AR')}`;
@@ -262,6 +286,12 @@
     cargarResumenMes();
     iniciarSeccionPlan(usuario);
     iniciarSeccionLocales(usuario, locales);
+    // cobro_habilitado en false = organizacion de prueba: nunca se le genera
+    // un cobro, no tiene sentido mostrarle la seccion.
+    if (usuario.organizations?.cobro_habilitado !== false) {
+      document.getElementById('seccion-cobros').hidden = false;
+      iniciarSeccionCobros(usuario);
+    }
 
     // Toggle "todos los locales" vs local especifico (seccion 1 y 13): solo
     // tiene sentido mostrarlo si hay mas de un local Y el plan lo incluye.
@@ -442,6 +472,96 @@
         mostrarError(errorEl, err.message);
       }
     });
+  }
+
+  // Cobros y suscripciones (seccion 16): cobro manual, sin pasarela. El
+  // super-admin genera un cobro por mes (cron); aca solo se muestra el
+  // historial y se sube el comprobante de los que siguen sin pagar.
+  const MES_LABEL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  function formatoPeriodo(periodo) {
+    const [anio, mes] = periodo.split('-');
+    return `${MES_LABEL[Number(mes) - 1]} ${anio}`;
+  }
+
+  let cobroSubiendoId = null;
+
+  async function iniciarSeccionCobros(usuario) {
+    const errorEl = document.getElementById('error-cobros');
+    try {
+      const precios = await listarPreciosPlanes();
+      const precioPlan = precios.find((p) => p.plan === usuario.organizations?.plan);
+      document.getElementById('cobros-precio-plan').textContent = precioPlan ? formatoMoneda(precioPlan.precio_mensual) : '—';
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+
+    document.getElementById('input-comprobante').addEventListener('change', (e) => onSubirComprobante(usuario, e.target));
+    await cargarCobros(usuario);
+  }
+
+  async function cargarCobros(usuario) {
+    const errorEl = document.getElementById('error-cobros');
+    mostrarError(errorEl, '');
+    try {
+      const cobros = await listarCobrosOrganizacion(usuario.organization_id);
+      const tabla = document.getElementById('tabla-cobros');
+      const vacio = document.getElementById('cobros-vacio');
+
+      if (cobros.length === 0) {
+        tabla.hidden = true;
+        vacio.hidden = false;
+        return;
+      }
+      tabla.hidden = false;
+      vacio.hidden = true;
+
+      document.getElementById('tbody-cobros').innerHTML = cobros
+        .map((c) => {
+          const puedeSubir = c.estado === 'pendiente' || c.estado === 'vencido';
+          const accion = !puedeSubir
+            ? ''
+            : c.comprobante_path
+            ? '<span class="texto-suave">Comprobante enviado</span>'
+            : `<button type="button" class="boton-chico secundario" data-subir-comprobante="${c.id}">Subir comprobante</button>`;
+          return `
+            <tr>
+              <td>${formatoPeriodo(c.periodo)}</td>
+              <td>${formatoMoneda(c.monto)}</td>
+              <td><span class="etiqueta ${ESTADO_COBRO_CLASE[c.estado]}">${ESTADO_COBRO_LABEL[c.estado]}</span></td>
+              <td class="celda-acciones">${accion}</td>
+            </tr>`;
+        })
+        .join('');
+
+      document.getElementById('tbody-cobros').querySelectorAll('[data-subir-comprobante]').forEach((btn) =>
+        btn.addEventListener('click', () => {
+          cobroSubiendoId = btn.dataset.subirComprobante;
+          document.getElementById('input-comprobante').click();
+        })
+      );
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function onSubirComprobante(usuario, input) {
+    const errorEl = document.getElementById('error-cobros');
+    const exitoEl = document.getElementById('exito-cobros');
+    mostrarError(errorEl, '');
+    exitoEl.hidden = true;
+    const file = input.files[0];
+    input.value = '';
+    if (!file || !cobroSubiendoId) return;
+    try {
+      await subirComprobante(cobroSubiendoId, usuario.organization_id, file);
+      exitoEl.hidden = false;
+      exitoEl.textContent = 'Comprobante enviado. Te avisamos acá mismo cuando se confirme el pago.';
+      await cargarCobros(usuario);
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    } finally {
+      cobroSubiendoId = null;
+    }
   }
 
   // Mis locales (seccion 1 y 13, multi-local): tener mas de un local es Plan

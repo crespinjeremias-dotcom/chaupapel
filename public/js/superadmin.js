@@ -95,15 +95,24 @@ export async function listarCodigosActivacion() {
   return data;
 }
 
-// diasVencimiento: 30 por defecto, null = no vence.
-export async function generarCodigoActivacion({ nota, diasVencimiento = 30, maxUsos = 1, creadoPor }) {
+// diasVencimiento: 30 por defecto, null = no vence. mesesBonificados: meses
+// de facturacion exenta ademas del mes de alta (que siempre es gratis) --
+// los consume crear_organizacion() para fijar organizations.trial_ends_at.
+export async function generarCodigoActivacion({ nota, diasVencimiento = 30, maxUsos = 1, mesesBonificados = 0, creadoPor }) {
   const expiraAt = diasVencimiento ? new Date(Date.now() + diasVencimiento * 24 * 60 * 60 * 1000).toISOString() : null;
   // El unique de codigo hace casi imposible una colision (50 bits), pero si
   // pasa se reintenta en vez de mostrar un error incomprensible.
   for (let intento = 0; intento < 3; intento++) {
     const { data, error } = await supabase
       .from('codigos_activacion')
-      .insert({ codigo: generarCodigoAleatorio(), nota: nota || null, max_usos: maxUsos, expira_at: expiraAt, creado_por: creadoPor })
+      .insert({
+        codigo: generarCodigoAleatorio(),
+        nota: nota || null,
+        max_usos: maxUsos,
+        expira_at: expiraAt,
+        meses_bonificados: mesesBonificados,
+        creado_por: creadoPor,
+      })
       .select()
       .single();
     if (!error) return data;

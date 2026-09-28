@@ -23,7 +23,7 @@
     <button type="button" class="activo" id="tab-cambios-plan">Cambios de plan</button>
     <button type="button" id="tab-organizaciones">Organizaciones</button>
     <button type="button" id="tab-codigos">Códigos de activación</button>
-    <button type="button" disabled title="Todavía no está construido">Suscripciones y cobros (próximamente)</button>
+    <button type="button" id="tab-cobros">Cobros y suscripciones</button>
   </div>
 
   <div id="seccion-cambios-plan">
@@ -105,6 +105,10 @@
           <label for="codigo-max-usos">Usos permitidos</label>
           <input type="number" id="codigo-max-usos" min="1" step="1" value="1" />
         </div>
+        <div class="campo">
+          <label for="codigo-meses-bonificados">Meses bonificados (además del mes de alta, que ya es gratis)</label>
+          <input type="number" id="codigo-meses-bonificados" min="0" step="1" value="0" />
+        </div>
         <button type="submit" class="boton-primario" id="btn-generar-codigo">Generar código</button>
       </form>
       <p class="mensaje-error" id="error-codigos" hidden></p>
@@ -122,6 +126,7 @@
               <th>Estado</th>
               <th>Usos</th>
               <th>Vence</th>
+              <th>Meses bonif.</th>
               <th>Usado por</th>
               <th></th>
             </tr>
@@ -129,6 +134,63 @@
           <tbody id="tbody-codigos"></tbody>
         </table>
         <p class="texto-suave" id="codigos-vacio">Todavía no generaste ningún código.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="seccion-cobros" hidden>
+    <div class="panel-seccion">
+      <h2>Precios de los planes</h2>
+      <div class="campos-en-fila">
+        <div class="campo">
+          <label for="precio-basico">Plan Básico (por mes)</label>
+          <input type="number" id="precio-basico" min="0" step="1" />
+        </div>
+        <div class="campo">
+          <label for="precio-completo">Plan Completo (por mes)</label>
+          <input type="number" id="precio-completo" min="0" step="1" />
+        </div>
+      </div>
+      <button type="button" class="boton-chico primario" id="btn-guardar-precios">Guardar precios</button>
+      <p class="texto-suave">Solo afecta a los cobros que se generen de acá en adelante; los ya generados no cambian.</p>
+      <p class="mensaje-error" id="error-precios" hidden></p>
+      <p class="mensaje-exito" id="exito-precios" hidden></p>
+    </div>
+
+    <div class="panel-seccion">
+      <h2>Cobros</h2>
+      <p class="texto-suave">Se generan solos el día 1 de cada mes. Este botón es solo para regenerar a mano si un mes falló o hace falta forzarlo.</p>
+      <button type="button" class="boton-chico secundario" id="btn-generar-cobros">Generar cobros del mes</button>
+      <p class="mensaje-error" id="error-cobros-superadmin" hidden></p>
+      <p class="mensaje-exito" id="exito-cobros-superadmin" hidden></p>
+
+      <div class="campo" id="campo-filtro-estado-cobro">
+        <label for="filtro-estado-cobro">Filtrar por estado</label>
+        <select id="filtro-estado-cobro">
+          <option value="">Todos</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="pagado">Pagado</option>
+          <option value="vencido">Vencido</option>
+          <option value="exento">Exento</option>
+        </select>
+      </div>
+
+      <div class="tabla-contenedor">
+        <table class="tabla" id="tabla-cobros-superadmin" hidden>
+          <thead>
+            <tr>
+              <th>Organización</th>
+              <th>Período</th>
+              <th>Plan</th>
+              <th>Monto</th>
+              <th>Estado</th>
+              <th>Comprobante</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-cobros-superadmin"></tbody>
+        </table>
+        <p class="texto-suave" id="cobros-superadmin-vacio">No hay cobros con ese filtro.</p>
       </div>
     </div>
   </div>
@@ -149,13 +211,30 @@
     formatearCodigo,
     estadoCodigo,
   } from './js/superadmin.js';
-  import { PLAN_LABEL } from './js/planes.js';
+  import { PLAN_LABEL, PLANES } from './js/planes.js';
+  import {
+    listarPreciosPlanes,
+    actualizarPrecioPlan,
+    listarCobrosSuperadmin,
+    actualizarEstadoCobro,
+    obtenerUrlComprobante,
+    generarCobrosMensuales,
+    ESTADO_COBRO_LABEL,
+    ESTADO_COBRO_CLASE,
+  } from './js/cobros.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
   const ETIQUETA_ESTADO = { aprobada: 'Aprobada', rechazada: 'Rechazada' };
   const ETIQUETA_CODIGO = { disponible: 'Disponible', usado: 'Usado', vencido: 'Vencido', revocado: 'Revocado' };
   const CLASE_CODIGO = { disponible: 'activa', usado: 'editada', vencido: 'anulada', revocado: 'anulada' };
+  const formatoMoneda = (n) => `$${Number(n).toLocaleString('es-AR')}`;
+  const MES_LABEL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  function formatoPeriodo(periodo) {
+    const [anio, mes] = periodo.split('-');
+    return `${MES_LABEL[Number(mes) - 1]} ${anio}`;
+  }
   let superAdminActual = null;
+  let cobrosCache = [];
 
   document.getElementById('btn-logout').addEventListener('click', async () => {
     await logout();
@@ -180,7 +259,11 @@
     document.getElementById('tab-cambios-plan').addEventListener('click', () => cambiarTab('cambios-plan'));
     document.getElementById('tab-organizaciones').addEventListener('click', () => cambiarTab('organizaciones'));
     document.getElementById('tab-codigos').addEventListener('click', () => cambiarTab('codigos'));
+    document.getElementById('tab-cobros').addEventListener('click', () => cambiarTab('cobros'));
     document.getElementById('form-codigo').addEventListener('submit', onGenerarCodigo);
+    document.getElementById('btn-guardar-precios').addEventListener('click', onGuardarPrecios);
+    document.getElementById('btn-generar-cobros').addEventListener('click', onGenerarCobros);
+    document.getElementById('filtro-estado-cobro').addEventListener('change', renderCobrosSuperadmin);
 
     await Promise.all([cargarPendientes(), cargarHistorial()]);
   }
@@ -192,8 +275,11 @@
     document.getElementById('seccion-organizaciones').hidden = tab !== 'organizaciones';
     document.getElementById('tab-codigos').classList.toggle('activo', tab === 'codigos');
     document.getElementById('seccion-codigos').hidden = tab !== 'codigos';
+    document.getElementById('tab-cobros').classList.toggle('activo', tab === 'cobros');
+    document.getElementById('seccion-cobros').hidden = tab !== 'cobros';
     if (tab === 'organizaciones') cargarOrganizaciones();
     if (tab === 'codigos') cargarCodigos();
+    if (tab === 'cobros') iniciarSeccionCobros();
   }
 
   async function cargarPendientes() {
@@ -364,8 +450,13 @@
     const diasTexto = document.getElementById('codigo-dias').value.trim();
     const diasVencimiento = diasTexto === '' ? null : Number(diasTexto);
     const maxUsos = Number(document.getElementById('codigo-max-usos').value);
-    if ((diasVencimiento !== null && !(Number.isInteger(diasVencimiento) && diasVencimiento >= 1)) || !(Number.isInteger(maxUsos) && maxUsos >= 1)) {
-      mostrarError(errorEl, 'Días de vencimiento y usos permitidos tienen que ser números enteros de 1 o más.');
+    const mesesBonificados = Number(document.getElementById('codigo-meses-bonificados').value);
+    if (
+      (diasVencimiento !== null && !(Number.isInteger(diasVencimiento) && diasVencimiento >= 1)) ||
+      !(Number.isInteger(maxUsos) && maxUsos >= 1) ||
+      !(Number.isInteger(mesesBonificados) && mesesBonificados >= 0)
+    ) {
+      mostrarError(errorEl, 'Días de vencimiento y usos permitidos tienen que ser números enteros de 1 o más, y meses bonificados 0 o más.');
       return;
     }
 
@@ -375,9 +466,11 @@
         nota: document.getElementById('codigo-nota').value.trim(),
         diasVencimiento,
         maxUsos,
+        mesesBonificados,
         creadoPor: superAdminActual.id,
       });
       document.getElementById('codigo-nota').value = '';
+      document.getElementById('codigo-meses-bonificados').value = '0';
       await cargarCodigos();
       exitoEl.hidden = false;
       exitoEl.textContent = `Código generado: ${formatearCodigo(nuevo.codigo)}`;
@@ -419,6 +512,7 @@
               <td><span class="etiqueta estado-${CLASE_CODIGO[estado]}">${ETIQUETA_CODIGO[estado]}</span></td>
               <td>${c.usos} / ${c.max_usos}</td>
               <td>${c.expira_at ? new Date(c.expira_at).toLocaleDateString('es-AR') : 'No vence'}</td>
+              <td>${c.meses_bonificados > 0 ? c.meses_bonificados : '—'}</td>
               <td>${usadoPor}</td>
               <td class="celda-acciones">${acciones}</td>
             </tr>`;
@@ -444,6 +538,143 @@
     try {
       await revocarCodigoActivacion(id);
       await cargarCodigos();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Cobros y suscripciones ---------------------------------------------------
+
+  async function iniciarSeccionCobros() {
+    const errorEl = document.getElementById('error-precios');
+    mostrarError(errorEl, '');
+    try {
+      const precios = await listarPreciosPlanes();
+      for (const p of precios) {
+        const input = document.getElementById(`precio-${p.plan}`);
+        if (input) input.value = p.precio_mensual;
+      }
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+
+    await cargarCobrosSuperadmin();
+  }
+
+  async function onGuardarPrecios() {
+    const errorEl = document.getElementById('error-precios');
+    const exitoEl = document.getElementById('exito-precios');
+    mostrarError(errorEl, '');
+    exitoEl.hidden = true;
+    try {
+      await Promise.all(
+        PLANES.map((plan) => actualizarPrecioPlan(plan, Number(document.getElementById(`precio-${plan}`).value)))
+      );
+      exitoEl.hidden = false;
+      exitoEl.textContent = 'Precios actualizados.';
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function onGenerarCobros() {
+    const errorEl = document.getElementById('error-cobros-superadmin');
+    const exitoEl = document.getElementById('exito-cobros-superadmin');
+    mostrarError(errorEl, '');
+    exitoEl.hidden = true;
+    const boton = document.getElementById('btn-generar-cobros');
+    boton.disabled = true;
+    try {
+      await generarCobrosMensuales();
+      exitoEl.hidden = false;
+      exitoEl.textContent = 'Listo. Los cobros del mes ya están generados (los que ya existían no se duplican).';
+      await cargarCobrosSuperadmin();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    } finally {
+      boton.disabled = false;
+    }
+  }
+
+  async function cargarCobrosSuperadmin() {
+    const errorEl = document.getElementById('error-cobros-superadmin');
+    mostrarError(errorEl, '');
+    try {
+      cobrosCache = await listarCobrosSuperadmin();
+      renderCobrosSuperadmin();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  function renderCobrosSuperadmin() {
+    const filtro = document.getElementById('filtro-estado-cobro').value;
+    const cobros = filtro ? cobrosCache.filter((c) => c.estado === filtro) : cobrosCache;
+    const tabla = document.getElementById('tabla-cobros-superadmin');
+    const vacio = document.getElementById('cobros-superadmin-vacio');
+
+    if (cobros.length === 0) {
+      tabla.hidden = true;
+      vacio.hidden = false;
+      return;
+    }
+    tabla.hidden = false;
+    vacio.hidden = true;
+
+    document.getElementById('tbody-cobros-superadmin').innerHTML = cobros
+      .map((c) => {
+        const acciones = [];
+        if (c.comprobante_path) {
+          acciones.push(`<button type="button" class="boton-chico secundario" data-ver-comprobante="${c.comprobante_path}">Ver comprobante</button>`);
+        }
+        if (c.estado === 'pendiente' || c.estado === 'vencido') {
+          acciones.push(`<button type="button" class="boton-chico primario" data-marcar-pagado="${c.id}">Marcar pagado</button>`);
+        }
+        if (c.estado === 'pagado') {
+          acciones.push(`<button type="button" class="boton-chico secundario" data-revertir="${c.id}">Revertir a pendiente</button>`);
+        }
+        return `
+          <tr>
+            <td>${escapeHtml(c.organizations?.nombre || '—')}</td>
+            <td>${formatoPeriodo(c.periodo)}</td>
+            <td>${PLAN_LABEL[c.plan]}</td>
+            <td>${formatoMoneda(c.monto)}</td>
+            <td><span class="etiqueta ${ESTADO_COBRO_CLASE[c.estado]}">${ESTADO_COBRO_LABEL[c.estado]}</span></td>
+            <td>${c.comprobante_path ? 'Sí' : '—'}</td>
+            <td class="celda-acciones">${acciones.join('')}</td>
+          </tr>`;
+      })
+      .join('');
+
+    const tbody = document.getElementById('tbody-cobros-superadmin');
+    tbody.querySelectorAll('[data-marcar-pagado]').forEach((btn) =>
+      btn.addEventListener('click', () => onActualizarEstadoCobro(btn.dataset.marcarPagado, 'pagado'))
+    );
+    tbody.querySelectorAll('[data-revertir]').forEach((btn) =>
+      btn.addEventListener('click', () => onActualizarEstadoCobro(btn.dataset.revertir, 'pendiente'))
+    );
+    tbody.querySelectorAll('[data-ver-comprobante]').forEach((btn) =>
+      btn.addEventListener('click', () => onVerComprobante(btn.dataset.verComprobante))
+    );
+  }
+
+  async function onActualizarEstadoCobro(cobroId, estado) {
+    const errorEl = document.getElementById('error-cobros-superadmin');
+    mostrarError(errorEl, '');
+    try {
+      await actualizarEstadoCobro(cobroId, estado);
+      await cargarCobrosSuperadmin();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  async function onVerComprobante(path) {
+    const errorEl = document.getElementById('error-cobros-superadmin');
+    mostrarError(errorEl, '');
+    try {
+      const url = await obtenerUrlComprobante(path);
+      window.open(url, '_blank', 'noopener');
     } catch (err) {
       mostrarError(errorEl, err.message);
     }
