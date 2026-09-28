@@ -180,7 +180,7 @@
     programarEliminacionLocal,
     cancelarEliminacionLocal,
   } from './js/empleados.js';
-  import { listarProductos } from './js/productos.js';
+  import { listarProductos, esStockBajo } from './js/productos.js';
   import { listarReclamosPendientes } from './js/proveedores.js';
   import { obtenerResumenCajaHoy, obtenerResumenMes } from './js/dashboard.js';
   import { montarMenu } from './js/menu.js';
@@ -318,7 +318,7 @@
     try {
       const [productos, reclamos] = await Promise.all([listarProductos({ soloActivos: true }), listarReclamosPendientes()]);
 
-      const stockBajo = productos.filter((p) => Number(p.stock_actual) <= Number(p.stock_minimo));
+      const stockBajo = productos.filter(esStockBajo);
       // Vencimiento es parte de Basico desde que se elimino el Plan Medio
       // (seccion 15) -- tieneFeature igual se consulta por si un
       // plan_overrides puntual lo apaga para esta organizacion.

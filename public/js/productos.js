@@ -1,5 +1,14 @@
 import { supabase } from './supabaseClient.js';
 
+// Un solo lugar para este criterio: productos.html, panel.html y
+// alertas-stock.html lo usaban cada uno por su cuenta, y productos.html sin
+// el Number() de los otros dos -- stock_actual/stock_minimo llegan de
+// PostgREST como string, asi que esa comparacion era lexicografica en vez de
+// numerica (ej. "9" > "10").
+export function esStockBajo(p) {
+  return Number(p.stock_actual) <= Number(p.stock_minimo);
+}
+
 export const MOTIVOS_AJUSTE = [
   { value: 'rotura', label: 'Rotura/daño' },
   { value: 'vencido', label: 'Vencido' },

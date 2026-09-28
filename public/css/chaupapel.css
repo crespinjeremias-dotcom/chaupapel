@@ -435,7 +435,7 @@ button {
   margin: 0 0 10px;
 }
 
-.tarjeta-dashboard dl.lista-metricas {
+.lista-metricas {
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -867,6 +867,11 @@ button {
 
 .campo-checkbox label {
   margin: 0;
+}
+
+/* Separa un campo del bloque anterior cuando comparten .panel-seccion. */
+.campo-separado {
+  margin-top: 16px;
 }
 
 .modal .campo-checkbox {

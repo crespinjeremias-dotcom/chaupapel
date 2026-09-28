@@ -102,8 +102,8 @@
           <input type="number" id="p-precio" min="0" step="0.01" required />
         </div>
         <div class="campo">
-          <label for="p-stock-minimo">Stock mínimo</label>
-          <input type="number" id="p-stock-minimo" min="0" step="0.01" required />
+          <label for="p-stock-minimo">Stock mínimo (opcional)</label>
+          <input type="number" id="p-stock-minimo" min="0" step="0.01" />
         </div>
       </div>
       <div class="campo" id="campo-stock-inicial">
@@ -257,6 +257,7 @@
   import { requireSession, obtenerUsuarioActual, logout, localNoOperable } from './js/auth.js';
   import {
     MOTIVOS_AJUSTE,
+    esStockBajo,
     listarCategorias,
     crearCategoria,
     listarProductos,
@@ -440,7 +441,7 @@
   function estadoProducto(p) {
     if (!p.activo) return '<span class="etiqueta inactivo">Inactivo</span>';
     const badges = [];
-    if (p.stock_actual <= p.stock_minimo) badges.push('<span class="etiqueta stock-bajo">Stock bajo</span>');
+    if (esStockBajo(p)) badges.push('<span class="etiqueta stock-bajo">Stock bajo</span>');
     if (tieneVencimientoActivo && p.perecedero && p.fecha_vencimiento) {
       const dias = Math.floor((new Date(p.fecha_vencimiento) - new Date()) / 86400000);
       if (dias < 0) {
@@ -601,7 +602,7 @@
       categoria_id: document.getElementById('p-categoria').value || null,
       codigo_barras: document.getElementById('p-codigo-barras').value.trim() || null,
       precio_venta_actual: Number(document.getElementById('p-precio').value),
-      stock_minimo: Number(document.getElementById('p-stock-minimo').value),
+      stock_minimo: document.getElementById('p-stock-minimo').value === '' ? 0 : Number(document.getElementById('p-stock-minimo').value),
       perecedero,
       fecha_vencimiento: perecedero ? document.getElementById('p-fecha-vencimiento').value || null : null,
       alerta_vencimiento_dias: perecedero && diasAlerta !== '' ? Number(diasAlerta) : null,

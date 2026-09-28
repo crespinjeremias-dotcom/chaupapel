@@ -24,12 +24,14 @@ function construirItems(usuario, fiadoHabilitado) {
   items.push({ label: esAdmin ? 'Productos' : 'Productos y reposición de stock', href: 'productos.html' });
   if (esAdmin) items.push({ label: 'Proveedores', href: 'proveedores.html' });
 
-  items.push({ label: esAdmin ? 'Caja' : 'Cierre de turno', href: esAdmin ? 'caja.html' : 'ventas.html' });
+  // Para empleados no hay un item aparte de "Cierre de turno": ese cierre
+  // pasa por el mismo banner de arriba de ventas.html, que "Panel de ventas"
+  // ya cubre -- un segundo item con el mismo href solo duplicaba el destino.
+  if (esAdmin) items.push({ label: 'Caja', href: 'caja.html' });
   items.push({ label: 'Alertas de stock bajo', href: 'alertas-stock.html' });
 
   if (esAdmin) {
     items.push({ label: 'Reportes y estadísticas', href: 'reportes.html' });
-    items.push({ label: 'Gestión de empleados', href: 'panel.html' });
     items.push({ label: 'Configuración del local', href: 'configuracion-local.html' });
   }
 

@@ -44,7 +44,7 @@
 
 <script type="module">
   import { requireSession, obtenerUsuarioActual, logout, localNoOperable } from './js/auth.js';
-  import { listarProductos } from './js/productos.js';
+  import { listarProductos, esStockBajo } from './js/productos.js';
   import { montarMenu } from './js/menu.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
@@ -71,7 +71,7 @@
     const tabla = document.getElementById('tabla-alertas');
     try {
       const productos = await listarProductos({ soloActivos: true });
-      const conAlerta = productos.filter((p) => Number(p.stock_actual) <= Number(p.stock_minimo));
+      const conAlerta = productos.filter(esStockBajo);
 
       const tbody = document.getElementById('tbody-alertas');
       tbody.innerHTML =
