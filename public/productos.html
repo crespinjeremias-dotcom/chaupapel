@@ -107,8 +107,8 @@
         </div>
       </div>
       <div class="campo" id="campo-stock-inicial">
-        <label for="p-stock-inicial">Stock inicial</label>
-        <input type="number" id="p-stock-inicial" min="0" step="0.01" value="0" required />
+        <label for="p-stock-inicial">Stock inicial (opcional)</label>
+        <input type="number" id="p-stock-inicial" min="0" step="0.01" value="0" />
       </div>
       <div class="campo" id="campo-stock-actual-solo-lectura" hidden>
         <label>Stock actual</label>
@@ -441,9 +441,14 @@
     if (!p.activo) return '<span class="etiqueta inactivo">Inactivo</span>';
     const badges = [];
     if (p.stock_actual <= p.stock_minimo) badges.push('<span class="etiqueta stock-bajo">Stock bajo</span>');
-    if (tieneVencimientoActivo && p.perecedero && p.fecha_vencimiento && p.alerta_vencimiento_dias != null) {
-      const dias = (new Date(p.fecha_vencimiento) - new Date()) / 86400000;
-      if (dias <= p.alerta_vencimiento_dias) badges.push('<span class="etiqueta por-vencer">Por vencer</span>');
+    if (tieneVencimientoActivo && p.perecedero && p.fecha_vencimiento) {
+      const dias = Math.floor((new Date(p.fecha_vencimiento) - new Date()) / 86400000);
+      if (dias < 0) {
+        const diasVencido = Math.abs(dias);
+        badges.push(`<span class="etiqueta vencido">Vencido hace ${diasVencido} día${diasVencido === 1 ? '' : 's'}</span>`);
+      } else if (p.alerta_vencimiento_dias != null && dias <= p.alerta_vencimiento_dias) {
+        badges.push('<span class="etiqueta por-vencer">Por vencer</span>');
+      }
     }
     return badges.join(' ') || '<span class="etiqueta">OK</span>';
   }
@@ -549,7 +554,6 @@
     document.getElementById('p-stock-minimo').value = producto?.stock_minimo ?? '';
 
     document.getElementById('campo-stock-inicial').hidden = esEdicion;
-    document.getElementById('p-stock-inicial').required = !esEdicion;
     document.getElementById('campo-stock-actual-solo-lectura').hidden = !esEdicion;
     if (esEdicion) document.getElementById('p-stock-actual-valor').textContent = `${producto.stock_actual} ${producto.unidad_medida || ''}`;
 
@@ -609,7 +613,8 @@
       } else {
         datos.local_id = localIdActivo;
         datos.organization_id = usuario.organization_id;
-        datos.stock_actual = Number(document.getElementById('p-stock-inicial').value);
+        const stockInicial = document.getElementById('p-stock-inicial').value;
+        datos.stock_actual = stockInicial === '' ? 0 : Number(stockInicial);
         await crearProducto(datos);
       }
       document.getElementById('modal-producto').hidden = true;

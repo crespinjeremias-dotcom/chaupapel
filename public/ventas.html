@@ -183,6 +183,7 @@
   // de editarlo desde la pantalla de venta (decision del 2026-07-16, se saco
   // la excepcion de oferta/descuento que habia antes).
   let modoPago = 'normal'; // 'normal' | 'fiado'
+  let fiadoHabilitado = true;
   let clienteSeleccionado = null;
   let escaneoCancelado = false;
 
@@ -208,9 +209,12 @@
     if (usuario.role === 'admin') {
       const locales = await listarLocalesOperables();
       localIdActivo = obtenerLocalActivo(locales);
+      fiadoHabilitado = locales.find((l) => l.id === localIdActivo)?.fiado_habilitado !== false;
     } else {
       localIdActivo = usuario.local_id;
+      fiadoHabilitado = usuario.locales?.fiado_habilitado !== false;
     }
+    document.getElementById('tab-pago-fiado').hidden = !fiadoHabilitado;
 
     document.getElementById('btn-abrir-turno').addEventListener('click', manejarAbrirTurno);
     document.getElementById('btn-cerrar-turno').addEventListener('click', manejarCerrarTurno);

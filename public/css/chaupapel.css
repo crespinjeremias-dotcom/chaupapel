@@ -779,6 +779,11 @@ button {
   color: var(--color-aviso-texto);
 }
 
+.etiqueta.vencido {
+  background: var(--color-error-fondo);
+  color: var(--color-error);
+}
+
 .etiqueta.inactivo {
   background: var(--color-neutro-fondo);
   color: var(--color-texto-suave);

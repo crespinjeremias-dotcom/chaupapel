@@ -56,6 +56,7 @@
       <p class="mensaje-error" id="error-alertas" hidden></p>
       <div id="alertas-vacio" class="texto-suave" hidden>Sin alertas por ahora. 🎉</div>
       <ul class="lista-alertas" id="lista-stock-bajo"></ul>
+      <ul class="lista-alertas" id="lista-vencidos"></ul>
       <ul class="lista-alertas" id="lista-por-vencer"></ul>
       <ul class="lista-alertas" id="lista-reclamos-pendientes"></ul>
     </div>
@@ -321,25 +322,28 @@
       // Vencimiento es parte de Basico desde que se elimino el Plan Medio
       // (seccion 15) -- tieneFeature igual se consulta por si un
       // plan_overrides puntual lo apaga para esta organizacion.
-      const porVencer = !tieneFeature(usuario, 'vencimiento')
+      const conVencimiento = !tieneFeature(usuario, 'vencimiento')
         ? []
-        : productos.filter((p) => {
-            if (!p.perecedero || !p.fecha_vencimiento || p.alerta_vencimiento_dias == null) return false;
-            const dias = (new Date(p.fecha_vencimiento) - new Date()) / 86400000;
-            return dias <= p.alerta_vencimiento_dias;
-          });
+        : productos
+            .filter((p) => p.perecedero && p.fecha_vencimiento)
+            .map((p) => ({ producto: p, dias: Math.floor((new Date(p.fecha_vencimiento) - new Date()) / 86400000) }));
+      const vencidos = conVencimiento.filter((v) => v.dias < 0);
+      const porVencer = conVencimiento.filter((v) => v.dias >= 0 && v.producto.alerta_vencimiento_dias != null && v.dias <= v.producto.alerta_vencimiento_dias);
 
       document.getElementById('lista-stock-bajo').innerHTML = stockBajo
         .map((p) => `<li>📉 <a href="productos.html">${escapeHtml(p.nombre)}</a> — stock ${p.stock_actual}/${p.stock_minimo}</li>`)
         .join('');
+      document.getElementById('lista-vencidos').innerHTML = vencidos
+        .map(({ producto: p, dias }) => `<li>⚠️ <a href="productos.html">${escapeHtml(p.nombre)}</a> — vencido hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? '' : 's'}</li>`)
+        .join('');
       document.getElementById('lista-por-vencer').innerHTML = porVencer
-        .map((p) => `<li>⏳ <a href="productos.html">${escapeHtml(p.nombre)}</a> — vence ${new Date(p.fecha_vencimiento).toLocaleDateString('es-AR')}</li>`)
+        .map(({ producto: p }) => `<li>⏳ <a href="productos.html">${escapeHtml(p.nombre)}</a> — vence ${new Date(p.fecha_vencimiento).toLocaleDateString('es-AR')}</li>`)
         .join('');
       document.getElementById('lista-reclamos-pendientes').innerHTML = reclamos
         .map((r) => `<li>📦 Reclamo pendiente a <a href="proveedores.html">${escapeHtml(r.proveedores?.nombre || '—')}</a>${r.productos ? ' · ' + escapeHtml(r.productos.nombre) : ''}</li>`)
         .join('');
 
-      document.getElementById('alertas-vacio').hidden = stockBajo.length + porVencer.length + reclamos.length > 0;
+      document.getElementById('alertas-vacio').hidden = stockBajo.length + vencidos.length + porVencer.length + reclamos.length > 0;
     } catch (err) {
       mostrarError(document.getElementById('error-alertas'), err.message);
     }
