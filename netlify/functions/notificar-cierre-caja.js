@@ -37,6 +37,19 @@ export async function handler(event) {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
+  // RLS deja leer el cierre a cualquier usuario aprobado del local, pero disparar
+  // el email a los admins es cosa del admin: un empleado podia llamar a este
+  // endpoint en loop y llenarle la casilla a los admins.
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !userData?.user) return respuesta(401, { error: 'Sesion invalida o vencida' });
+  const { data: yo, error: yoError } = await supabase
+    .from('usuarios')
+    .select('role, status')
+    .eq('id', userData.user.id)
+    .maybeSingle();
+  if (yoError) return respuesta(500, { error: yoError.message });
+  if (!yo || yo.role !== 'admin' || yo.status !== 'approved') return respuesta(403, { error: 'No autorizado' });
+
   const { data: local, error: localError } = await supabase
     .from('locales')
     .select('id, nombre, organization_id, alerta_cierre_caja_email, bloqueado_por_plan, archivado')

@@ -281,7 +281,7 @@
     const selectInvitar = document.getElementById('select-local-invitar');
     const campoLocalInvitar = document.getElementById('campo-local-invitar');
     if (locales.length > 1) {
-      selectInvitar.innerHTML = locales.map((l) => `<option value="${l.id}">${l.nombre}</option>`).join('');
+      selectInvitar.innerHTML = locales.map((l) => `<option value="${l.id}">${escapeHtml(l.nombre)}</option>`).join('');
       selectInvitar.value = obtenerLocalActivo(locales);
       campoLocalInvitar.hidden = false;
     }

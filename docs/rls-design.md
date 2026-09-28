@@ -86,6 +86,27 @@ Alta de la cuenta: no hay flujo de auto-registro. Se crea el usuario de Supabase
 
 RLS filtra *filas*, pero Postgres exige por separado el permiso de tabla (`GRANT SELECT/INSERT/UPDATE/DELETE`) antes de siquiera evaluar las policies. Al probar el login en el navegador, la primera consulta real a `usuarios` devolvió `403 permission denied for table usuarios` — las migraciones de la Fase 1 se corrieron con un rol que no coincide con el que Supabase usa para aplicar sus grants automáticos del dashboard, así que el rol `authenticated` no tenía el permiso base. Se resolvió en `20260710090500_grants_authenticated.sql`, que además deja un `alter default privileges` para que las tablas que se creen de acá en adelante hereden el grant automáticamente sin tener que acordarse de repetir esto en cada fase.
 
+## GRANTs por rol y EXECUTE de funciones (auditoría 2026-09-25)
+
+Migración `20260925110000_fix_grants_service_role_y_funciones.sql`. Reglas vigentes:
+
+- **`service_role`** (Netlify Functions: `toggle-organizacion`, `alertas-stock-email`) tiene BYPASSRLS pero **no** bypasea los GRANTs de tabla. El proyecto no autoexpone tablas nuevas a los roles de la API, y hasta esta migración solo `authenticated` tenía permisos: suspender una organización fallaba con `permission denied for table super_admins`. Ahora tiene `select/insert/update/delete` sobre `public` y un `alter default privileges` para las tablas nuevas.
+- **`anon`** no tiene permisos sobre ninguna tabla ni puede ejecutar ninguna función propia, salvo `validar_codigo_activacion()` (el alta valida el código antes del `signUp`).
+- **Toda RPC nueva** hay que dejarla explícitamente así (Postgres las crea ejecutables por PUBLIC): `revoke execute on function public.f(...) from public, anon; grant execute on function public.f(...) to authenticated;`. Las funciones que solo corre `pg_cron` (`purgar_locales_vencidos`) no se le otorgan a nadie.
+- **Embeds de PostgREST**: si dos tablas tienen más de una FK entre sí, todo embed debe indicar la relación (`locales!usuarios_local_id_fkey(...)`), o falla con `PGRST201` para todos los usuarios. `usuarios` ↔ `locales` tiene dos (`usuarios.local_id` y `locales.eliminacion_solicitada_por`); otros pares con más de una: `ventas`↔`usuarios`, `invitaciones`↔`usuarios`, `devoluciones_cambios`↔`productos`. Antes de agregar una FK nueva entre dos tablas ya relacionadas, revisar los `select()` que las embeben.
+
+## Auditoría de seguridad (2026-09-25, migración `20260925120000_hardening_seguridad.sql`)
+
+Cada punto se reprodujo simulando al atacante (sesión `authenticated` con el JWT de un usuario real, en una transacción con rollback) antes de corregirlo. Reglas que quedan vigentes:
+
+- **Las policies filtran filas, no columnas**: todo lo que un usuario puede escribir en su propia fila necesita además un trigger que fije las columnas sensibles. Guardas actuales: `organizations` (`plan`, `is_active`, `plan_overrides`, `trial_ends_at`, `codigo_activacion_id`), `usuarios` (`role`, `status`, `local_id`, `organization_id`), `ventas` (solo cambian `total`, `estado`, `anulada_*`; una venta anulada no se reactiva ni se toca su detalle), `turnos` (un turno cerrado solo lo toca un admin), `locales` (`archivado`, `bloqueado_por_plan`, `eliminar_en`). Todas tienen una bandera de sesión `app.bypass_*` para correcciones manuales desde el SQL editor.
+- **Los triggers `security definer` que mueven stock o saldos (`aplicar_*`) actúan sobre el id que reciben**: por eso `validar_referencias_mismo_local()` exige que producto/cliente/venta/turno referenciados sean del mismo local y organización. Toda tabla nueva con FK a esas tablas debe agregar su trigger `trg_refs_*`.
+- Las ventas solo se cargan en un turno abierto (`trg_validar_turno_abierto_venta`). **Decisión tomada (2026-09-26)**: no se exige que el turno sea del mismo usuario que vende, a propósito: el modo `compartida` de `locales.modo_turno` va a necesitar justamente eso, y bloquearlo ahora para desbloquearlo después es vaivén. Revisar al implementar ese modo.
+- Cabeceras de seguridad en `netlify.toml` (sin CSP completa: probar página por página antes de activarla; postergado, no urgente).
+- `alertas-stock-email` ya no se autoriza con el header `x-nf-event` (falsificable): exige siempre `ALERTAS_STOCK_SECRET` en el header `x-alertas-secret` y lo dispara pg_cron vía pg_net (migración `20260926090000_cron_alertas_stock.sql`; secretos en Vault).
+- Dependencias de CDN fijadas a versión exacta: `supabase-js@2.110.5` (`supabaseClient.js`) y `xlsx@0.20.3` desde cdn.sheetjs.com (`excel.js`; 0.18.5 tenía prototype pollution y ReDoS y npm no publica versiones más nuevas).
+- **Anotado para revisar con calma (no tocar ahora)**: `max_locales()` y `local_is_active()` aceptan el id de cualquier organización/local y devuelven info mínima (límite de locales / si está activo) de otras organizaciones. Impacto bajo, y varias policies dependen de ellas: cambiarlas es más riesgoso que el problema.
+
 ## Decisiones que quedan abiertas / a confirmar
 
 Estas son supuestos razonables que tomé para no frenar la Fase 1, pero vale la pena que los confirmes:

@@ -106,7 +106,7 @@ export async function montarMenu(usuario) {
 
   drawer.innerHTML = `
     <div class="menu-drawer-header">
-      <h2>${nombreLocal}</h2>
+      <h2>${escapeHtml(nombreLocal)}</h2>
       <button type="button" id="menu-btn-cerrar" aria-label="Cerrar menú">×</button>
     </div>
     ${selectorLocalHtml}

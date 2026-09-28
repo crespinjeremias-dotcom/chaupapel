@@ -84,7 +84,8 @@ export async function crearLocal({ nombre, organizationId }) {
 export async function listarUsuariosOrganizacion() {
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre, email, role, status, local_id, locales(nombre)')
+    // locales!usuarios_local_id_fkey: ver el comentario en obtenerUsuarioActual (auth.js)
+    .select('id, nombre, email, role, status, local_id, locales!usuarios_local_id_fkey(nombre)')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data;

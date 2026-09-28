@@ -1,7 +1,7 @@
 // Version fijada (no "latest"): ver js/barcode.js para el porque -- una
 // libreria de CDN actualizandose sola en produccion es justamente lo que
 // rompio el escaner de codigo de barras.
-import * as XLSX from 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm';
+import * as XLSX from 'https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs';
 
 export const COLUMNAS = [
   'Nombre',

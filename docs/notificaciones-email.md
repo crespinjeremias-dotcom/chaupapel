@@ -25,7 +25,7 @@ dependencia — es una sola llamada, no lo justifica.
   puede leer es más simple y más seguro que reimplementar el chequeo a
   mano, y alcanza porque el cierre que se quiere notificar es exactamente
   el mismo que ese admin ya podía ver en `caja.html`.
-- **`alertas-stock-email.js`**: la dispara únicamente el cron de Netlify, no
+- **`alertas-stock-email.js`**: la dispara únicamente pg_cron (con un secreto), no
   hay un usuario logueado de quien tomar un JWT porque tiene que recorrer
   **todas** las organizaciones en una sola corrida. Por eso sí necesita la
   service role key, igual que `toggle-organizacion.js`.
@@ -99,17 +99,14 @@ particular" del resto de admins con el modelo de datos actual.
 
 ## Qué falta / qué no se pudo verificar sin acceso a internet desde este entorno
 
-- **No se pudo confirmar la sintaxis de `netlify.toml` para el cron
-  (`[functions."alertas-stock-email"]` + `schedule`) ni el header
-  `x-nf-event: schedule` que usa `alertas-stock-email.js` para reconocer una
-  invocación programada, contra la documentación oficial de Netlify vigente
-  — este entorno no tiene salida a internet para chequearlo.** Verificar en
-  el dashboard de Netlify después del primer deploy que el schedule haya
-  quedado registrado (Site settings → Functions → `alertas-stock-email`), y
-  que la función efectivamente corre sola sin necesitar `ALERTAS_STOCK_SECRET`.
-- El riesgo si el chequeo del header no funciona y alguien encuentra la URL
-  y la llama a mano es bajo: solo un digest de stock bajo mandado antes de
-  tiempo, no expone datos nuevos ni hace nada destructivo.
+- **El cron de stock bajo ahora vive en la base (pg_cron + pg_net), no en
+  Netlify** (migración `20260926090000_cron_alertas_stock.sql`). La función
+  exige siempre `ALERTAS_STOCK_SECRET` en el header `x-alertas-secret`; el
+  header `x-nf-event` ya no se usa porque cualquiera lo puede falsificar.
+  Setup manual una vez (SQL editor): crear en Vault `alertas_stock_secret`
+  (mismo valor que la env var de Netlify) y `alertas_stock_url` (URL completa
+  de la función). Sin eso la corrida no hace nada y deja un WARNING. Las
+  respuestas HTTP quedan en `net._http_response`.
 - No probado en vivo end-to-end (no hay forma de mandar un email real desde
   este entorno). Falta: configurar `RESEND_API_KEY` (y `RESEND_FROM` con un
   dominio verificado, para poder mandarle a los admins reales y no solo al

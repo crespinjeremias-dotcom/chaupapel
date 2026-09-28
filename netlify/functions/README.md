@@ -38,7 +38,7 @@ nada y responde `200 { ok: true, enviado: false }` — no es un error.
 
 ## `alertas-stock-email.js`
 
-Digest diario (cron en `netlify.toml`, 12:00 UTC = 9am Argentina) de
+Digest diario (lo dispara pg_cron, 12:00 UTC = 9am Argentina, ver `supabase/migrations/20260926090000_cron_alertas_stock.sql`) de
 productos con stock bajo por local, para organizaciones con el toggle
 `alerta_stock_email` prendido (parte de Basico desde que se eliminó el Plan
 Medio). No hay un usuario logueado del
@@ -54,9 +54,11 @@ Variables de entorno adicionales que necesitan estas dos funciones:
 - `RESEND_FROM` (opcional; sin esto usa el remitente sandbox de Resend, que
   solo entrega a la casilla del dueño de la cuenta — hace falta un dominio
   verificado en Resend y esta variable para mandarle a los admins reales).
-- `ALERTAS_STOCK_SECRET` (opcional; permite invocar `alertas-stock-email` a
-  mano con `?secret=...` mientras se prueba el setup, sin depender de que el
-  cron ya esté andando).
+- `ALERTAS_STOCK_SECRET` (**obligatoria** para `alertas-stock-email`: la función
+  la exige siempre en el header `x-alertas-secret`, y sin la variable
+  responde 500). Tiene que ser el mismo valor que el secreto `alertas_stock_secret`
+  de Supabase Vault, que es lo que usa pg_cron para llamarla. Prueba manual:
+  `curl -H "x-alertas-secret: <secreto>" https://<sitio>/.netlify/functions/alertas-stock-email`.
 
 Nota: no todo el panel de super-admin depende de Netlify Functions. La
 aprobación de cambios de plan se resolvió sin esto, con RLS (tabla

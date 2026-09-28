@@ -1,5 +1,5 @@
 // Digest diario de stock bajo (seccion 11, parte de Basico desde que se
-// elimino el Plan Medio), disparado por el cron de netlify.toml (12:00 UTC
+// elimino el Plan Medio), disparado por pg_cron (12:00 UTC
 // = 9am Argentina). Un producto puede quedar
 // por debajo del minimo en cualquier venta y seguir ahi por dias hasta que
 // se repone -- mandar un email cada vez que se vende una unidad mas de un
@@ -9,26 +9,24 @@
 // No hay un usuario logueado de quien tomar un JWT -- tiene que recorrer
 // todas las organizaciones en una sola corrida -- por eso usa la service
 // role key, igual que toggle-organizacion.js.
+import { timingSafeEqual } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { enviarEmail } from './lib/resend.js';
 import { tieneFeatureServer } from './lib/planes.js';
 import { escapeHtml } from './lib/html.js';
 
 export async function handler(event) {
-  // Netlify marca las invocaciones de un scheduled function con este header.
-  // No pudimos verificar esto contra la documentacion oficial de Netlify
-  // desde este entorno de desarrollo -- confirmar en el dashboard (Site
-  // settings -> Functions -> alertas-stock-email) despues del primer deploy
-  // que el cron haya quedado registrado, y que esta funcion efectivamente
-  // corra sola. ALERTAS_STOCK_SECRET es la via de escape para probarla a
-  // mano mientras tanto (GET .../alertas-stock-email?secret=...). El riesgo
-  // de que alguien la invoque igual sin ninguna de las dos cosas es bajo: en
-  // el peor caso, un digest de stock bajo mandado antes de tiempo -- no
-  // expone datos nuevos ni hace nada destructivo.
-  const esInvocacionProgramada = event.headers['x-nf-event'] === 'schedule';
+  // Siempre exige el secreto: el header x-nf-event lo puede mandar cualquiera,
+  // no prueba nada. Lo dispara pg_cron (migracion 20260926090000) via pg_net
+  // con el secreto en el header x-alertas-secret, el mismo valor que
+  // ALERTAS_STOCK_SECRET en Netlify. Sin la variable configurada la funcion
+  // queda cerrada (no hay modo "abierto"). Por header y no por query string:
+  // las URL quedan en logs.
   const secreto = process.env.ALERTAS_STOCK_SECRET;
-  const pasaSecretoManual = Boolean(secreto) && event.queryStringParameters?.secret === secreto;
-  if (!esInvocacionProgramada && !pasaSecretoManual) {
+  if (!secreto) {
+    return respuesta(500, { error: 'Falta configurar ALERTAS_STOCK_SECRET en Netlify' });
+  }
+  if (!secretoValido(event.headers?.['x-alertas-secret'], secreto)) {
     return respuesta(403, { error: 'No autorizado' });
   }
 
@@ -114,6 +112,13 @@ export async function handler(event) {
   }
 
   return respuesta(200, { ok: true, digestsEnviados });
+}
+
+function secretoValido(recibido, esperado) {
+  if (typeof recibido !== 'string') return false;
+  const a = Buffer.from(recibido);
+  const b = Buffer.from(esperado);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 function respuesta(statusCode, data) {

@@ -97,6 +97,9 @@ export async function actualizarPassword(nuevaPassword) {
 // Trae la fila de usuarios + organizations del usuario logueado. Usado por
 // las paginas que necesitan mostrar datos reales (panel) o decidir si
 // redirigir al login.
+// locales!usuarios_local_id_fkey: usuarios y locales tienen dos FKs entre si
+// (usuarios.local_id y locales.eliminacion_solicitada_por); sin indicar cual,
+// PostgREST rechaza el embed por ambiguo (PGRST201) y nadie puede iniciar sesion.
 export async function obtenerUsuarioActual() {
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session) return null;
@@ -104,7 +107,7 @@ export async function obtenerUsuarioActual() {
   const { data, error } = await supabase
     .from('usuarios')
     .select(
-      'id, nombre, role, status, local_id, organization_id, organizations(nombre, plan, plan_overrides, is_active), locales(nombre, fiado_habilitado, bloqueado_por_plan, archivado)'
+      'id, nombre, role, status, local_id, organization_id, organizations(nombre, plan, plan_overrides, is_active), locales!usuarios_local_id_fkey(nombre, fiado_habilitado, bloqueado_por_plan, archivado)'
     )
     .eq('id', sessionData.session.user.id)
     .maybeSingle();
