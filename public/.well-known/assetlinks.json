@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.netlify.chaupapel.twa",
+      "sha256_cert_fingerprints": [
+        "F1:CF:7A:0C:2D:6C:9E:86:45:77:B9:96:C6:F1:22:0B:15:4B:4F:19:FB:E9:14:10:4E:AE:55:A1:54:12:D1:06"
+      ]
+    }
+  }
+]
