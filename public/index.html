@@ -6,8 +6,9 @@
 <meta name="theme-color" content="#1f6f50" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <script type="module">
-  import { registrarServiceWorker } from './js/pwa.js';
+  import { registrarServiceWorker, escucharPromptInstalacion } from './js/pwa.js';
   registrarServiceWorker();
+  escucharPromptInstalacion();
 </script>
 
 <div class="contenedor-auth">
@@ -42,6 +43,8 @@
       <a href="registro.html">¿No tenés cuenta? Registrar mi negocio</a>
       <a href="empleado.html">¿Tenés un código de invitación? Registrate como empleado</a>
     </div>
+
+    <button type="button" class="boton-secundario boton-instalar-login" id="btn-instalar-login" hidden>Instalar app en esta compu</button>
   </div>
 </div>
 
@@ -55,11 +58,14 @@
     pantallaDeEntrada,
   } from './js/auth.js';
   import { mostrarError, mostrarCargando, traducirError } from './js/utils.js';
+  import { conectarBotonInstalar } from './js/pwa.js';
 
   const form = document.getElementById('form-login');
   const errorEl = document.getElementById('error');
   const avisoSesion = document.getElementById('aviso-sesion');
   const btnSubmit = document.getElementById('btn-submit');
+
+  conectarBotonInstalar(document.getElementById('btn-instalar-login'));
 
   // El Super-Admin no tiene fila en `usuarios` (no pertenece a ninguna
   // organizacion), asi que se chequea aparte y primero -- si se lo dejara

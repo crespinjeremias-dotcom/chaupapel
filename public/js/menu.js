@@ -2,6 +2,7 @@ import { logout } from './auth.js';
 import { listarLocalesOperables } from './empleados.js';
 import { obtenerLocalActivo, establecerLocalActivo } from './localActivo.js';
 import { escapeHtml } from './utils.js';
+import { conectarBotonInstalar } from './pwa.js';
 
 // Construye la lista de items del menu segun rol. Los items marcados
 // proximamente quedan visibles pero deshabilitados -- todavia no existe esa
@@ -22,7 +23,6 @@ function construirItems(usuario, fiadoHabilitado) {
   }
 
   items.push({ label: esAdmin ? 'Productos' : 'Productos y reposición de stock', href: 'productos.html' });
-  if (esAdmin) items.push({ label: 'Proveedores', href: 'proveedores.html' });
 
   // Para empleados no hay un item aparte de "Cierre de turno": ese cierre
   // pasa por el mismo banner de arriba de ventas.html, que "Panel de ventas"
@@ -30,8 +30,12 @@ function construirItems(usuario, fiadoHabilitado) {
   if (esAdmin) items.push({ label: 'Caja', href: 'caja.html' });
   items.push({ label: 'Alertas de stock bajo', href: 'alertas-stock.html' });
 
+  // Proveedores y Reportes y estadisticas: sacados del menu (piden menos
+  // ruido de navegacion) pero las paginas siguen existiendo y protegidas
+  // igual que antes (reportes.html redirige a quien no sea admin; las
+  // queries de ambas siguen acotadas por RLS a local/organizacion) -- solo
+  // dejan de tener un link visible, no es un cambio de seguridad.
   if (esAdmin) {
-    items.push({ label: 'Reportes y estadísticas', href: 'reportes.html' });
     items.push({ label: 'Configuración del local', href: 'configuracion-local.html' });
   }
 
@@ -113,6 +117,7 @@ export async function montarMenu(usuario) {
     </div>
     ${selectorLocalHtml}
     <ul class="menu-lista">
+      <li class="menu-instalar-app" hidden><button type="button" id="menu-btn-instalar">Instalar app en esta compu</button></li>
       ${itemsHtml}
       <li class="menu-separador"></li>
       <li class="menu-cerrar-sesion"><button type="button" id="menu-btn-logout">Cerrar sesión</button></li>
@@ -130,6 +135,8 @@ export async function montarMenu(usuario) {
       window.location.reload();
     });
   }
+
+  conectarBotonInstalar(drawer.querySelector('#menu-btn-instalar'), drawer.querySelector('.menu-instalar-app'));
 
   function abrir() {
     overlay.hidden = false;

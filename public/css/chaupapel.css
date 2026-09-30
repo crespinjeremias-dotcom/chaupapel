@@ -309,6 +309,11 @@ button {
   text-decoration: underline;
 }
 
+.boton-instalar-login {
+  width: 100%;
+  margin-top: 20px;
+}
+
 .mensaje-error {
   background: var(--color-error-fondo);
   color: var(--color-error);
@@ -1598,8 +1603,26 @@ button {
   background: var(--color-error-fondo);
 }
 
+.menu-lista li.menu-instalar-app button {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 2px 8px;
+  text-align: left;
+  padding: 14px 10px;
+  border-radius: var(--radio-sm);
+  background: none;
+  border: none;
+  color: var(--color-primario);
+  font-size: var(--fs-base);
+}
+
+.menu-lista li.menu-instalar-app button:hover {
+  background: var(--color-primario-suave);
+}
+
 .menu-lista li a,
-.menu-lista li.menu-cerrar-sesion button {
+.menu-lista li.menu-cerrar-sesion button,
+.menu-lista li.menu-instalar-app button {
   transition: background-color var(--transicion);
 }
 
@@ -1615,6 +1638,45 @@ button {
 @keyframes drawer-entra {
   from {
     transform: translateX(-100%);
+  }
+}
+
+/* Menu fijo en pantallas de escritorio: mismo corte de 1100px que ya usa el
+   resto del proyecto para "layouts de escritorio mas anchos" (ver comentario
+   al principio del archivo) -- no se inventa un breakpoint nuevo. Se eligio
+   1100px y no el otro corte del proyecto (700px, celular vs tablet/notebook)
+   a proposito: una tablet vertical (700-1099px) sigue con la hamburguesa, sin
+   perder ancho util con el sidebar fijo -- eso se reserva para notebook/PC.
+   Ahi el drawer queda siempre visible como sidebar fijo en vez de hamburguesa
+   desplegable, y el contenido de la pagina se corre a la derecha. En celular
+   y tablet sigue exactamente igual que antes (hamburguesa que abre/cierra). */
+@media (min-width: 1100px) {
+  .boton-hamburguesa {
+    display: none;
+  }
+
+  .menu-overlay {
+    display: none;
+  }
+
+  .menu-drawer {
+    box-shadow: none;
+    border-right: 1px solid var(--color-borde);
+  }
+
+  /* [hidden] tiene display:none !important mas arriba (a proposito, para
+     que ninguna regla lo pise por accidente) -- hay que igualarlo para que
+     el sidebar se vea siempre, sin importar el atributo hidden real. */
+  .menu-drawer[hidden] {
+    display: flex !important;
+  }
+
+  #menu-btn-cerrar {
+    display: none;
+  }
+
+  body:has(.menu-drawer) {
+    padding-left: 280px;
   }
 }
 
