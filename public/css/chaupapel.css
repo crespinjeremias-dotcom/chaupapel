@@ -24,6 +24,14 @@
   --color-aviso-texto: #7a4a00;
   --color-neutro-fondo: #e8eaed;
   --color-overlay: rgba(16, 18, 22, 0.48);
+  /* Solo para el menu (drawer celular + sidebar PC): mismos tonos que ya
+     usa el resto de la paleta (texto oscuro / fondo claro), reutilizados
+     aca al reves -- fondo oscuro, texto claro -- para que el menu se
+     distinga del contenido. No se tocan en ningun otro lado. */
+  --color-menu-fondo: var(--color-texto);
+  --color-menu-texto: var(--color-fondo);
+  --color-menu-texto-suave: rgba(243, 244, 246, 0.6);
+  --color-menu-hover: rgba(255, 255, 255, 0.08);
 
   /* Tipografia -------------------------------------------------------- */
   --fs-xs: 0.75rem;
@@ -59,6 +67,33 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* Transicion entre paginas (seccion 17): reemplaza el flash blanco al
+   navegar de un .html a otro por un crossfade corto. Elegido por sobre un
+   fade manual con JS porque es puramente declarativo (nada que intervenir en
+   cada link/cada pagina) y nunca puede dejar una pantalla a medio-transicionar
+   si la navegacion es mas rapida que la animacion. Si el navegador no
+   soporta Cross-Document View Transitions (Firefox, Safari viejos), este
+   bloque no hace nada -- la navegacion sigue exactamente como esta hoy, sin
+   fallback a mano. El Chrome que usa el TWA en Android (section 17) ya lo
+   soporta igual que el Chrome/Edge de escritorio. */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 150ms;
+}
+
+/* El sidebar/drawer del menu es el mismo elemento visual en ambas paginas --
+   sin esto, cada navegacion lo hace parpadear en el crossfade general junto
+   con el resto del contenido, lo cual se siente mal justo en la pieza que
+   se supone que queda fija. Con un view-transition-name compartido, el
+   navegador lo trata aparte y lo deja quieto en vez de desvanecerlo. */
+.menu-drawer {
+  view-transition-name: menu-drawer;
 }
 
 body {
@@ -1502,7 +1537,7 @@ button {
   bottom: 0;
   width: 280px;
   max-width: 85vw;
-  background: var(--color-superficie);
+  background: var(--color-menu-fondo);
   z-index: 201;
   display: flex;
   flex-direction: column;
@@ -1519,6 +1554,7 @@ button {
 .menu-drawer-header h2 {
   font-size: var(--fs-md);
   margin: 0;
+  color: var(--color-menu-texto);
 }
 
 .menu-drawer-header button {
@@ -1526,7 +1562,7 @@ button {
   border: none;
   font-size: var(--fs-xl);
   line-height: 1;
-  color: var(--color-texto-suave);
+  color: var(--color-menu-texto-suave);
   padding: 4px;
 }
 
@@ -1537,17 +1573,18 @@ button {
 .menu-selector-local label {
   display: block;
   font-size: var(--fs-xs);
-  color: var(--color-texto-suave);
+  color: var(--color-menu-texto-suave);
   margin-bottom: 4px;
 }
 
 .menu-selector-local select {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid var(--color-borde);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: var(--radio-sm);
   font-size: var(--fs-base);
-  background: var(--color-fondo);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-menu-texto);
 }
 
 .menu-lista {
@@ -1561,20 +1598,30 @@ button {
 .menu-lista li a,
 .menu-lista li .menu-item-proximamente {
   display: block;
-  padding: 14px 18px;
+  padding: 14px 18px 14px 15px;
   margin: 2px 8px;
   border-radius: var(--radio-sm);
-  color: var(--color-texto);
+  border-left: 3px solid transparent;
+  color: var(--color-menu-texto);
   text-decoration: none;
   font-size: var(--fs-base);
 }
 
 .menu-lista li a:hover {
-  background: var(--color-fondo);
+  background: var(--color-menu-hover);
+}
+
+/* Estado activo (seccion actual): mismo verde de los botones principales,
+   como fondo suave + borde izquierdo, texto mas claro que el resto. */
+.menu-lista li a.activo {
+  background: var(--color-primario-suave);
+  border-left-color: var(--color-primario);
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .menu-lista li .menu-item-proximamente {
-  color: var(--color-texto-suave);
+  color: var(--color-menu-texto-suave);
   cursor: default;
 }
 
@@ -1584,6 +1631,7 @@ button {
 
 .menu-lista li.menu-separador {
   margin: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .menu-lista li.menu-cerrar-sesion button {
@@ -1600,7 +1648,7 @@ button {
 }
 
 .menu-lista li.menu-cerrar-sesion button:hover {
-  background: var(--color-error-fondo);
+  background: rgba(179, 38, 30, 0.2);
 }
 
 .menu-lista li.menu-instalar-app button {
@@ -1612,7 +1660,7 @@ button {
   border-radius: var(--radio-sm);
   background: none;
   border: none;
-  color: var(--color-primario);
+  color: #6fcf9d;
   font-size: var(--fs-base);
 }
 

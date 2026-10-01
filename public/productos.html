@@ -206,8 +206,8 @@
     <p class="mensaje-error" id="error-reponer" hidden></p>
     <form id="form-reponer">
       <div class="campo" id="campo-reponer-proveedor">
-        <label for="rp-proveedor">Proveedor</label>
-        <select id="rp-proveedor" required></select>
+        <label for="rp-proveedor">Proveedor (opcional)</label>
+        <select id="rp-proveedor"></select>
       </div>
       <div class="campos-en-fila">
         <div class="campo">
@@ -716,20 +716,19 @@
 
     const selectProveedor = document.getElementById('rp-proveedor');
     const campoProveedor = document.getElementById('campo-reponer-proveedor');
-    const btnGuardar = document.getElementById('btn-guardar-reponer');
     selectProveedor.innerHTML = '<option>Cargando...</option>';
     document.getElementById('modal-reponer').hidden = false;
 
     try {
       const proveedores = await listarProveedoresDeProducto(producto.id);
       if (proveedores.length === 0) {
+        // El proveedor es opcional para este flujo: sin uno vinculado, la
+        // reposicion se guarda igual (reposiciones_stock.proveedor_id admite
+        // null), solo no hay de donde elegir uno.
         selectProveedor.innerHTML = '';
         campoProveedor.hidden = true;
-        btnGuardar.disabled = true;
-        mostrarError(errorEl, 'Este producto todavía no tiene ningún proveedor vinculado. Vinculalo primero desde Proveedores.');
       } else {
         campoProveedor.hidden = false;
-        btnGuardar.disabled = false;
         selectProveedor.innerHTML = proveedores.map((p) => `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join('');
       }
     } catch (err) {
@@ -754,7 +753,7 @@
     try {
       await registrarReposicion({
         productoId: productoParaReponer.id,
-        proveedorId: document.getElementById('rp-proveedor').value,
+        proveedorId: document.getElementById('rp-proveedor').value || null,
         localId: productoParaReponer.local_id,
         organizationId: productoParaReponer.organization_id,
         usuarioId: usuario.id,

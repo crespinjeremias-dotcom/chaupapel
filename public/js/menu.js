@@ -90,13 +90,18 @@ export async function montarMenu(usuario) {
 
   const nombreLocal = usuario.locales?.nombre || usuario.organizations?.nombre || 'Menú';
 
+  // Resalta en que seccion esta parado: compara contra el nombre de archivo
+  // de la pagina actual, igual que los href de construirItems.
+  const paginaActual = window.location.pathname.split('/').pop() || 'index.html';
+
   const itemsHtml = items
     .map((item) => {
       if (item.proximamente) {
         const etiqueta = typeof item.proximamente === 'string' ? item.proximamente : 'Próximamente';
         return `<li><span class="menu-item-proximamente">${item.label}<span class="etiqueta">${etiqueta}</span></span></li>`;
       }
-      return `<li><a href="${item.href}">${item.label}</a></li>`;
+      const clase = item.href === paginaActual ? ' class="activo"' : '';
+      return `<li><a href="${item.href}"${clase}>${item.label}</a></li>`;
     })
     .join('');
 
