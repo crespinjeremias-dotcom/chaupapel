@@ -70,30 +70,32 @@
 }
 
 /* Transicion entre paginas (seccion 17): reemplaza el flash blanco al
-   navegar de un .html a otro por un crossfade corto. Elegido por sobre un
-   fade manual con JS porque es puramente declarativo (nada que intervenir en
-   cada link/cada pagina) y nunca puede dejar una pantalla a medio-transicionar
-   si la navegacion es mas rapida que la animacion. Si el navegador no
-   soporta Cross-Document View Transitions (Firefox, Safari viejos), este
-   bloque no hace nada -- la navegacion sigue exactamente como esta hoy, sin
-   fallback a mano. El Chrome que usa el TWA en Android (section 17) ya lo
-   soporta igual que el Chrome/Edge de escritorio. */
-@view-transition {
-  navigation: auto;
+   navegar de un .html a otro con un fade de entrada corto. Antes probe
+   Cross-Document View Transitions (@view-transition / navigation: auto):
+   la API esta disponible (document.startViewTransition existe, CSS.supports
+   confirma las propiedades, la regla @view-transition se parsea bien en
+   ambas paginas), pero confirme con un test real -- escuchando el evento
+   pagereveal y leyendo event.viewTransition en la pagina de destino -- que
+   la navegacion nunca dispara una transicion real en este entorno
+   (viewTransition da null). No hay nada mas que ajustar del lado de la
+   regla CSS; el navegador simplemente no la esta activando. Por eso se
+   reemplazo por esto: un fade de entrada puramente CSS (@keyframes, sin
+   JS), que no depende de que el navegador dispare nada -- corre siempre,
+   en cualquier Chrome/Edge/WebView, incluido el del TWA en Android. */
+body {
+  animation: fade-in-pagina 180ms ease-out;
 }
 
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 150ms;
+@keyframes fade-in-pagina {
+  from {
+    opacity: 0;
+  }
 }
 
-/* El sidebar/drawer del menu es el mismo elemento visual en ambas paginas --
-   sin esto, cada navegacion lo hace parpadear en el crossfade general junto
-   con el resto del contenido, lo cual se siente mal justo en la pieza que
-   se supone que queda fija. Con un view-transition-name compartido, el
-   navegador lo trata aparte y lo deja quieto en vez de desvanecerlo. */
-.menu-drawer {
-  view-transition-name: menu-drawer;
+@media (prefers-reduced-motion: reduce) {
+  body {
+    animation: none;
+  }
 }
 
 body {
@@ -1007,7 +1009,7 @@ button {
   display: none;
 }
 
-/* Ficha de proveedor ------------------------------------------------------- */
+/* Ficha (detalle expandible de un producto/cliente/venta) ---------------- */
 
 .ficha-seccion {
   margin-top: 24px;
@@ -1022,57 +1024,6 @@ button {
   color: var(--color-texto-suave);
   font-size: var(--fs-sm);
   margin: -6px 0 12px;
-}
-
-.lista-vinculos {
-  list-style: none;
-  margin: 0 0 14px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.lista-vinculos li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 12px;
-  background: var(--color-fondo);
-  border-radius: var(--radio-sm);
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.lista-vinculos .info-vinculo {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.lista-vinculos .acciones-vinculo {
-  display: flex;
-  gap: 6px;
-}
-
-.vincular-producto-form {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.vincular-producto-form select {
-  flex: 1;
-}
-
-.etiqueta.reclamo-pendiente {
-  background: var(--color-aviso-fondo);
-  color: var(--color-aviso-texto);
-}
-
-.etiqueta.reclamo-repuesto {
-  background: var(--color-exito-fondo);
-  color: var(--color-exito-texto);
 }
 
 /* Punto de venta ------------------------------------------------------ */

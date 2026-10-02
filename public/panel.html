@@ -59,7 +59,6 @@
       <ul class="lista-alertas" id="lista-stock-bajo"></ul>
       <ul class="lista-alertas" id="lista-vencidos"></ul>
       <ul class="lista-alertas" id="lista-por-vencer"></ul>
-      <ul class="lista-alertas" id="lista-reclamos-pendientes"></ul>
     </div>
 
     <div class="panel-seccion tarjeta-dashboard" id="seccion-caja-hoy">
@@ -205,7 +204,6 @@
     cancelarEliminacionLocal,
   } from './js/empleados.js';
   import { listarProductos, esStockBajo } from './js/productos.js';
-  import { listarReclamosPendientes } from './js/proveedores.js';
   import { obtenerResumenCajaHoy, obtenerResumenMes } from './js/dashboard.js';
   import { montarMenu } from './js/menu.js';
   import { obtenerLocalActivo } from './js/localActivo.js';
@@ -343,11 +341,11 @@
   }
 
   // Alertas: reusa exactamente las mismas condiciones que ya se usan en
-  // productos.html (stock bajo, por vencer) y proveedores.html (reclamos
-  // pendientes) -- solo se muestran juntas y resumidas aca.
+  // productos.html (stock bajo, por vencer) -- solo se muestran juntas y
+  // resumidas aca.
   async function cargarAlertas(usuario) {
     try {
-      const [productos, reclamos] = await Promise.all([listarProductos({ soloActivos: true }), listarReclamosPendientes()]);
+      const productos = await listarProductos({ soloActivos: true });
 
       const stockBajo = productos.filter(esStockBajo);
       // Vencimiento es parte de Basico desde que se elimino el Plan Medio
@@ -370,11 +368,7 @@
       document.getElementById('lista-por-vencer').innerHTML = porVencer
         .map(({ producto: p }) => `<li>⏳ <a href="productos.html">${escapeHtml(p.nombre)}</a> — vence ${new Date(p.fecha_vencimiento).toLocaleDateString('es-AR')}</li>`)
         .join('');
-      document.getElementById('lista-reclamos-pendientes').innerHTML = reclamos
-        .map((r) => `<li>📦 Reclamo pendiente a <a href="proveedores.html">${escapeHtml(r.proveedores?.nombre || '—')}</a>${r.productos ? ' · ' + escapeHtml(r.productos.nombre) : ''}</li>`)
-        .join('');
-
-      document.getElementById('alertas-vacio').hidden = stockBajo.length + vencidos.length + porVencer.length + reclamos.length > 0;
+      document.getElementById('alertas-vacio').hidden = stockBajo.length + vencidos.length + porVencer.length > 0;
     } catch (err) {
       mostrarError(document.getElementById('error-alertas'), err.message);
     }

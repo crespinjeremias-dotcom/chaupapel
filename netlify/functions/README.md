@@ -4,13 +4,27 @@ Funciones serverless de Netlify, usadas para lo que no puede (o no debe) resolve
 
 - Envío de emails de alerta de stock bajo (sección 11).
 - Envío de email de notificación de cierre de caja (sección 11, plan Completo).
-- Operaciones que requieran la **service role key** de Supabase (bypasea RLS por completo), como activar/desactivar una organización (`organizations.is_active`, sección 16) — ver el trigger `prevent_is_active_change`.
+- Operaciones que requieran la **service role key** de Supabase (bypasea RLS por completo), como activar/desactivar una organización (`organizations.is_active`, sección 16) — ver el trigger `prevent_is_active_change` — o borrar el usuario de Supabase Auth de una organización eliminada (`auth.users` no se puede tocar con SQL común).
 
 ## `toggle-organizacion.js`
 
 Activa/desactiva `organizations.is_active`. Valida el JWT del caller contra
 `super_admins` usando la service role key (bypasea RLS a propósito, por eso
 la validación manual antes de tocar nada) y recién ahí hace el update.
+
+## `eliminar-organizacion.js`
+
+Limpieza de organizaciones de prueba (panel de super-admin, sección 16). El
+borrado de los datos en sí (locales, usuarios, ventas, productos, etc.) lo
+hace la RPC `eliminar_organizacion_de_prueba()` (ver
+`supabase/migrations/20261001100000_eliminar_organizacion_de_prueba.sql`) —
+es `security definer` y ya revalida `is_super_admin()` y que la organización
+no tenga `cobro_habilitado` ni cobros registrados, así que se llama con el
+JWT de quien está logueado, no con la service role key. Esta función solo
+usa la service role key para el paso que la RPC no puede hacer por SQL: borrar
+de Supabase Auth los usuarios que quedaron huérfanos (vía
+`admin.auth.admin.deleteUser`), después de que el borrado en la base ya
+terminó.
 
 Variables de entorno que necesita, configuradas en Netlify (Site settings →
 Environment variables), **nunca** en el código ni en el repo:

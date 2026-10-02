@@ -25,6 +25,7 @@
     <button type="button" id="tab-organizaciones">Organizaciones</button>
     <button type="button" id="tab-codigos">Códigos de activación</button>
     <button type="button" id="tab-cobros">Cobros y suscripciones</button>
+    <button type="button" id="tab-limpieza">Limpieza</button>
   </div>
 
   <div id="seccion-cambios-plan">
@@ -195,7 +196,54 @@
       </div>
     </div>
   </div>
+
+  <div id="seccion-limpieza" hidden>
+    <div class="panel-seccion">
+      <h2>Limpieza de organizaciones de prueba</h2>
+      <p class="texto-suave">
+        Borra una organización completa (locales, usuarios, productos, ventas, todo). Elegí vos cuáles tildar — nada se
+        infiere por el nombre. Las organizaciones con cobro habilitado o que ya tienen cobros registrados no se pueden
+        tildar: son organizaciones reales, no de prueba.
+      </p>
+      <p class="mensaje-error" id="error-limpieza" hidden></p>
+      <p class="mensaje-exito" id="exito-limpieza" hidden></p>
+      <div class="tabla-contenedor">
+        <table class="tabla" id="tabla-limpieza" hidden>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Organización</th>
+              <th>Creada</th>
+              <th>Cobro habilitado</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-limpieza"></tbody>
+        </table>
+        <p class="texto-suave" id="limpieza-vacio">No hay organizaciones.</p>
+      </div>
+      <button type="button" class="boton-peligro" id="btn-eliminar-seleccionadas" disabled>Eliminar seleccionadas</button>
+    </div>
+  </div>
 </main>
+
+<div class="modal-overlay" id="modal-confirmar-limpieza" hidden>
+  <div class="modal">
+    <h2>Eliminar organizaciones definitivamente</h2>
+    <p class="mensaje-error" id="error-confirmar-limpieza" hidden></p>
+    <p>Vas a borrar para siempre, sin forma de recuperarlo:</p>
+    <ul id="lista-confirmar-limpieza"></ul>
+    <form id="form-confirmar-limpieza" autocomplete="off">
+      <div class="campo">
+        <label for="confirmar-limpieza-texto" id="label-confirmar-limpieza"></label>
+        <input type="text" id="confirmar-limpieza-texto" autocomplete="off" />
+      </div>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario" id="btn-cancelar-confirmar-limpieza">Cancelar</button>
+        <button type="submit" class="boton-peligro" id="btn-confirmar-limpieza" disabled>Eliminar definitivamente</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <script type="module">
   import { requireSession, obtenerSuperAdminActual, logout } from './js/auth.js';
@@ -223,6 +271,7 @@
     ESTADO_COBRO_LABEL,
     ESTADO_COBRO_CLASE,
   } from './js/cobros.js';
+  import { listarOrganizacionesParaLimpieza, eliminarOrganizacionDePrueba } from './js/limpieza.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
   const ETIQUETA_ESTADO = { aprobada: 'Aprobada', rechazada: 'Rechazada' };
@@ -236,6 +285,8 @@
   }
   let superAdminActual = null;
   let cobrosCache = [];
+  let limpiezaCache = [];
+  let limpiezaSeleccion = new Set();
 
   document.getElementById('btn-logout').addEventListener('click', async () => {
     await logout();
@@ -261,10 +312,15 @@
     document.getElementById('tab-organizaciones').addEventListener('click', () => cambiarTab('organizaciones'));
     document.getElementById('tab-codigos').addEventListener('click', () => cambiarTab('codigos'));
     document.getElementById('tab-cobros').addEventListener('click', () => cambiarTab('cobros'));
+    document.getElementById('tab-limpieza').addEventListener('click', () => cambiarTab('limpieza'));
     document.getElementById('form-codigo').addEventListener('submit', onGenerarCodigo);
     document.getElementById('btn-guardar-precios').addEventListener('click', onGuardarPrecios);
     document.getElementById('btn-generar-cobros').addEventListener('click', onGenerarCobros);
     document.getElementById('filtro-estado-cobro').addEventListener('change', renderCobrosSuperadmin);
+    document.getElementById('btn-eliminar-seleccionadas').addEventListener('click', abrirModalConfirmarLimpieza);
+    document.getElementById('btn-cancelar-confirmar-limpieza').addEventListener('click', cerrarModalConfirmarLimpieza);
+    document.getElementById('confirmar-limpieza-texto').addEventListener('input', onInputConfirmarLimpieza);
+    document.getElementById('form-confirmar-limpieza').addEventListener('submit', onSubmitConfirmarLimpieza);
 
     await Promise.all([cargarPendientes(), cargarHistorial()]);
   }
@@ -278,9 +334,12 @@
     document.getElementById('seccion-codigos').hidden = tab !== 'codigos';
     document.getElementById('tab-cobros').classList.toggle('activo', tab === 'cobros');
     document.getElementById('seccion-cobros').hidden = tab !== 'cobros';
+    document.getElementById('tab-limpieza').classList.toggle('activo', tab === 'limpieza');
+    document.getElementById('seccion-limpieza').hidden = tab !== 'limpieza';
     if (tab === 'organizaciones') cargarOrganizaciones();
     if (tab === 'codigos') cargarCodigos();
     if (tab === 'cobros') iniciarSeccionCobros();
+    if (tab === 'limpieza') cargarLimpieza();
   }
 
   async function cargarPendientes() {
@@ -679,6 +738,136 @@
     } catch (err) {
       mostrarError(errorEl, err.message);
     }
+  }
+
+  // Limpieza de organizaciones de prueba -------------------------------------
+
+  async function cargarLimpieza() {
+    const errorEl = document.getElementById('error-limpieza');
+    mostrarError(errorEl, '');
+    document.getElementById('exito-limpieza').hidden = true;
+    limpiezaSeleccion = new Set();
+    try {
+      limpiezaCache = await listarOrganizacionesParaLimpieza();
+      renderLimpieza();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  function renderLimpieza() {
+    const tabla = document.getElementById('tabla-limpieza');
+    const vacio = document.getElementById('limpieza-vacio');
+
+    if (limpiezaCache.length === 0) {
+      tabla.hidden = true;
+      vacio.hidden = false;
+      document.getElementById('btn-eliminar-seleccionadas').disabled = true;
+      return;
+    }
+    tabla.hidden = false;
+    vacio.hidden = true;
+
+    document.getElementById('tbody-limpieza').innerHTML = limpiezaCache
+      .map((o) => {
+        const bloqueada = o.cobro_habilitado || o.tieneCobros;
+        const motivoBloqueo = o.cobro_habilitado ? 'Tiene el cobro habilitado' : 'Ya tiene cobros registrados';
+        const primeraColumna = bloqueada
+          ? `<span class="texto-suave" title="${escapeHtml(motivoBloqueo)}">🔒 ${escapeHtml(motivoBloqueo)}</span>`
+          : `<input type="checkbox" data-org="${o.id}" ${limpiezaSeleccion.has(o.id) ? 'checked' : ''} />`;
+        const cobroBadge = o.cobro_habilitado
+          ? '<span class="etiqueta estado-activa">Sí</span>'
+          : '<span class="etiqueta saldo-al-dia">No</span>';
+        return `
+          <tr>
+            <td>${primeraColumna}</td>
+            <td>${escapeHtml(o.nombre)}</td>
+            <td>${new Date(o.created_at).toLocaleDateString('es-AR')}</td>
+            <td>${cobroBadge}</td>
+          </tr>`;
+      })
+      .join('');
+
+    document.getElementById('tbody-limpieza').querySelectorAll('[data-org]').forEach((chk) =>
+      chk.addEventListener('change', () => {
+        if (chk.checked) limpiezaSeleccion.add(chk.dataset.org);
+        else limpiezaSeleccion.delete(chk.dataset.org);
+        document.getElementById('btn-eliminar-seleccionadas').disabled = limpiezaSeleccion.size === 0;
+      })
+    );
+    document.getElementById('btn-eliminar-seleccionadas').disabled = limpiezaSeleccion.size === 0;
+  }
+
+  function organizacionesSeleccionadas() {
+    return limpiezaCache.filter((o) => limpiezaSeleccion.has(o.id));
+  }
+
+  function textoEsperadoConfirmarLimpieza() {
+    const seleccionadas = organizacionesSeleccionadas();
+    return seleccionadas.length === 1 ? seleccionadas[0].nombre.trim() : 'BORRAR';
+  }
+
+  function abrirModalConfirmarLimpieza() {
+    const seleccionadas = organizacionesSeleccionadas();
+    if (seleccionadas.length === 0) return;
+
+    document.getElementById('lista-confirmar-limpieza').innerHTML = seleccionadas
+      .map((o) => `<li>${escapeHtml(o.nombre)}</li>`)
+      .join('');
+
+    const label = document.getElementById('label-confirmar-limpieza');
+    label.innerHTML =
+      seleccionadas.length === 1
+        ? `Para confirmar, escribí el nombre exacto: <strong>${escapeHtml(seleccionadas[0].nombre)}</strong>`
+        : `Para confirmar que querés borrar las ${seleccionadas.length} organizaciones, escribí <strong>BORRAR</strong>`;
+
+    document.getElementById('confirmar-limpieza-texto').value = '';
+    document.getElementById('btn-confirmar-limpieza').disabled = true;
+    mostrarError(document.getElementById('error-confirmar-limpieza'), '');
+    document.getElementById('modal-confirmar-limpieza').hidden = false;
+    document.getElementById('confirmar-limpieza-texto').focus();
+  }
+
+  function cerrarModalConfirmarLimpieza() {
+    document.getElementById('modal-confirmar-limpieza').hidden = true;
+  }
+
+  function onInputConfirmarLimpieza(e) {
+    document.getElementById('btn-confirmar-limpieza').disabled = e.target.value.trim() !== textoEsperadoConfirmarLimpieza();
+  }
+
+  async function onSubmitConfirmarLimpieza(e) {
+    e.preventDefault();
+    if (document.getElementById('confirmar-limpieza-texto').value.trim() !== textoEsperadoConfirmarLimpieza()) return;
+
+    const btn = document.getElementById('btn-confirmar-limpieza');
+    mostrarError(document.getElementById('error-confirmar-limpieza'), '');
+    btn.disabled = true;
+
+    const seleccionadas = organizacionesSeleccionadas();
+    const resultados = [];
+    for (const org of seleccionadas) {
+      try {
+        await eliminarOrganizacionDePrueba(org.id);
+        resultados.push({ nombre: org.nombre, ok: true });
+      } catch (err) {
+        resultados.push({ nombre: org.nombre, ok: false, mensaje: err.message });
+      }
+    }
+
+    cerrarModalConfirmarLimpieza();
+
+    const huboError = resultados.some((r) => !r.ok);
+    const resumen = resultados
+      .map((r) => (r.ok ? `✅ ${escapeHtml(r.nombre)}: eliminada` : `❌ ${escapeHtml(r.nombre)}: ${escapeHtml(r.mensaje)}`))
+      .join('<br>');
+    const exitoEl = document.getElementById('exito-limpieza');
+    const errorEl = document.getElementById('error-limpieza');
+    exitoEl.hidden = huboError;
+    errorEl.hidden = !huboError;
+    (huboError ? errorEl : exitoEl).innerHTML = resumen;
+
+    await cargarLimpieza();
   }
 
   iniciar();

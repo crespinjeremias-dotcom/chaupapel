@@ -14,7 +14,6 @@ public/
 │   ├── supabaseClient.js   (conexión y utilidades compartidas)
 │   ├── auth.js
 │   ├── productos.js
-│   ├── proveedores.js
 │   ├── ventas.js
 │   ├── caja.js
 │   ├── fiado.js
