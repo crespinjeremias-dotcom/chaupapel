@@ -68,7 +68,7 @@
     </div>
 
     <div class="modal-acciones">
-      <a class="boton-secundario" id="link-ver-comprobante" target="_blank" rel="noopener">Ver comprobante</a>
+      <button type="button" class="boton-secundario" id="btn-ver-comprobante">Ver comprobante</button>
       <button type="button" class="boton-secundario" id="btn-registrar-devolucion">Devolución / cambio</button>
       <button type="button" class="boton-secundario" id="btn-cerrar-detalle">Cerrar</button>
     </div>
@@ -223,6 +223,7 @@
   import { registrarDevolucionCambio, listarDevolucionesDeVenta } from './js/devoluciones.js';
   import { buscarClientes, crearClienteRapido } from './js/clientes.js';
   import { montarMenu } from './js/menu.js';
+  import { mostrarComprobante } from './js/comprobante.js';
   import { mostrarError, escapeHtml, parseCantidad } from './js/utils.js';
 
   const ETIQUETA_ESTADO = { activa: 'Activa', editada: 'Editada', anulada: 'Anulada' };
@@ -269,6 +270,11 @@
     });
 
     document.getElementById('btn-registrar-devolucion').addEventListener('click', abrirDevolucion);
+    document.getElementById('btn-ver-comprobante').addEventListener('click', (e) => {
+      mostrarComprobante(e.currentTarget.dataset.venta, {
+        nombreLocal: usuario.locales?.nombre || usuario.organizations?.nombre || '',
+      });
+    });
     document.getElementById('btn-cancelar-devolucion').addEventListener('click', () => {
       document.getElementById('modal-devolucion').hidden = true;
     });
@@ -427,7 +433,7 @@
         : pagos.map((p) => `${ETIQUETA_METODO[p.metodo]}: $${Number(p.monto).toLocaleString('es-AR')}`).join(' · ');
 
       document.getElementById('btn-registrar-devolucion').hidden = venta.estado === 'anulada';
-      document.getElementById('link-ver-comprobante').href = `comprobante.html?venta=${id}`;
+      document.getElementById('btn-ver-comprobante').dataset.venta = id;
       await cargarDevolucionesDeVenta(id);
 
       document.getElementById('modal-detalle').hidden = false;

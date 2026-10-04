@@ -165,11 +165,11 @@
 
 <div class="modal-overlay" id="modal-eliminar-local" hidden>
   <div class="modal">
-    <h2>Eliminar local definitivamente</h2>
+    <h2>Programar eliminación del local</h2>
     <p class="mensaje-error" id="error-eliminar-local" hidden></p>
     <p>
-      Vas a programar la eliminación de <strong id="eliminar-local-nombre"></strong>. Se borra de verdad el
-      <strong id="eliminar-local-fecha"></strong> (dentro de 30 días) y no hay forma de recuperarlo después.
+      Vas a programar la eliminación de <strong id="eliminar-local-nombre"></strong>. <strong>No se borra hoy:</strong> se borra de verdad el
+      <strong id="eliminar-local-fecha"></strong> (dentro de 30 días) y no hay forma de recuperarlo después de esa fecha.
     </p>
     <p class="texto-suave">
       Se borran sus ventas, stock, productos, clientes y cuentas corrientes, caja, proveedores e historial. Los empleados
@@ -183,7 +183,7 @@
       </div>
       <div class="modal-acciones">
         <button type="button" class="boton-secundario" id="btn-cancelar-eliminar-local">Cancelar</button>
-        <button type="submit" class="boton-peligro" id="btn-confirmar-eliminar-local" disabled>Eliminar definitivamente</button>
+        <button type="submit" class="boton-peligro" id="btn-confirmar-eliminar-local" disabled>Programar eliminación</button>
       </div>
     </form>
   </div>
@@ -624,11 +624,11 @@
         // Con eliminacion programada: se ofrece cancelarla (el local sigue
         // archivado) o restaurarlo. Sin ella: restaurar o eliminar.
         const marca = l.eliminar_en
-          ? ` <span class="etiqueta inactivo">Se elimina el ${formatoFecha(l.eliminar_en)} (${textoDiasRestantes(l.eliminar_en)})</span>`
+          ? ` <span class="etiqueta inactivo">Eliminación programada: se borra el ${formatoFecha(l.eliminar_en)} (${textoDiasRestantes(l.eliminar_en)})</span>`
           : '';
         const acciones = l.eliminar_en
           ? `<button type="button" class="boton-chico secundario" data-cancelar-eliminacion="${l.id}">Cancelar eliminación</button>`
-          : `<button type="button" class="boton-chico peligro" data-eliminar="${l.id}">Eliminar definitivamente</button>`;
+          : `<button type="button" class="boton-chico peligro" data-eliminar="${l.id}">Programar eliminación</button>`;
         return `<li><span>${escapeHtml(l.nombre)}${marca}</span><span class="local-acciones"><button type="button" class="boton-chico secundario" data-restaurar="${l.id}">Restaurar</button>${acciones}</span></li>`;
       })
       .join('');

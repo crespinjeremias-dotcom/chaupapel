@@ -1396,6 +1396,19 @@ button {
   padding-top: 10px;
 }
 
+/* El comprobante se muestra en un modal (js/comprobante.js), no en una
+   pagina aparte: adentro del modal no lleva su propia "tarjeta". */
+.modal-comprobante {
+  max-width: 420px;
+  padding: var(--esp-5);
+}
+
+.modal-comprobante .comprobante {
+  margin: 0 auto;
+  padding: 8px 4px;
+  box-shadow: none;
+}
+
 @media print {
   .no-imprimir {
     display: none !important;
@@ -1403,6 +1416,8 @@ button {
 
   body {
     background: #fff;
+    padding-left: 0;
+    animation: none;
   }
 
   .comprobante {
@@ -1410,6 +1425,31 @@ button {
     margin: 0;
     max-width: none;
     width: 80mm;
+  }
+
+  /* Con el modal abierto, imprimir saca solo el comprobante (no la pantalla
+     de atras ni el menu). */
+  body.comprobante-abierto > *:not(#modal-comprobante) {
+    display: none !important;
+  }
+
+  body.comprobante-abierto {
+    padding-left: 0 !important;
+  }
+
+  body.comprobante-abierto #modal-comprobante {
+    position: static;
+    display: block;
+    padding: 0;
+    background: none;
+    overflow: visible;
+  }
+
+  body.comprobante-abierto #modal-comprobante .modal {
+    max-width: none;
+    padding: 0;
+    box-shadow: none;
+    animation: none;
   }
 }
 

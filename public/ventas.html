@@ -43,6 +43,8 @@
         <button type="button" class="boton-chico secundario" id="btn-escanear">Escanear código</button>
       </div>
 
+      <p class="aviso" id="aviso-stock" role="alert" hidden></p>
+
       <div class="tabla-contenedor">
         <table class="tabla" id="tabla-carrito" hidden>
           <thead>
@@ -169,6 +171,7 @@
   import { obtenerTurnoAbierto, abrirTurno } from './js/turnos.js';
   import { calcularEsperadoTurno, cerrarTurnoConConteo } from './js/caja.js';
   import { registrarVenta } from './js/ventas.js';
+  import { mostrarComprobante } from './js/comprobante.js';
   import { iniciarEscaneo, detenerEscaneo } from './js/barcode.js';
   import { montarMenu } from './js/menu.js';
   import { tieneFeature } from './js/planes.js';
@@ -379,11 +382,23 @@
     }
   }
 
+  function avisarStock(mensaje) {
+    const el = document.getElementById('aviso-stock');
+    el.textContent = mensaje;
+    el.hidden = !mensaje;
+  }
+
   function agregarAlCarrito(producto) {
     const existente = carrito.find((it) => it.productoId === producto.id);
     if (existente) {
-      if (existente.cantidad < producto.stock_actual) existente.cantidad += 1;
+      if (existente.cantidad < producto.stock_actual) {
+        existente.cantidad += 1;
+        avisarStock('');
+      } else {
+        avisarStock(`No hay más stock disponible de ${existente.nombre} (${producto.stock_actual}).`);
+      }
     } else {
+      avisarStock('');
       // precioUnitario se autocompleta con el precio de venta vigente del
       // producto y no se puede editar desde aca.
       carrito.push({
@@ -441,13 +456,24 @@
           return;
         }
         mostrarError(document.getElementById('error-checkout'), '');
-        item.cantidad = Math.min(nueva, item.stockActual);
+        if (nueva > item.stockActual) {
+          // Se mantiene el recorte automatico, pero avisando: antes el numero
+          // cambiaba solo y quien vende creia haber cargado lo que escribio.
+          item.cantidad = item.stockActual;
+          avisarStock(
+            `${item.nombre}: la cantidad supera el stock disponible (${item.stockActual}). Se ajustó a ${item.stockActual}.`
+          );
+        } else {
+          item.cantidad = nueva;
+          avisarStock('');
+        }
         renderCarrito();
       })
     );
     tbody.querySelectorAll('[data-quitar]').forEach((btn) =>
       btn.addEventListener('click', () => {
         carrito.splice(Number(btn.dataset.quitar), 1);
+        avisarStock('');
         renderCarrito();
       })
     );
@@ -575,6 +601,7 @@
       });
 
       carrito = [];
+      avisarStock('');
       renderCarrito();
       document.getElementById('monto-1').value = '';
       document.getElementById('monto-2').value = '';
@@ -585,8 +612,12 @@
       document.getElementById('campo-buscar-cliente').hidden = false;
       cambiarModoPago('normal');
 
-      exitoEl.innerHTML = `Venta registrada. <a href="comprobante.html?venta=${venta.id}" target="_blank" rel="noopener">Ver comprobante</a>`;
+      exitoEl.innerHTML = 'Venta registrada. <a href="#" id="link-ver-comprobante">Ver comprobante</a>';
       exitoEl.hidden = false;
+      document.getElementById('link-ver-comprobante').addEventListener('click', (e) => {
+        e.preventDefault();
+        mostrarComprobante(venta.id, { nombreLocal: usuario.locales?.nombre || usuario.organizations?.nombre || '' });
+      });
     } catch (err) {
       mostrarError(errorEl, err.message);
     } finally {

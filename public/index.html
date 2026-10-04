@@ -56,6 +56,7 @@
     obtenerUsuarioActual,
     obtenerSuperAdminActual,
     pantallaDeEntrada,
+    logout,
   } from './js/auth.js';
   import { mostrarError, mostrarCargando, traducirError } from './js/utils.js';
   import { conectarBotonInstalar } from './js/pwa.js';
@@ -71,14 +72,34 @@
   // organizacion), asi que se chequea aparte y primero -- si se lo dejara
   // caer en la logica normal, pantallaDeEntrada() con usuario=null lo
   // mandaria de vuelta a index.html (loop de login).
-  async function irAPantallaDeEntrada() {
+  // Devuelve a donde ir, o null si la cuenta ya no existe: una cuenta de Auth
+  // que no es super-admin y no tiene fila en `usuarios` es la de una
+  // organizacion que se borro. Auth igual la deja iniciar sesion (el borrado
+  // de las tablas no toca auth.users salvo que se borre aparte), asi que sin
+  // este chequeo pantallaDeEntrada(null) la mandaba de vuelta a esta misma
+  // pantalla en silencio: parecia que "entraba" pero sin ningun mensaje.
+  async function resolverDestino() {
     const superAdmin = await obtenerSuperAdminActual();
-    if (superAdmin) {
-      window.location.href = 'superadmin.html';
+    if (superAdmin) return 'superadmin.html';
+    const usuario = await obtenerUsuarioActual();
+    return usuario ? pantallaDeEntrada(usuario) : null;
+  }
+
+  async function rechazarCuentaInexistente() {
+    await logout();
+    form.hidden = false;
+    avisoSesion.hidden = true;
+    mostrarError(errorEl, 'Esta cuenta ya no existe. Si creés que es un error, contactá al administrador del sistema.');
+    mostrarCargando(btnSubmit, false, 'Iniciar sesión');
+  }
+
+  async function irAPantallaDeEntrada() {
+    const destino = await resolverDestino();
+    if (destino === null) {
+      await rechazarCuentaInexistente();
       return;
     }
-    const usuario = await obtenerUsuarioActual();
-    window.location.href = pantallaDeEntrada(usuario);
+    window.location.href = destino;
   }
 
   form.addEventListener('submit', async (e) => {
@@ -92,6 +113,19 @@
     const { error } = await login(email, password);
     if (error) {
       mostrarError(errorEl, traducirError(error));
+      mostrarCargando(btnSubmit, false, 'Iniciar sesión');
+      return;
+    }
+
+    // Antes de registrar la sesion o mostrar el aviso de "otra sesion abierta":
+    // si la cuenta ya no existe no tiene sentido seguir.
+    try {
+      if ((await resolverDestino()) === null) {
+        await rechazarCuentaInexistente();
+        return;
+      }
+    } catch (err) {
+      mostrarError(errorEl, `No se pudo continuar: ${err.message}`);
       mostrarCargando(btnSubmit, false, 'Iniciar sesión');
       return;
     }

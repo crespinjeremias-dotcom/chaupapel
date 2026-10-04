@@ -35,3 +35,28 @@ export async function eliminarOrganizacionDePrueba(organizationId) {
   if (!resp.ok) throw new Error(data.error || 'No se pudo eliminar la organización.');
   return data;
 }
+
+// Locales de prueba (borrado inmediato, solo super-admin). El super-admin no
+// tiene policy de select sobre `locales`, asi que el listado va por una RPC;
+// eliminar_local_ahora() revalida todo del lado del servidor (super-admin, sin
+// cobro, que no sea el unico local operable) antes de borrar.
+export async function listarLocalesParaLimpieza() {
+  const { data, error } = await supabase.rpc('listar_locales_para_limpieza');
+  if (error) throw error;
+  return data.map((l) => ({
+    id: l.local_id,
+    nombre: l.local_nombre,
+    organizationId: l.organization_id,
+    organizacion: l.organizacion_nombre,
+    archivado: l.archivado,
+    eliminarEn: l.eliminar_en,
+    cobro_habilitado: l.cobro_habilitado,
+    tieneCobros: l.tiene_cobros,
+  }));
+}
+
+export async function eliminarLocalAhora(localId) {
+  const { data, error } = await supabase.rpc('eliminar_local_ahora', { p_local_id: localId });
+  if (error) throw error;
+  return data;
+}

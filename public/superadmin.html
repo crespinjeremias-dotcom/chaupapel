@@ -223,12 +223,40 @@
       </div>
       <button type="button" class="boton-peligro" id="btn-eliminar-seleccionadas" disabled>Eliminar seleccionadas</button>
     </div>
+
+    <div class="panel-seccion">
+      <h2>Limpieza de locales de prueba</h2>
+      <p class="texto-suave">
+        Borra locales de inmediato, sin esperar los 30 días del flujo normal (ese sigue igual para los admins de cada
+        organización). Se borran sus ventas, stock, productos, clientes, caja e historial; los empleados asignados
+        vuelven a "pendientes de aprobación" y queda un registro de auditoría. Elegí vos cuáles tildar. No se pueden
+        tildar los locales de organizaciones con cobro habilitado o con cobros registrados, ni el único local operable
+        de una organización (para eso borrá la organización entera, arriba).
+      </p>
+      <p class="mensaje-error" id="error-limpieza-locales" hidden></p>
+      <p class="mensaje-exito" id="exito-limpieza-locales" hidden></p>
+      <div class="tabla-contenedor">
+        <table class="tabla" id="tabla-limpieza-locales" hidden>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Organización</th>
+              <th>Local</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-limpieza-locales"></tbody>
+        </table>
+        <p class="texto-suave" id="limpieza-locales-vacio">No hay locales.</p>
+      </div>
+      <button type="button" class="boton-peligro" id="btn-eliminar-locales-seleccionados" disabled>Eliminar locales seleccionados</button>
+    </div>
   </div>
 </main>
 
 <div class="modal-overlay" id="modal-confirmar-limpieza" hidden>
   <div class="modal">
-    <h2>Eliminar organizaciones definitivamente</h2>
+    <h2 id="titulo-confirmar-limpieza">Eliminar organizaciones definitivamente</h2>
     <p class="mensaje-error" id="error-confirmar-limpieza" hidden></p>
     <p>Vas a borrar para siempre, sin forma de recuperarlo:</p>
     <ul id="lista-confirmar-limpieza"></ul>
@@ -271,7 +299,12 @@
     ESTADO_COBRO_LABEL,
     ESTADO_COBRO_CLASE,
   } from './js/cobros.js';
-  import { listarOrganizacionesParaLimpieza, eliminarOrganizacionDePrueba } from './js/limpieza.js';
+  import {
+    listarOrganizacionesParaLimpieza,
+    eliminarOrganizacionDePrueba,
+    listarLocalesParaLimpieza,
+    eliminarLocalAhora,
+  } from './js/limpieza.js';
   import { mostrarError, escapeHtml } from './js/utils.js';
 
   const ETIQUETA_ESTADO = { aprobada: 'Aprobada', rechazada: 'Rechazada' };
@@ -287,6 +320,10 @@
   let cobrosCache = [];
   let limpiezaCache = [];
   let limpiezaSeleccion = new Set();
+  let limpiezaLocalesCache = [];
+  let limpiezaLocalesSeleccion = new Set();
+  // Que se esta confirmando en el modal compartido: 'organizaciones' o 'locales'.
+  let limpiezaModo = 'organizaciones';
 
   document.getElementById('btn-logout').addEventListener('click', async () => {
     await logout();
@@ -317,7 +354,8 @@
     document.getElementById('btn-guardar-precios').addEventListener('click', onGuardarPrecios);
     document.getElementById('btn-generar-cobros').addEventListener('click', onGenerarCobros);
     document.getElementById('filtro-estado-cobro').addEventListener('change', renderCobrosSuperadmin);
-    document.getElementById('btn-eliminar-seleccionadas').addEventListener('click', abrirModalConfirmarLimpieza);
+    document.getElementById('btn-eliminar-seleccionadas').addEventListener('click', () => abrirModalConfirmarLimpieza('organizaciones'));
+    document.getElementById('btn-eliminar-locales-seleccionados').addEventListener('click', () => abrirModalConfirmarLimpieza('locales'));
     document.getElementById('btn-cancelar-confirmar-limpieza').addEventListener('click', cerrarModalConfirmarLimpieza);
     document.getElementById('confirmar-limpieza-texto').addEventListener('input', onInputConfirmarLimpieza);
     document.getElementById('form-confirmar-limpieza').addEventListener('submit', onSubmitConfirmarLimpieza);
@@ -742,10 +780,15 @@
 
   // Limpieza de organizaciones de prueba -------------------------------------
 
-  async function cargarLimpieza() {
+  // conservarMensajes: despues de borrar se recarga el listado, pero el
+  // resultado (✅/❌) que se acaba de mostrar no se tiene que borrar -- antes
+  // se limpiaba aca mismo y un error de borrado desaparecia al instante.
+  async function cargarLimpieza({ conservarMensajes = false } = {}) {
     const errorEl = document.getElementById('error-limpieza');
-    mostrarError(errorEl, '');
-    document.getElementById('exito-limpieza').hidden = true;
+    if (!conservarMensajes) {
+      mostrarError(errorEl, '');
+      document.getElementById('exito-limpieza').hidden = true;
+    }
     limpiezaSeleccion = new Set();
     try {
       limpiezaCache = await listarOrganizacionesParaLimpieza();
@@ -753,6 +796,77 @@
     } catch (err) {
       mostrarError(errorEl, err.message);
     }
+    await cargarLimpiezaLocales({ conservarMensajes });
+  }
+
+  async function cargarLimpiezaLocales({ conservarMensajes = false } = {}) {
+    const errorEl = document.getElementById('error-limpieza-locales');
+    if (!conservarMensajes) {
+      mostrarError(errorEl, '');
+      document.getElementById('exito-limpieza-locales').hidden = true;
+    }
+    limpiezaLocalesSeleccion = new Set();
+    try {
+      limpiezaLocalesCache = await listarLocalesParaLimpieza();
+      renderLimpiezaLocales();
+    } catch (err) {
+      mostrarError(errorEl, err.message);
+    }
+  }
+
+  // Un local no se puede tildar si su organizacion tiene cobro (es real) o si
+  // es el unico operable que le queda (eliminar_local_ahora lo revalida).
+  function motivoBloqueoLocal(l) {
+    if (l.cobro_habilitado) return 'Organización con cobro habilitado';
+    if (l.tieneCobros) return 'Organización con cobros registrados';
+    const operables = limpiezaLocalesCache.filter((x) => x.organizationId === l.organizationId && !x.archivado);
+    if (operables.length === 1 && operables[0].id === l.id) return 'Único local operable';
+    return null;
+  }
+
+  function renderLimpiezaLocales() {
+    const tabla = document.getElementById('tabla-limpieza-locales');
+    const vacio = document.getElementById('limpieza-locales-vacio');
+    const btn = document.getElementById('btn-eliminar-locales-seleccionados');
+
+    if (limpiezaLocalesCache.length === 0) {
+      tabla.hidden = true;
+      vacio.hidden = false;
+      btn.disabled = true;
+      return;
+    }
+    tabla.hidden = false;
+    vacio.hidden = true;
+
+    document.getElementById('tbody-limpieza-locales').innerHTML = limpiezaLocalesCache
+      .map((l) => {
+        const motivo = motivoBloqueoLocal(l);
+        const primeraColumna = motivo
+          ? `<span class="texto-suave" title="${escapeHtml(motivo)}">🔒 ${escapeHtml(motivo)}</span>`
+          : `<input type="checkbox" data-local="${l.id}" ${limpiezaLocalesSeleccion.has(l.id) ? 'checked' : ''} />`;
+        const estado = l.eliminarEn
+          ? `Archivado · eliminación programada el ${new Date(l.eliminarEn).toLocaleDateString('es-AR')}`
+          : l.archivado
+            ? 'Archivado'
+            : 'Activo';
+        return `
+          <tr>
+            <td>${primeraColumna}</td>
+            <td>${escapeHtml(l.organizacion)}</td>
+            <td>${escapeHtml(l.nombre)}</td>
+            <td>${escapeHtml(estado)}</td>
+          </tr>`;
+      })
+      .join('');
+
+    document.getElementById('tbody-limpieza-locales').querySelectorAll('[data-local]').forEach((chk) =>
+      chk.addEventListener('change', () => {
+        if (chk.checked) limpiezaLocalesSeleccion.add(chk.dataset.local);
+        else limpiezaLocalesSeleccion.delete(chk.dataset.local);
+        btn.disabled = limpiezaLocalesSeleccion.size === 0;
+      })
+    );
+    btn.disabled = limpiezaLocalesSeleccion.size === 0;
   }
 
   function renderLimpieza() {
@@ -798,28 +912,40 @@
     document.getElementById('btn-eliminar-seleccionadas').disabled = limpiezaSeleccion.size === 0;
   }
 
-  function organizacionesSeleccionadas() {
-    return limpiezaCache.filter((o) => limpiezaSeleccion.has(o.id));
+  // El modal de confirmacion es el mismo para organizaciones y para locales.
+  // Cada item: { id, nombre (lo que hay que escribir si es uno solo), etiqueta (como se lista) }.
+  function itemsSeleccionados() {
+    if (limpiezaModo === 'locales') {
+      return limpiezaLocalesCache
+        .filter((l) => limpiezaLocalesSeleccion.has(l.id))
+        .map((l) => ({ id: l.id, nombre: l.nombre, etiqueta: `${l.organizacion} › ${l.nombre}` }));
+    }
+    return limpiezaCache
+      .filter((o) => limpiezaSeleccion.has(o.id))
+      .map((o) => ({ id: o.id, nombre: o.nombre, etiqueta: o.nombre }));
   }
 
   function textoEsperadoConfirmarLimpieza() {
-    const seleccionadas = organizacionesSeleccionadas();
+    const seleccionadas = itemsSeleccionados();
     return seleccionadas.length === 1 ? seleccionadas[0].nombre.trim() : 'BORRAR';
   }
 
-  function abrirModalConfirmarLimpieza() {
-    const seleccionadas = organizacionesSeleccionadas();
+  function abrirModalConfirmarLimpieza(modo) {
+    limpiezaModo = modo;
+    const seleccionadas = itemsSeleccionados();
     if (seleccionadas.length === 0) return;
+    const sustantivo = modo === 'locales' ? 'locales' : 'organizaciones';
 
+    document.getElementById('titulo-confirmar-limpieza').textContent = `Eliminar ${sustantivo} definitivamente`;
     document.getElementById('lista-confirmar-limpieza').innerHTML = seleccionadas
-      .map((o) => `<li>${escapeHtml(o.nombre)}</li>`)
+      .map((o) => `<li>${escapeHtml(o.etiqueta)}</li>`)
       .join('');
 
     const label = document.getElementById('label-confirmar-limpieza');
     label.innerHTML =
       seleccionadas.length === 1
         ? `Para confirmar, escribí el nombre exacto: <strong>${escapeHtml(seleccionadas[0].nombre)}</strong>`
-        : `Para confirmar que querés borrar las ${seleccionadas.length} organizaciones, escribí <strong>BORRAR</strong>`;
+        : `Para confirmar que querés borrar ${seleccionadas.length} ${sustantivo}, escribí <strong>BORRAR</strong>`;
 
     document.getElementById('confirmar-limpieza-texto').value = '';
     document.getElementById('btn-confirmar-limpieza').disabled = true;
@@ -844,14 +970,16 @@
     mostrarError(document.getElementById('error-confirmar-limpieza'), '');
     btn.disabled = true;
 
-    const seleccionadas = organizacionesSeleccionadas();
+    const esLocales = limpiezaModo === 'locales';
+    const seleccionadas = itemsSeleccionados();
     const resultados = [];
-    for (const org of seleccionadas) {
+    for (const item of seleccionadas) {
       try {
-        await eliminarOrganizacionDePrueba(org.id);
-        resultados.push({ nombre: org.nombre, ok: true });
+        if (esLocales) await eliminarLocalAhora(item.id);
+        else await eliminarOrganizacionDePrueba(item.id);
+        resultados.push({ nombre: item.etiqueta, ok: true });
       } catch (err) {
-        resultados.push({ nombre: org.nombre, ok: false, mensaje: err.message });
+        resultados.push({ nombre: item.etiqueta, ok: false, mensaje: err.message });
       }
     }
 
@@ -859,15 +987,19 @@
 
     const huboError = resultados.some((r) => !r.ok);
     const resumen = resultados
-      .map((r) => (r.ok ? `✅ ${escapeHtml(r.nombre)}: eliminada` : `❌ ${escapeHtml(r.nombre)}: ${escapeHtml(r.mensaje)}`))
+      .map((r) =>
+        r.ok
+          ? `✅ ${escapeHtml(r.nombre)}: eliminad${esLocales ? 'o' : 'a'}`
+          : `❌ ${escapeHtml(r.nombre)}: ${escapeHtml(r.mensaje)}`
+      )
       .join('<br>');
-    const exitoEl = document.getElementById('exito-limpieza');
-    const errorEl = document.getElementById('error-limpieza');
+    const exitoEl = document.getElementById(esLocales ? 'exito-limpieza-locales' : 'exito-limpieza');
+    const errorEl = document.getElementById(esLocales ? 'error-limpieza-locales' : 'error-limpieza');
     exitoEl.hidden = huboError;
     errorEl.hidden = !huboError;
     (huboError ? errorEl : exitoEl).innerHTML = resumen;
 
-    await cargarLimpieza();
+    await cargarLimpieza({ conservarMensajes: true });
   }
 
   iniciar();
