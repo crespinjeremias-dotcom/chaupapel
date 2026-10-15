@@ -436,7 +436,13 @@
         (it, i) => `
         <tr>
           <td>${escapeHtml(it.nombre)}</td>
-          <td><input type="text" inputmode="${it.permiteCantidadDecimal ? 'decimal' : 'numeric'}" class="input-cantidad" value="${it.cantidad}" data-index="${i}" /></td>
+          <td>
+            <div class="stepper-cantidad">
+              <button type="button" class="stepper-boton" data-menos="${i}" aria-label="Restar uno a ${escapeHtml(it.nombre)}" ${it.cantidad <= 1 ? 'disabled' : ''}>−</button>
+              <input type="text" inputmode="${it.permiteCantidadDecimal ? 'decimal' : 'numeric'}" class="input-cantidad" value="${it.cantidad}" data-index="${i}" aria-label="Cantidad de ${escapeHtml(it.nombre)}" />
+              <button type="button" class="stepper-boton" data-mas="${i}" aria-label="Sumar uno a ${escapeHtml(it.nombre)}" ${it.cantidad >= it.stockActual ? 'disabled' : ''}>+</button>
+            </div>
+          </td>
           <td>$${it.precioUnitario.toLocaleString('es-AR')}</td>
           <td>$${(it.cantidad * it.precioUnitario).toLocaleString('es-AR')}</td>
           <td><button type="button" class="boton-chico peligro" data-quitar="${i}">Quitar</button></td>
@@ -467,6 +473,36 @@
           );
         } else {
           item.cantidad = nueva;
+          avisarStock('');
+        }
+        renderCarrito();
+      })
+    );
+    // Botones − / +: suman o restan 1. "−" no baja de 1 (para sacar el
+    // producto esta "Quitar"); "+" no pasa del stock disponible -- si el
+    // paso lo pasaria (ej. stock 2,5 con 2 en el carrito), se ajusta al
+    // maximo y se avisa, igual que al escribir la cantidad a mano.
+    tbody.querySelectorAll('[data-menos], [data-mas]').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        const suma = btn.hasAttribute('data-mas');
+        const item = carrito[Number(suma ? btn.dataset.mas : btn.dataset.menos)];
+        if (!item) return;
+        mostrarError(document.getElementById('error-checkout'), '');
+        // redondeo a 3 decimales: evita 0.1 + 1 = 1.1000000000000001
+        const redondear = (n) => Math.round(n * 1000) / 1000;
+        if (suma) {
+          const nueva = redondear(item.cantidad + 1);
+          if (nueva > item.stockActual) {
+            item.cantidad = item.stockActual;
+            avisarStock(
+              `${item.nombre}: la cantidad supera el stock disponible (${item.stockActual}). Se ajustó a ${item.stockActual}.`
+            );
+          } else {
+            item.cantidad = nueva;
+            avisarStock('');
+          }
+        } else {
+          item.cantidad = Math.max(1, redondear(item.cantidad - 1));
           avisarStock('');
         }
         renderCarrito();

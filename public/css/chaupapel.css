@@ -1476,6 +1476,69 @@ button {
   box-shadow: var(--sombra-foco);
 }
 
+/* Cantidad del carrito con botones: [ − ] [ 2 ] [ + ]. Un solo control con
+   borde comun; los botones miden 44px de ancho y de alto (zona tactil) y el
+   numero sigue siendo un campo editable a mano. */
+.stepper-cantidad {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--color-borde-fuerte);
+  border-radius: var(--radio-sm);
+  background: var(--color-superficie);
+  overflow: hidden;
+  transition: border-color var(--transicion), box-shadow var(--transicion);
+}
+
+.stepper-cantidad:focus-within {
+  border-color: var(--color-primario);
+  box-shadow: var(--sombra-foco);
+}
+
+.stepper-boton {
+  flex: none;
+  width: var(--alto-control);
+  height: var(--alto-control);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-primario);
+  font-family: inherit;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--transicion);
+}
+
+.stepper-boton:hover:not(:disabled) {
+  background: var(--color-primario-suave);
+}
+
+.stepper-boton:active:not(:disabled) {
+  background: var(--color-primario);
+  color: var(--color-sobre-primario);
+}
+
+.stepper-boton:disabled {
+  color: var(--color-borde-fuerte);
+  cursor: not-allowed;
+}
+
+/* El campo del medio pierde su borde propio (lo da el contenedor) y queda
+   separado de los botones por una linea fina. */
+.tabla .stepper-cantidad input.input-cantidad {
+  width: 56px;
+  min-height: 0;
+  height: var(--alto-control);
+  padding: 0 var(--esp-1);
+  border: none;
+  border-left: 1px solid var(--color-borde);
+  border-right: 1px solid var(--color-borde);
+  border-radius: 0;
+  box-shadow: none;
+  font-variant-numeric: tabular-nums;
+}
+
 /* El total queda pegado al borde de abajo de la pantalla mientras se recorre
    un carrito largo (sticky dentro de su panel). */
 .total-carrito {
