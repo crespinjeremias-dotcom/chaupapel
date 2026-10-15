@@ -4,45 +4,52 @@
    se resuelven aparte via media query de orientation. */
 :root {
   /* Paleta -------------------------------------------------------------- */
-  --color-fondo: #f3f4f6;
+  --color-fondo: #f4f5f3;
   --color-superficie: #ffffff;
-  --color-superficie-alt: #f7f8fa;
+  --color-superficie-alt: #f8f9f7;
   --color-texto: #16181d;
-  --color-texto-suave: #5c6370;
-  --color-borde: #e5e8ec;
-  --color-borde-fuerte: #d3d7dd;
+  --color-texto-suave: #566070;
+  --color-borde: #e3e6ea;
+  --color-borde-fuerte: #cdd3da;
   --color-primario: #1f6f50;
   --color-primario-hover: #185a41;
   --color-primario-activo: #124833;
-  --color-primario-suave: rgba(31, 111, 80, 0.12);
-  --color-error: #b3261e;
-  --color-error-hover: #8f231c;
-  --color-error-fondo: #fbe9e7;
-  --color-exito-fondo: #e6f4ea;
-  --color-exito-texto: #1e6b34;
-  --color-aviso-fondo: #fff4e0;
-  --color-aviso-texto: #7a4a00;
-  --color-neutro-fondo: #e8eaed;
+  --color-primario-suave: rgba(31, 111, 80, 0.1);
+  --color-sobre-primario: #ffffff;
+  --color-error: #c2301f;
+  --color-error-hover: #a52717;
+  --color-error-fondo: #fdecea;
+  --color-exito-fondo: #e7f5ec;
+  --color-exito-texto: #1e7b3c;
+  --color-aviso-fondo: #fff3dc;
+  --color-aviso-texto: #8a5300;
+  --color-neutro-fondo: #e9ecef;
   --color-overlay: rgba(16, 18, 22, 0.48);
-  /* Solo para el menu (drawer celular + sidebar PC): mismos tonos que ya
-     usa el resto de la paleta (texto oscuro / fondo claro), reutilizados
-     aca al reves -- fondo oscuro, texto claro -- para que el menu se
-     distinga del contenido. No se tocan en ningun otro lado. */
-  --color-menu-fondo: var(--color-texto);
-  --color-menu-texto: var(--color-fondo);
-  --color-menu-texto-suave: rgba(243, 244, 246, 0.6);
-  --color-menu-hover: rgba(255, 255, 255, 0.08);
+  /* Menu (drawer celular + sidebar PC): fondo verde muy oscuro, texto claro.
+     Todos los colores del menu salen de aca -- ninguna regla del menu lleva
+     un hex propio. */
+  --color-menu-fondo: #14201b;
+  --color-menu-texto: #e8eeea;
+  --color-menu-texto-suave: #9fb0a7;
+  --color-menu-hover: rgba(255, 255, 255, 0.07);
+  --color-menu-borde: rgba(255, 255, 255, 0.12);
+  --color-menu-campo: rgba(255, 255, 255, 0.06);
+  --color-menu-acento: #7fd6a8;
+  --color-menu-activo-fondo: rgba(127, 214, 168, 0.14);
+  --color-menu-peligro: #ff8f80;
+  --color-menu-peligro-hover: rgba(255, 143, 128, 0.14);
 
-  /* Tipografia -------------------------------------------------------- */
+  /* Tipografia (fuente del sistema, escala 12/14/15/16/18/20/24/30) ------ */
   --fs-xs: 0.75rem;
-  --fs-sm: 0.85rem;
-  --fs-base: 0.95rem;
+  --fs-sm: 0.875rem;
+  --fs-base: 0.9375rem;
   --fs-md: 1rem;
-  --fs-lg: 1.1rem;
-  --fs-xl: 1.3rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.25rem;
   --fs-2xl: 1.5rem;
+  --fs-3xl: 1.875rem;
 
-  /* Espaciado -------------------------------------------------------- */
+  /* Espaciado (escala de 4px) ---------------------------------------- */
   --esp-1: 4px;
   --esp-2: 8px;
   --esp-3: 12px;
@@ -50,15 +57,20 @@
   --esp-5: 20px;
   --esp-6: 24px;
   --esp-8: 32px;
+  --esp-10: 40px;
+  --esp-12: 48px;
 
   /* Radios y elevacion --------------------------------------------- */
-  --radio-sm: 8px;
-  --radio: 12px;
-  --radio-lg: 16px;
+  --radio-sm: 10px;
+  --radio: 14px;
+  --radio-lg: 18px;
   --radio-full: 999px;
-  --sombra-1: 0 1px 2px rgba(16, 18, 22, 0.05), 0 1px 3px rgba(16, 18, 22, 0.04);
-  --sombra-2: 0 6px 24px rgba(16, 18, 22, 0.1), 0 2px 6px rgba(16, 18, 22, 0.06);
+  --sombra-1: 0 1px 2px rgba(20, 32, 27, 0.06), 0 1px 3px rgba(20, 32, 27, 0.05);
+  --sombra-2: 0 8px 28px rgba(20, 32, 27, 0.12), 0 2px 6px rgba(20, 32, 27, 0.06);
   --sombra-foco: 0 0 0 3px var(--color-primario-suave);
+
+  /* Controles tactiles: alto minimo de botones, inputs y filas tocables. */
+  --alto-control: 44px;
 
   --transicion: 140ms ease;
 
@@ -82,23 +94,14 @@
    reemplazo por esto: un fade de entrada puramente CSS (@keyframes, sin
    JS), que no depende de que el navegador dispare nada -- corre siempre,
    en cualquier Chrome/Edge/WebView, incluido el del TWA en Android. */
-body {
-  animation: fade-in-pagina 180ms ease-out;
-}
-
 @keyframes fade-in-pagina {
   from {
     opacity: 0;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  body {
-    animation: none;
-  }
-}
-
 body {
+  animation: fade-in-pagina 180ms ease-out;
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--color-fondo);
@@ -109,38 +112,99 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+h1,
+h2,
+h3 {
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+a {
+  color: var(--color-primario);
+}
+
+/* Foco visible para cualquier elemento interactivo que no defina el suyo
+   (enlaces, filas tocables, el boton hamburguesa). Los campos de formulario
+   usan su propio anillo (.campo input:focus). */
+:focus-visible {
+  outline: 2px solid var(--color-primario);
+  outline-offset: 2px;
+}
+
+/* Importes y cantidades: cifras del mismo ancho, para que las columnas
+   alineen y no "bailen" al cambiar un valor. */
+.tabla,
+.total-carrito,
+.lista-metricas dd,
+.valor-resumen,
+.c-tabla-items,
+.c-total,
+.detalle-venta-items {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Acceso (login, registro, recuperar contrasena): una tarjeta centrada sobre
+   un fondo con un velo verde suave arriba. La marca va como texto (::before)
+   para no tocar el HTML de cada pagina. */
 .contenedor-auth {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: var(--esp-6) var(--esp-4);
+  background: linear-gradient(180deg, var(--color-primario-suave) 0, transparent 320px), var(--color-fondo);
 }
 
 .tarjeta {
   background: var(--color-superficie);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio-lg);
-  padding: 32px;
+  padding: var(--esp-8);
   width: 100%;
   max-width: 420px;
   box-shadow: var(--sombra-2);
 }
 
+.tarjeta::before {
+  content: 'chaupapel';
+  display: block;
+  margin-bottom: var(--esp-5);
+  font-size: var(--fs-md);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-primario);
+}
+
 .tarjeta h1 {
   font-size: var(--fs-2xl);
-  margin: 0 0 4px;
+  font-weight: 700;
+  margin: 0 0 var(--esp-2);
   letter-spacing: -0.02em;
 }
 
 .tarjeta .subtitulo {
   color: var(--color-texto-suave);
-  margin: 0 0 24px;
+  margin: 0 0 var(--esp-6);
   font-size: var(--fs-base);
+  line-height: 1.5;
+}
+
+/* Codigos de activacion / invitacion: monoespaciado y espaciado, para que se
+   lean y se copien sin confundir caracteres. */
+.tarjeta #codigo {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--fs-lg);
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+
+.tarjeta #codigo::placeholder {
+  letter-spacing: 0.12em;
 }
 
 .campo {
-  margin-bottom: 16px;
+  margin-bottom: var(--esp-4);
 }
 
 .campo label {
@@ -150,21 +214,33 @@ body {
   margin-bottom: 6px;
 }
 
+/* Campos de texto: alto tactil de 44px y 16px de letra (con menos, iOS hace
+   zoom al enfocar). */
 .campo input,
-.campo select {
+.campo select,
+.campo textarea {
   width: 100%;
-  padding: 10px 12px;
+  min-height: var(--alto-control);
+  padding: 10px var(--esp-3);
   border: 1px solid var(--color-borde-fuerte);
   border-radius: var(--radio-sm);
+  font-family: inherit;
   font-size: var(--fs-md);
+  line-height: 1.4;
   background: var(--color-superficie);
   color: var(--color-texto);
-  transition: border-color var(--transicion), box-shadow var(--transicion);
+  transition: border-color var(--transicion), box-shadow var(--transicion), background-color var(--transicion);
 }
 
-.campo input:hover:not(:focus),
-.campo select:hover:not(:focus),
-.campo textarea:hover:not(:focus) {
+.campo input::placeholder,
+.campo textarea::placeholder {
+  color: var(--color-texto-suave);
+  opacity: 0.7;
+}
+
+.campo input:hover:not(:focus):not(:disabled),
+.campo select:hover:not(:focus):not(:disabled),
+.campo textarea:hover:not(:focus):not(:disabled) {
   border-color: var(--color-texto-suave);
 }
 
@@ -176,6 +252,37 @@ body {
   box-shadow: var(--sombra-foco);
 }
 
+.campo input:disabled,
+.campo select:disabled,
+.campo textarea:disabled {
+  background: var(--color-superficie-alt);
+  color: var(--color-texto-suave);
+  cursor: not-allowed;
+}
+
+/* Error de validacion: solo despues de que la persona toco el campo. */
+.campo input:user-invalid,
+.campo select:user-invalid,
+.campo textarea:user-invalid {
+  border-color: var(--color-error);
+}
+
+.campo input:user-invalid:focus,
+.campo select:user-invalid:focus,
+.campo textarea:user-invalid:focus {
+  box-shadow: 0 0 0 3px var(--color-error-fondo);
+}
+
+/* Casillas y radios: tamano propio, sin heredar el 100% / 44px de arriba. */
+.campo input[type='checkbox'],
+.campo input[type='radio'] {
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  padding: 0;
+  accent-color: var(--color-primario);
+}
+
 .input-codigo-invitacion {
   text-transform: uppercase;
 }
@@ -185,13 +292,31 @@ button {
   font-family: inherit;
 }
 
-/* Todos los botones del sistema comparten la misma transicion, el mismo
-   feedback tactil (baja 1px al apretar) y el mismo anillo de foco. */
+/* Botones --------------------------------------------------------------
+   Una sola base para todos: alto tactil minimo de 44px, mismo radio, misma
+   transicion y mismo feedback al apretar (baja 1px). Cada clase solo agrega
+   su color. El foco visible sale de la regla global :focus-visible. */
 .boton-primario,
 .boton-secundario,
 .boton-cierre,
 .boton-peligro,
 .boton-chico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--esp-2);
+  min-height: var(--alto-control);
+  padding: 10px var(--esp-5);
+  border: 1px solid transparent;
+  border-radius: var(--radio-sm);
+  font-family: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
   transition: background-color var(--transicion), border-color var(--transicion),
     color var(--transicion), box-shadow var(--transicion), transform var(--transicion);
 }
@@ -204,121 +329,68 @@ button {
   transform: translateY(1px);
 }
 
-.boton-primario:focus-visible,
-.boton-secundario:focus-visible,
-.boton-cierre:focus-visible,
-.boton-peligro:focus-visible,
-.boton-chico:focus-visible,
-.dropdown-menu button:focus-visible,
-.tabs-pago button:focus-visible {
-  outline: none;
-  box-shadow: var(--sombra-foco);
+.boton-primario:disabled,
+.boton-secundario:disabled,
+.boton-cierre:disabled,
+.boton-peligro:disabled,
+.boton-chico:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.boton-primario {
+/* Ocupan todo el ancho de su contenedor (formularios, modales). */
+.boton-primario,
+.boton-secundario,
+.boton-peligro {
   width: 100%;
-  padding: 12px;
-  background: var(--color-primario);
-  color: #fff;
-  border: none;
-  border-radius: var(--radio-sm);
-  font-size: var(--fs-md);
-  font-weight: 600;
 }
 
-.boton-primario:hover:not(:disabled) {
+.boton-primario,
+.boton-cierre {
+  background: var(--color-primario);
+  color: var(--color-sobre-primario);
+  box-shadow: var(--sombra-1);
+}
+
+.boton-primario:hover:not(:disabled),
+.boton-cierre:hover:not(:disabled) {
   background: var(--color-primario-hover);
 }
 
-.boton-primario:active:not(:disabled) {
+.boton-primario:active:not(:disabled),
+.boton-cierre:active:not(:disabled) {
   background: var(--color-primario-activo);
 }
 
-.boton-primario:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
 .boton-secundario {
-  display: block;
-  width: 100%;
-  padding: 12px;
   background: transparent;
   color: var(--color-primario);
-  border: 1px solid var(--color-primario);
-  border-radius: var(--radio-sm);
-  font-size: var(--fs-base);
-  font-weight: 600;
-  text-align: center;
-  text-decoration: none;
-  box-sizing: border-box;
+  border-color: var(--color-primario);
 }
 
 .boton-secundario:hover:not(:disabled) {
   background: var(--color-primario-suave);
 }
 
-.boton-secundario:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
 .boton-secundario.boton-inline {
-  display: inline-block;
   width: auto;
-  padding: 10px 16px;
 }
 
 /* Acciones de cierre importantes (cerrar turno / caja del dia / mes):
    mismo tratamiento visual para las tres, para que se lean como la misma
    clase de accion en vez de estilos sueltos por pantalla. */
 .boton-cierre {
-  display: inline-block;
   width: auto;
-  padding: 10px 18px;
-  background: var(--color-primario);
-  color: #fff;
-  border: none;
-  border-radius: var(--radio-sm);
-  font-size: var(--fs-base);
-  font-weight: 600;
-  text-align: center;
-}
-
-.boton-cierre:hover:not(:disabled) {
-  background: var(--color-primario-hover);
-}
-
-.boton-cierre:active:not(:disabled) {
-  background: var(--color-primario-activo);
-}
-
-.boton-cierre:disabled {
-  opacity: 0.55;
-  cursor: default;
 }
 
 .boton-peligro {
-  display: block;
-  width: 100%;
-  padding: 12px;
   background: var(--color-error);
-  color: #fff;
-  border: none;
-  border-radius: var(--radio-sm);
-  font-size: var(--fs-md);
-  font-weight: 600;
-  text-align: center;
-  box-sizing: border-box;
+  color: var(--color-sobre-primario);
+  box-shadow: var(--sombra-1);
 }
 
 .boton-peligro:hover:not(:disabled) {
   background: var(--color-error-hover);
-}
-
-.boton-peligro:disabled {
-  opacity: 0.55;
-  cursor: default;
 }
 
 /* Fila de botones/enlaces con separacion uniforme */
@@ -328,45 +400,61 @@ button {
   gap: 10px;
 }
 
+/* Enlaces de la tarjeta de acceso: separados del formulario por una linea,
+   cada uno con alto tactil de 44px. */
 .enlaces {
-  margin-top: 20px;
+  margin-top: var(--esp-5);
+  padding-top: var(--esp-3);
+  border-top: 1px solid var(--color-borde);
   display: flex;
   flex-direction: column;
-  gap: 8px;
   text-align: center;
   font-size: var(--fs-base);
 }
 
 .enlaces a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--alto-control);
+  padding: 0 var(--esp-2);
+  border-radius: var(--radio-sm);
   color: var(--color-primario);
+  font-weight: 500;
   text-decoration: none;
+  transition: background-color var(--transicion);
 }
 
 .enlaces a:hover {
-  text-decoration: underline;
+  background: var(--color-primario-suave);
 }
 
 .boton-instalar-login {
   width: 100%;
-  margin-top: 20px;
+  margin-top: var(--esp-3);
+}
+
+/* Mensajes: fondo suave + borde izquierdo del color del estado, para que se
+   distingan tambien sin depender solo del color de fondo. */
+.mensaje-error,
+.mensaje-exito,
+.aviso {
+  padding: var(--esp-3) var(--esp-4);
+  border-left: 4px solid currentColor;
+  border-radius: var(--radio-sm);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  margin-bottom: var(--esp-4);
 }
 
 .mensaje-error {
   background: var(--color-error-fondo);
   color: var(--color-error);
-  padding: 10px 12px;
-  border-radius: var(--radio-sm);
-  font-size: var(--fs-sm);
-  margin-bottom: 16px;
 }
 
 .mensaje-exito {
   background: var(--color-exito-fondo);
   color: var(--color-exito-texto);
-  padding: 10px 12px;
-  border-radius: var(--radio-sm);
-  font-size: var(--fs-sm);
-  margin-bottom: 16px;
 }
 
 .mensaje-exito a {
@@ -378,26 +466,25 @@ button {
 .aviso {
   background: var(--color-aviso-fondo);
   color: var(--color-aviso-texto);
-  padding: 12px 14px;
-  border-radius: var(--radio-sm);
   font-size: var(--fs-base);
-  margin-bottom: 16px;
 }
 
 .aviso .acciones {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--esp-2);
+  margin-top: var(--esp-3);
   flex-wrap: wrap;
 }
 
 .aviso .acciones button {
   flex: 1;
-  padding: 8px 10px;
+  min-height: var(--alto-control);
+  padding: 8px var(--esp-3);
   border-radius: var(--radio-sm);
   border: 1px solid var(--color-aviso-texto);
   background: transparent;
   color: var(--color-aviso-texto);
+  font-family: inherit;
   font-size: var(--fs-sm);
   font-weight: 600;
   min-width: 140px;
@@ -408,47 +495,68 @@ button {
 .app-header {
   background: var(--color-superficie);
   border-bottom: 1px solid var(--color-borde);
-  padding: 10px 20px;
+  padding: var(--esp-2) var(--esp-5);
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--esp-3);
   position: sticky;
   top: 0;
   z-index: 10;
 }
 
+/* [menu] [nombre del local + subtitulo ........] [accion]: la identidad se
+   estira y empuja la accion a la derecha; si el nombre es largo se corta con
+   puntos suspensivos en vez de romper el encabezado en dos filas. */
+.app-header .identidad {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .app-header .identidad h1 {
   font-size: var(--fs-lg);
+  font-weight: 700;
   margin: 0;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-header .identidad p {
-  margin: 2px 0 0;
+  margin: 0;
   font-size: var(--fs-sm);
   color: var(--color-texto-suave);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-header .boton-secundario.boton-inline {
+  flex: none;
+  padding: 0 var(--esp-3);
+  font-size: var(--fs-sm);
 }
 
 .app-main {
   max-width: 760px;
   margin: 0 auto;
-  padding: 24px;
+  padding: var(--esp-6);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--esp-5);
 }
 
 .panel-seccion {
   background: var(--color-superficie);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio);
-  padding: 20px 24px;
+  padding: var(--esp-5) var(--esp-6);
   box-shadow: var(--sombra-1);
 }
 
 .tarjeta-dashboard {
+  padding: var(--esp-5);
   transition: box-shadow var(--transicion), border-color var(--transicion);
 }
 
@@ -462,34 +570,41 @@ button {
 .dashboard-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 20px;
+  gap: var(--esp-4);
 }
 
-.tarjeta-dashboard {
-  padding: 18px 20px;
-}
-
+/* Titulo de tarjeta como rotulo discreto: lo que tiene que saltar a la vista
+   son las cifras, no el nombre de la tarjeta. */
 .tarjeta-dashboard h2 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--esp-3);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-texto-suave);
 }
 
 .tarjeta-dashboard p.texto-suave {
-  margin: 0 0 10px;
+  margin: 0 0 var(--esp-3);
+  font-size: var(--fs-sm);
 }
 
 .lista-metricas {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
 }
 
 .lista-metricas > div {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
-  padding: 2px 0;
+  gap: var(--esp-3);
+  padding: var(--esp-3) 0;
+}
+
+.lista-metricas > div:not(:last-child) {
+  border-bottom: 1px solid var(--color-borde);
 }
 
 .lista-metricas dt {
@@ -504,6 +619,14 @@ button {
   white-space: nowrap;
 }
 
+/* La cifra principal de cada tarjeta, mas grande y en verde. */
+#caja-total,
+#mes-vendido,
+#mes-ganancia-bruta {
+  font-size: var(--fs-2xl);
+  color: var(--color-primario);
+}
+
 .lista-alertas {
   list-style: none;
   margin: 0;
@@ -515,7 +638,17 @@ button {
 
 .lista-alertas li {
   font-size: var(--fs-base);
-  padding: 8px 0;
+  padding: var(--esp-3) 0;
+}
+
+/* Cada tipo de alerta con el color de su gravedad (el texto, no solo el
+   emoji): vencido > stock bajo > por vencer. */
+#lista-vencidos li {
+  color: var(--color-error);
+}
+
+#lista-por-vencer li {
+  color: var(--color-aviso-texto);
 }
 
 .lista-alertas li:not(:last-child) {
@@ -528,6 +661,10 @@ button {
   text-decoration: none;
 }
 
+.lista-alertas:empty {
+  display: none;
+}
+
 .lista-alertas a:hover {
   text-decoration: underline;
 }
@@ -538,7 +675,7 @@ button {
   }
 }
 
-@media (min-width: 1100px) {
+@media (min-width: 1500px) {
   .dashboard-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -546,7 +683,8 @@ button {
 
 .panel-seccion h2 {
   font-size: var(--fs-lg);
-  margin: 0 0 12px;
+  font-weight: 700;
+  margin: 0 0 var(--esp-4);
 }
 
 .lista-usuarios {
@@ -555,18 +693,29 @@ button {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--esp-2);
 }
 
 .lista-usuarios li {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
-  background: var(--color-fondo);
+  padding: var(--esp-3) var(--esp-4);
+  background: var(--color-superficie-alt);
+  border: 1px solid var(--color-borde);
   border-radius: var(--radio-sm);
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--esp-2) var(--esp-3);
+}
+
+/* Subtitulo "Locales archivados" dentro de "Mis locales" (acotado por id:
+   otras pantallas tienen sus propios h3). */
+#locales-archivados h3 {
+  margin: var(--esp-6) 0 var(--esp-2);
+  padding-top: var(--esp-4);
+  border-top: 1px solid var(--color-borde);
+  font-size: var(--fs-md);
+  font-weight: 700;
 }
 
 .local-toggles-email {
@@ -593,14 +742,28 @@ button {
   color: var(--color-error);
 }
 
+/* Pastilla con un punto del color del estado (usa currentColor, asi que
+   cada variante .etiqueta.xxx hereda su punto sin reglas extra). */
 .etiqueta {
-  display: inline-block;
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
   border-radius: var(--radio-full);
   font-size: var(--fs-xs);
   font-weight: 600;
+  line-height: 1.4;
   background: var(--color-neutro-fondo);
   color: var(--color-texto-suave);
+}
+
+.etiqueta::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
 }
 
 .etiqueta.pendiente {
@@ -614,14 +777,18 @@ button {
 }
 
 .codigo-generado {
-  font-family: ui-monospace, monospace;
-  font-size: var(--fs-xl);
-  letter-spacing: 2px;
-  background: var(--color-fondo);
-  padding: 10px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--color-primario);
+  background: var(--color-primario-suave);
+  border: 1px dashed var(--color-primario);
+  padding: var(--esp-4);
   border-radius: var(--radio-sm);
   text-align: center;
-  margin: 12px 0;
+  margin: var(--esp-4) 0 var(--esp-3);
+  user-select: all;
 }
 
 .texto-suave {
@@ -640,6 +807,10 @@ button {
 }
 
 .app-header .identidad a {
+  display: inline-block;
+  /* Agranda la zona tocable (el enlace es chico) sin mover el layout. */
+  padding: var(--esp-3) var(--esp-2) var(--esp-3) 0;
+  margin: calc(var(--esp-3) * -1) 0;
   color: var(--color-texto-suave);
   font-size: var(--fs-sm);
   text-decoration: none;
@@ -664,46 +835,66 @@ button {
 
 .barra-herramientas .campo-busqueda input {
   width: 100%;
-  padding: 10px 12px;
+  min-height: var(--alto-control);
+  padding: 10px var(--esp-3);
   border: 1px solid var(--color-borde-fuerte);
   border-radius: var(--radio-sm);
+  font-family: inherit;
   font-size: var(--fs-md);
   transition: border-color var(--transicion), box-shadow var(--transicion);
 }
 
+.barra-herramientas .campo-busqueda input:focus {
+  outline: none;
+  border-color: var(--color-primario);
+  box-shadow: var(--sombra-foco);
+}
+
 .boton-chico {
-  padding: 10px 14px;
-  border-radius: var(--radio-sm);
+  padding: 8px var(--esp-4);
   font-size: var(--fs-sm);
-  font-weight: 600;
   white-space: nowrap;
+  background: var(--color-superficie);
+  border-color: var(--color-borde-fuerte);
+  color: var(--color-texto);
+}
+
+.boton-chico:hover:not(:disabled) {
+  background: var(--color-superficie-alt);
+  border-color: var(--color-texto-suave);
 }
 
 .boton-chico.primario {
   background: var(--color-primario);
-  color: #fff;
-  border: none;
+  border-color: var(--color-primario);
+  color: var(--color-sobre-primario);
 }
 
 .boton-chico.primario:hover:not(:disabled) {
   background: var(--color-primario-hover);
+  border-color: var(--color-primario-hover);
 }
 
 .boton-chico.secundario {
   background: transparent;
   color: var(--color-primario);
-  border: 1px solid var(--color-primario);
+  border-color: var(--color-primario);
+}
+
+.boton-chico.secundario:hover:not(:disabled) {
+  background: var(--color-primario-suave);
+  border-color: var(--color-primario);
 }
 
 .boton-chico.peligro {
   background: transparent;
   color: var(--color-error);
-  border: 1px solid var(--color-error);
+  border-color: var(--color-error);
 }
 
-.boton-chico:disabled {
-  opacity: 0.6;
-  cursor: default;
+.boton-chico.peligro:hover:not(:disabled) {
+  background: var(--color-error-fondo);
+  border-color: var(--color-error);
 }
 
 /* Dropdown (agrupa botones relacionados, ej. las 3 acciones de Excel) ---- */
@@ -723,6 +914,8 @@ button {
   border-radius: var(--radio-sm);
   box-shadow: var(--sombra-2);
   min-width: 190px;
+  /* No se sale de la pantalla en celular. */
+  max-width: calc(100vw - var(--esp-8));
   z-index: 30;
   padding: 6px;
   display: flex;
@@ -744,12 +937,14 @@ button {
 .dropdown-menu button {
   display: block;
   width: 100%;
+  min-height: var(--alto-control);
   text-align: left;
-  padding: 10px 12px;
+  padding: 10px var(--esp-3);
   background: none;
   border: none;
   border-radius: var(--radio-sm);
-  font-size: var(--fs-sm);
+  font-family: inherit;
+  font-size: var(--fs-base);
   font-weight: 500;
   color: var(--color-texto);
 }
@@ -774,18 +969,28 @@ button {
 .tabla th,
 .tabla td {
   text-align: left;
-  padding: 12px;
+  padding: var(--esp-3) var(--esp-4);
   border-bottom: 1px solid var(--color-borde);
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .tabla thead th {
   background: var(--color-superficie-alt);
   color: var(--color-texto-suave);
   font-size: var(--fs-xs);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   border-bottom: 1px solid var(--color-borde-fuerte);
+}
+
+.tabla thead th:first-child {
+  border-top-left-radius: var(--radio-sm);
+}
+
+.tabla thead th:last-child {
+  border-top-right-radius: var(--radio-sm);
 }
 
 .tabla tbody tr {
@@ -805,8 +1010,12 @@ button {
 }
 
 .tabla td.celda-acciones {
-  display: flex;
-  gap: 6px;
+  white-space: normal;
+  min-width: 200px;
+}
+
+.tabla td.celda-acciones > .boton-chico {
+  margin: 2px 6px 2px 0;
 }
 
 /* Badges de estado de producto ---------------------------------------- */
@@ -865,6 +1074,45 @@ button {
   box-shadow: var(--sombra-2);
 }
 
+/* Celular: el modal sube desde abajo como una "hoja" -- queda al alcance del
+   pulgar y no tapa el titulo de la pantalla. En 600px o mas vuelve a ser un
+   cuadro centrado. */
+@media (max-width: 599px) {
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal {
+    margin: 0;
+    max-width: none;
+    max-height: 92vh;
+    overflow-y: auto;
+    border-radius: var(--radio-lg) var(--radio-lg) 0 0;
+    padding: var(--esp-6) var(--esp-5) calc(var(--esp-6) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .modal::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: -8px auto var(--esp-4);
+    border-radius: var(--radio-full);
+    background: var(--color-borde-fuerte);
+  }
+
+  .modal-overlay:not([hidden]) .modal {
+    animation: modal-sube 220ms ease;
+  }
+}
+
+@keyframes modal-sube {
+  from {
+    transform: translateY(100%);
+  }
+}
+
 .modal-overlay:not([hidden]) .modal {
   animation: modal-aparece 180ms ease;
 }
@@ -881,8 +1129,9 @@ button {
 }
 
 .modal h2 {
-  margin: 0 0 20px;
+  margin: 0 0 var(--esp-5);
   font-size: var(--fs-xl);
+  font-weight: 700;
 }
 
 .modal .campos-en-fila {
@@ -900,15 +1149,22 @@ button {
 .campo-checkbox {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--esp-3);
+  min-height: var(--alto-control);
 }
 
 .campo-checkbox input {
-  width: auto;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-primario);
 }
 
 .campo-checkbox label {
   margin: 0;
+  font-size: var(--fs-base);
+  line-height: 1.35;
 }
 
 /* Separa un campo del bloque anterior cuando comparten .panel-seccion. */
@@ -921,14 +1177,8 @@ button {
 }
 
 .campo textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio-sm);
-  font-size: var(--fs-md);
-  font-family: inherit;
   resize: vertical;
-  min-height: 70px;
+  min-height: 88px;
 }
 
 .campo .texto-ayuda {
@@ -939,7 +1189,44 @@ button {
 
 .campo-con-boton {
   display: flex;
-  gap: 8px;
+  gap: var(--esp-2);
+}
+
+/* Selectores y campos que viven fuera de .campo (fila "select + boton" y
+   filas de listas, ej. elegir local al aprobar un empleado): mismo tamano
+   tactil y mismo aspecto que el resto de los campos. */
+.campo-con-boton input,
+.campo-con-boton select,
+.lista-usuarios select {
+  min-height: var(--alto-control);
+  padding: 10px var(--esp-3);
+  border: 1px solid var(--color-borde-fuerte);
+  border-radius: var(--radio-sm);
+  font-family: inherit;
+  font-size: var(--fs-md);
+  background: var(--color-superficie);
+  color: var(--color-texto);
+  transition: border-color var(--transicion), box-shadow var(--transicion);
+}
+
+.campo-con-boton input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Separacion entre una lista y el formulario de "agregar" que le sigue. */
+.lista-usuarios + .campo-con-boton,
+.lista-usuarios + .texto-suave + .campo-con-boton,
+#nuevo-local-bloqueado {
+  margin-top: var(--esp-4);
+}
+
+.campo-con-boton input:focus,
+.campo-con-boton select:focus,
+.lista-usuarios select:focus {
+  outline: none;
+  border-color: var(--color-primario);
+  box-shadow: var(--sombra-foco);
 }
 
 .campo-con-boton select {
@@ -1020,12 +1307,6 @@ button {
   margin: 0 0 10px;
 }
 
-.ficha-seccion .subtitulo-ficha {
-  color: var(--color-texto-suave);
-  font-size: var(--fs-sm);
-  margin: -6px 0 12px;
-}
-
 /* Punto de venta ------------------------------------------------------ */
 
 /* En pantallas angostas y verticales todo va apilado (carrito arriba, pago
@@ -1053,7 +1334,7 @@ button {
     flex: 1 1 340px;
     max-width: 380px;
     position: sticky;
-    top: 20px;
+    top: 88px;
   }
 }
 
@@ -1062,13 +1343,39 @@ button {
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--esp-3);
   background: var(--color-exito-fondo);
   color: var(--color-exito-texto);
-  padding: 10px 16px;
-  border-radius: var(--radio-sm);
-  margin-bottom: 16px;
+  padding: var(--esp-2) var(--esp-4);
+  border-radius: var(--radio);
+  margin-bottom: var(--esp-4);
   font-size: var(--fs-base);
+  font-weight: 600;
+}
+
+/* Punto "en vivo" antes del texto del turno. */
+.turno-banner #turno-info::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--esp-2);
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: middle;
+}
+
+/* Cerrar el turno es una accion poco frecuente: dentro del banner va como
+   boton de contorno, para no competir con "Confirmar venta". */
+.turno-banner .boton-cierre {
+  background: transparent;
+  color: var(--color-exito-texto);
+  border-color: currentColor;
+  box-shadow: none;
+}
+
+.turno-banner .boton-cierre:hover:not(:disabled) {
+  background: var(--color-superficie);
 }
 
 .pantalla-turno-cerrado {
@@ -1096,9 +1403,10 @@ button {
   left: 0;
   right: 0;
   background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
   border-radius: var(--radio-sm);
   margin-top: 4px;
-  max-height: 280px;
+  max-height: min(60vh, 360px);
   overflow-y: auto;
   z-index: 20;
   box-shadow: var(--sombra-2);
@@ -1107,8 +1415,13 @@ button {
 .buscador-resultados button {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--esp-3);
   width: 100%;
-  padding: 10px 14px;
+  min-height: var(--alto-control);
+  padding: 10px var(--esp-4);
+  font-family: inherit;
   background: none;
   border: none;
   border-bottom: 1px solid var(--color-borde);
@@ -1120,8 +1433,15 @@ button {
   border-bottom: none;
 }
 
-.buscador-resultados button:hover {
-  background: var(--color-fondo);
+.buscador-resultados button:hover,
+.buscador-resultados button:focus-visible {
+  background: var(--color-primario-suave);
+  outline: none;
+}
+
+.buscador-resultados button > span:first-child {
+  font-weight: 600;
+  text-align: left;
 }
 
 .buscador-resultados .sin-resultados {
@@ -1133,25 +1453,44 @@ button {
 .carrito-vacio {
   text-align: center;
   color: var(--color-texto-suave);
-  padding: var(--esp-8) 0;
+  padding: var(--esp-8) var(--esp-4);
+  margin: 0;
+  border: 1px dashed var(--color-borde-fuerte);
+  border-radius: var(--radio);
 }
 
 .tabla input.input-cantidad {
-  width: 70px;
-  padding: 6px 8px;
-  border: 1px solid var(--color-borde);
+  width: 80px;
+  min-height: var(--alto-control);
+  padding: 6px var(--esp-2);
+  border: 1px solid var(--color-borde-fuerte);
   border-radius: var(--radio-sm);
+  font-family: inherit;
+  font-size: var(--fs-md);
+  text-align: center;
 }
 
+.tabla input.input-cantidad:focus {
+  outline: none;
+  border-color: var(--color-primario);
+  box-shadow: var(--sombra-foco);
+}
+
+/* El total queda pegado al borde de abajo de la pantalla mientras se recorre
+   un carrito largo (sticky dentro de su panel). */
 .total-carrito {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: var(--fs-xl);
+  font-size: var(--fs-2xl);
   font-weight: 700;
-  padding: 14px 0;
+  padding: var(--esp-4) 0;
   border-top: 1px solid var(--color-borde);
-  margin-top: 10px;
+  margin-top: var(--esp-3);
+  background: var(--color-superficie);
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
 }
 
 .tabs-pago {
@@ -1162,17 +1501,26 @@ button {
 
 .tabs-pago button {
   flex: 1;
+  min-height: var(--alto-control);
   padding: 10px;
   border-radius: var(--radio-sm);
-  border: 1px solid var(--color-borde);
-  background: var(--color-fondo);
+  border: 1px solid var(--color-borde-fuerte);
+  background: var(--color-superficie);
   color: var(--color-texto-suave);
+  font-family: inherit;
+  font-size: var(--fs-base);
   font-weight: 600;
+  transition: background-color var(--transicion), border-color var(--transicion), color var(--transicion);
+}
+
+.tabs-pago button:hover:not(.activo) {
+  border-color: var(--color-texto-suave);
+  color: var(--color-texto);
 }
 
 .tabs-pago button.activo {
   background: var(--color-primario);
-  color: #fff;
+  color: var(--color-sobre-primario);
   border-color: var(--color-primario);
 }
 
@@ -1232,33 +1580,1098 @@ button {
   color: var(--color-texto-suave);
 }
 
+/* Super-Admin ---------------------------------------------------------- */
+
+/* Pestanas del panel: una sola fila que se desliza hacia el costado en
+   pantallas angostas (5 pestanas no entran), con la activa subrayada. */
+#tabs-superadmin {
+  gap: var(--esp-1);
+  margin-bottom: 0;
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  border-bottom: 1px solid var(--color-borde-fuerte);
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+}
+
+#tabs-superadmin::-webkit-scrollbar {
+  display: none;
+}
+
+#tabs-superadmin button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  min-height: var(--alto-control);
+  padding: 0 var(--esp-4);
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: var(--radio-sm) var(--radio-sm) 0 0;
+  background: none;
+  color: var(--color-texto-suave);
+  font-weight: 600;
+  margin-bottom: -1px;
+}
+
+#tabs-superadmin button:hover:not(.activo) {
+  background: var(--color-superficie-alt);
+  color: var(--color-texto);
+}
+
+#tabs-superadmin button.activo {
+  background: none;
+  color: var(--color-primario);
+  border-bottom-color: var(--color-primario);
+}
+
+/* Cada pestana agrupa varias tarjetas: se separan igual que las del resto
+   de la app (antes quedaban pegadas una contra otra). */
+#seccion-cambios-plan,
+#seccion-organizaciones,
+#seccion-codigos,
+#seccion-cobros,
+#seccion-limpieza {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-5);
+}
+
+code {
+  padding: 2px 6px;
+  border-radius: var(--radio-sm);
+  background: var(--color-neutro-fondo);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  letter-spacing: 0.04em;
+}
+
+#filtro-estado-cobro {
+  max-width: 280px;
+}
+
+/* Las dos secciones de Limpieza borran datos para siempre: borde y titulo
+   en rojo, igual que .zona-peligro en la configuracion del local. */
+#seccion-limpieza .panel-seccion {
+  border-color: var(--color-error);
+}
+
+#seccion-limpieza .panel-seccion h2 {
+  color: var(--color-error);
+}
+
+/* Lista de lo que se va a borrar, en el modal de confirmacion. */
+#lista-confirmar-limpieza {
+  margin: 0 0 var(--esp-4);
+  padding: var(--esp-3) var(--esp-4) var(--esp-3) var(--esp-8);
+  background: var(--color-error-fondo);
+  border-left: 4px solid var(--color-error);
+  border-radius: var(--radio-sm);
+  font-weight: 600;
+}
+
+/* Casillas de seleccion de Limpieza: mas grandes para el pulgar. */
+#tabla-limpieza input[type='checkbox'],
+#tabla-limpieza-locales input[type='checkbox'] {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--color-error);
+}
+
+/* En celular / tablet las tablas del panel pasan a una tarjeta por fila: se
+   reacomodan con grid segun el orden de las celdas (sin tocar el HTML). */
+@media (max-width: 1099px) {
+  :is(#tabla-pendientes, #tabla-historial, #tabla-organizaciones, #tabla-codigos, #tabla-cobros-superadmin, #tabla-limpieza, #tabla-limpieza-locales),
+  :is(#tabla-pendientes, #tabla-historial, #tabla-organizaciones, #tabla-codigos, #tabla-cobros-superadmin, #tabla-limpieza, #tabla-limpieza-locales) tbody {
+    display: block;
+  }
+
+  :is(#tabla-pendientes, #tabla-historial, #tabla-organizaciones, #tabla-codigos, #tabla-cobros-superadmin, #tabla-limpieza, #tabla-limpieza-locales) thead {
+    display: none;
+  }
+
+  :is(#tabla-pendientes, #tabla-historial, #tabla-organizaciones, #tabla-codigos, #tabla-cobros-superadmin, #tabla-limpieza, #tabla-limpieza-locales) tr {
+    display: grid;
+    align-items: center;
+    gap: var(--esp-2) var(--esp-3);
+    padding: var(--esp-4) 0;
+    border-bottom: 1px solid var(--color-borde);
+  }
+
+  :is(#tabla-pendientes, #tabla-historial, #tabla-organizaciones, #tabla-codigos, #tabla-cobros-superadmin, #tabla-limpieza, #tabla-limpieza-locales) tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  :is(#tabla-pendientes, #tabla-historial, #tabla-organizaciones, #tabla-codigos, #tabla-cobros-superadmin, #tabla-limpieza, #tabla-limpieza-locales) tbody tr:hover {
+    background: none;
+  }
+
+  :is(#tabla-pendientes, #tabla-historial, #tabla-organizaciones, #tabla-codigos, #tabla-cobros-superadmin, #tabla-limpieza, #tabla-limpieza-locales) td {
+    display: block;
+    padding: 0;
+    border: none;
+    white-space: normal;
+  }
+
+  :is(#tabla-pendientes, #tabla-historial, #tabla-organizaciones, #tabla-codigos, #tabla-cobros-superadmin, #tabla-limpieza, #tabla-limpieza-locales) td.celda-acciones {
+    min-width: 0;
+  }
+
+  #tabla-pendientes tr {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'org org'
+      'actual solicitado'
+      'fecha fecha'
+      'acciones acciones';
+  }
+
+  #tabla-pendientes td:nth-child(1) {
+    grid-area: org;
+    font-weight: 600;
+    font-size: var(--fs-md);
+  }
+
+  #tabla-pendientes td:nth-child(2) {
+    grid-area: actual;
+  }
+
+  #tabla-pendientes td:nth-child(2)::before {
+    content: 'Plan actual';
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-texto-suave);
+  }
+
+  #tabla-pendientes td:nth-child(3) {
+    grid-area: solicitado;
+  }
+
+  #tabla-pendientes td:nth-child(3)::before {
+    content: 'Solicitado';
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-texto-suave);
+  }
+
+  #tabla-pendientes td:nth-child(4) {
+    grid-area: fecha;
+    color: var(--color-texto-suave);
+    font-size: var(--fs-sm);
+  }
+
+  #tabla-pendientes td:nth-child(5) {
+    grid-area: acciones;
+  }
+
+  #tabla-historial tr {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'org estado'
+      'cambio resuelta';
+  }
+
+  #tabla-historial td:nth-child(1) {
+    grid-area: org;
+    font-weight: 600;
+    font-size: var(--fs-md);
+  }
+
+  #tabla-historial td:nth-child(2) {
+    grid-area: cambio;
+    font-size: var(--fs-sm);
+  }
+
+  #tabla-historial td:nth-child(3) {
+    grid-area: estado;
+    justify-self: end;
+  }
+
+  #tabla-historial td:nth-child(4) {
+    grid-area: resuelta;
+    justify-self: end;
+    color: var(--color-texto-suave);
+    font-size: var(--fs-sm);
+  }
+
+  #tabla-organizaciones tr {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'org estado'
+      'plan acciones';
+  }
+
+  #tabla-organizaciones td:nth-child(1) {
+    grid-area: org;
+    font-weight: 600;
+    font-size: var(--fs-md);
+  }
+
+  #tabla-organizaciones td:nth-child(2) {
+    grid-area: plan;
+    color: var(--color-texto-suave);
+  }
+
+  #tabla-organizaciones td:nth-child(3) {
+    grid-area: estado;
+    justify-self: end;
+  }
+
+  #tabla-organizaciones td:nth-child(4) {
+    grid-area: acciones;
+    justify-self: end;
+  }
+
+  #tabla-codigos tr {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'codigo estado'
+      'nota nota'
+      'usos vence'
+      'meses usado'
+      'acciones acciones';
+  }
+
+  #tabla-codigos td:nth-child(1) {
+    grid-area: codigo;
+  }
+
+  #tabla-codigos td:nth-child(2) {
+    grid-area: nota;
+    color: var(--color-texto-suave);
+  }
+
+  #tabla-codigos td:nth-child(3) {
+    grid-area: estado;
+    justify-self: end;
+  }
+
+  #tabla-codigos td:nth-child(4) {
+    grid-area: usos;
+  }
+
+  #tabla-codigos td:nth-child(4)::before {
+    content: 'Usos';
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-texto-suave);
+  }
+
+  #tabla-codigos td:nth-child(5) {
+    grid-area: vence;
+  }
+
+  #tabla-codigos td:nth-child(5)::before {
+    content: 'Vence';
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-texto-suave);
+  }
+
+  #tabla-codigos td:nth-child(6) {
+    grid-area: meses;
+  }
+
+  #tabla-codigos td:nth-child(6)::before {
+    content: 'Meses bonif.';
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-texto-suave);
+  }
+
+  #tabla-codigos td:nth-child(7) {
+    grid-area: usado;
+  }
+
+  #tabla-codigos td:nth-child(7)::before {
+    content: 'Usado por';
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-texto-suave);
+  }
+
+  #tabla-codigos td:nth-child(8) {
+    grid-area: acciones;
+  }
+
+  #tabla-cobros-superadmin tr {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'org estado'
+      'periodo monto'
+      'plan comprobante'
+      'acciones acciones';
+  }
+
+  #tabla-cobros-superadmin td:nth-child(1) {
+    grid-area: org;
+    font-weight: 600;
+    font-size: var(--fs-md);
+  }
+
+  #tabla-cobros-superadmin td:nth-child(2) {
+    grid-area: periodo;
+    color: var(--color-texto-suave);
+  }
+
+  #tabla-cobros-superadmin td:nth-child(3) {
+    grid-area: plan;
+  }
+
+  #tabla-cobros-superadmin td:nth-child(3)::before {
+    content: 'Plan';
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-texto-suave);
+  }
+
+  #tabla-cobros-superadmin td:nth-child(4) {
+    grid-area: monto;
+    justify-self: end;
+    font-weight: 700;
+    font-size: var(--fs-lg);
+  }
+
+  #tabla-cobros-superadmin td:nth-child(5) {
+    grid-area: estado;
+    justify-self: end;
+  }
+
+  #tabla-cobros-superadmin td:nth-child(6) {
+    grid-area: comprobante;
+    justify-self: end;
+    text-align: right;
+  }
+
+  #tabla-cobros-superadmin td:nth-child(6)::before {
+    content: 'Comprobante';
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-texto-suave);
+  }
+
+  #tabla-cobros-superadmin td:nth-child(7) {
+    grid-area: acciones;
+  }
+
+  #tabla-limpieza tr {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'chk org cobro'
+      'chk creada cobro';
+  }
+
+  #tabla-limpieza td:nth-child(1) {
+    grid-area: chk;
+    align-self: center;
+  }
+
+  #tabla-limpieza td:nth-child(2) {
+    grid-area: org;
+    font-weight: 600;
+    font-size: var(--fs-md);
+  }
+
+  #tabla-limpieza td:nth-child(3) {
+    grid-area: creada;
+    color: var(--color-texto-suave);
+    font-size: var(--fs-sm);
+  }
+
+  #tabla-limpieza td:nth-child(4) {
+    grid-area: cobro;
+    justify-self: end;
+  }
+
+  #tabla-limpieza td:nth-child(4)::before {
+    content: 'Cobro';
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-texto-suave);
+  }
+
+  /* Fila bloqueada: la primera celda trae el motivo (texto largo), no una
+     casilla; ocupa su propia linea. */
+  #tabla-limpieza td:nth-child(1):not(:has(input)) {
+    grid-area: auto;
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  #tabla-limpieza-locales tr {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'chk local'
+      'chk org'
+      'chk estado';
+  }
+
+  #tabla-limpieza-locales td:nth-child(1) {
+    grid-area: chk;
+    align-self: center;
+  }
+
+  #tabla-limpieza-locales td:nth-child(2) {
+    grid-area: org;
+    color: var(--color-texto-suave);
+    font-size: var(--fs-sm);
+  }
+
+  #tabla-limpieza-locales td:nth-child(3) {
+    grid-area: local;
+    font-weight: 600;
+    font-size: var(--fs-md);
+  }
+
+  #tabla-limpieza-locales td:nth-child(4) {
+    grid-area: estado;
+    font-size: var(--fs-sm);
+  }
+
+  /* Fila bloqueada: la primera celda trae el motivo (texto largo), no una
+     casilla; ocupa su propia linea. */
+  #tabla-limpieza-locales td:nth-child(1):not(:has(input)) {
+    grid-area: auto;
+    grid-column: 1 / -1;
+    grid-row: 4;
+  }
+}
+
+@media (max-width: 1099px) {
+  /* Fila bloqueada de Limpieza (sin casilla): la columna de la casilla no
+     existe, asi que tampoco su separacion -- el nombre queda alineado con el
+     de las filas con casilla. */
+  #tabla-limpieza tbody tr:not(:has(input)),
+  #tabla-limpieza-locales tbody tr:not(:has(input)) {
+    column-gap: 0;
+  }
+}
+
+/* Caja y Clientes: refinamientos ----------------------------------------- */
+
+/* Campos de fecha / mes de la barra de herramientas: ancho acotado y sin
+   margen propio (el contenedor ya separa). */
+.barra-herramientas > .campo:not(.campo-busqueda) {
+  flex: 0 1 220px;
+  margin-bottom: 0;
+}
+
+.panel-seccion > .boton-cierre {
+  margin-top: var(--esp-3);
+}
+
+/* Las dos acciones de cierre (dia / mes) ocupan todo el ancho en celular. */
+@media (max-width: 599px) {
+  .panel-seccion > .boton-cierre {
+    width: 100%;
+    min-height: 48px;
+  }
+}
+
+/* En la ficha del cliente la primera fila de botones (Editar / Cobrar) esta
+   en el medio del contenido, no es la barra de acciones del final: no se
+   pega abajo. */
+#modal-ficha .modal-acciones:not(:last-child) {
+  position: static;
+  margin: var(--esp-4) 0;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+/* Turnos del dia (caja.html) en celular / tablet: una tarjeta por turno.
+     Empleado ................................ [Estado]
+     APERTURA   CIERRE
+     ESPERADO   CONTADO   DIFERENCIA                          */
+@media (max-width: 1399px) {
+  #tabla-turnos,
+  #tabla-turnos tbody {
+    display: block;
+  }
+
+  #tabla-turnos thead {
+    display: none;
+  }
+
+  #tabla-turnos tr {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-areas:
+      'empleado empleado estado'
+      'apertura cierre .'
+      'esperado contado diferencia';
+    align-items: start;
+    gap: var(--esp-3);
+    padding: var(--esp-4) 0;
+    border-bottom: 1px solid var(--color-borde);
+  }
+
+  #tabla-turnos tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  #tabla-turnos tbody tr:hover {
+    background: none;
+  }
+
+  #tabla-turnos td {
+    display: block;
+    padding: 0;
+    border: none;
+    white-space: normal;
+    font-weight: 600;
+  }
+
+  /* Rotulo chico encima de cada dato (la fila de encabezados se oculta). */
+  #tabla-turnos td:nth-child(n + 2):nth-child(-n + 6)::before {
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-texto-suave);
+  }
+
+  #tabla-turnos td:nth-child(1) {
+    grid-area: empleado;
+    font-size: var(--fs-md);
+    font-weight: 700;
+  }
+
+  #tabla-turnos td:nth-child(2) {
+    grid-area: apertura;
+  }
+
+  #tabla-turnos td:nth-child(2)::before {
+    content: 'Apertura';
+  }
+
+  #tabla-turnos td:nth-child(3) {
+    grid-area: cierre;
+  }
+
+  #tabla-turnos td:nth-child(3)::before {
+    content: 'Cierre';
+  }
+
+  #tabla-turnos td:nth-child(4) {
+    grid-area: esperado;
+  }
+
+  #tabla-turnos td:nth-child(4)::before {
+    content: 'Esperado';
+  }
+
+  #tabla-turnos td:nth-child(5) {
+    grid-area: contado;
+  }
+
+  #tabla-turnos td:nth-child(5)::before {
+    content: 'Contado';
+  }
+
+  #tabla-turnos td:nth-child(6) {
+    grid-area: diferencia;
+  }
+
+  #tabla-turnos td:nth-child(6)::before {
+    content: 'Diferencia';
+  }
+
+  #tabla-turnos td:nth-child(7) {
+    grid-area: estado;
+    justify-self: end;
+  }
+}
+
+/* Clientes en celular / tablet: una tarjeta por cliente.
+     Nombre .................................. [Saldo]
+     Telefono ................................ [Estado]
+     [Ver ficha] [Desactivar]                                */
+@media (max-width: 1199px) {
+  #tabla-clientes,
+  #tabla-clientes tbody {
+    display: block;
+  }
+
+  #tabla-clientes thead {
+    display: none;
+  }
+
+  #tabla-clientes tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'nombre saldo'
+      'telefono estado'
+      'acciones acciones';
+    align-items: center;
+    gap: var(--esp-2) var(--esp-3);
+    padding: var(--esp-4) 0;
+    border-bottom: 1px solid var(--color-borde);
+  }
+
+  #tabla-clientes tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  #tabla-clientes tbody tr:hover {
+    background: none;
+  }
+
+  #tabla-clientes td {
+    display: block;
+    padding: 0;
+    border: none;
+    white-space: normal;
+  }
+
+  #tabla-clientes td:nth-child(1) {
+    grid-area: nombre;
+    font-weight: 600;
+    font-size: var(--fs-md);
+  }
+
+  #tabla-clientes td:nth-child(2) {
+    grid-area: telefono;
+    color: var(--color-texto-suave);
+    font-size: var(--fs-sm);
+  }
+
+  #tabla-clientes td:nth-child(3) {
+    grid-area: saldo;
+    justify-self: end;
+  }
+
+  #tabla-clientes td:nth-child(4) {
+    grid-area: estado;
+    justify-self: end;
+  }
+
+  #tabla-clientes td.celda-acciones {
+    grid-area: acciones;
+    min-width: 0;
+    padding-top: var(--esp-1);
+  }
+
+  #tabla-clientes td[colspan] {
+    grid-area: auto;
+    grid-column: 1 / -1;
+  }
+}
+
+/* Productos y barras de herramientas: refinamientos --------------------- */
+
+@media (max-width: 599px) {
+  /* Buscar ocupa toda la fila; los botones de abajo se reparten el ancho. */
+  .barra-herramientas .campo-busqueda {
+    flex-basis: 100%;
+  }
+
+  .barra-herramientas > .boton-chico,
+  .barra-herramientas > .dropdown {
+    flex: 1 1 auto;
+  }
+
+  .barra-herramientas .dropdown > .boton-chico {
+    width: 100%;
+  }
+
+  /* Formularios largos en la hoja del modal: las acciones quedan siempre a
+     la vista, pegadas abajo, mientras se desplazan los campos. */
+  .modal-acciones {
+    position: sticky;
+    bottom: calc(var(--esp-6) * -1);
+    margin: var(--esp-5) calc(var(--esp-5) * -1) calc(var(--esp-6) * -1);
+    padding: var(--esp-3) var(--esp-5) var(--esp-4);
+    background: var(--color-superficie);
+    border-top: 1px solid var(--color-borde);
+  }
+}
+
+/* Productos en celular: una tarjeta por producto en vez de una tabla de 6
+   columnas con hasta 5 botones por fila.
+     Nombre . presentacion ................... [Estado]
+     Categoria ........ Stock 24 un. ......... $2.450
+     [Ajustar] [Reponer] [Editar] [Desactivar] [Eliminar]
+   Se acomoda con grid segun el orden de las celdas (sin tocar el HTML).
+   Rige hasta 1399px (no solo en celular): con el menu lateral fijo de 280px,
+   la tabla de 6 columnas con 5 botones por fila no entra en notebooks chicos
+   y obligaba a deslizar de costado. */
+@media (max-width: 1399px) {
+  #tabla-productos,
+  #tabla-productos tbody {
+    display: block;
+  }
+
+  #tabla-productos thead {
+    display: none;
+  }
+
+  #tabla-productos tr {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas:
+      'nombre nombre estado'
+      'categoria stock precio'
+      'acciones acciones acciones';
+    align-items: center;
+    gap: var(--esp-2) var(--esp-3);
+    padding: var(--esp-4) 0;
+    border-bottom: 1px solid var(--color-borde);
+  }
+
+  #tabla-productos tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  #tabla-productos tbody tr:hover {
+    background: none;
+  }
+
+  #tabla-productos td {
+    display: block;
+    padding: 0;
+    border: none;
+    white-space: normal;
+  }
+
+  #tabla-productos td:nth-child(1) {
+    grid-area: nombre;
+    font-weight: 600;
+    font-size: var(--fs-md);
+  }
+
+  #tabla-productos td:nth-child(2) {
+    grid-area: categoria;
+    color: var(--color-texto-suave);
+    font-size: var(--fs-sm);
+  }
+
+  #tabla-productos td:nth-child(3) {
+    grid-area: stock;
+    color: var(--color-texto-suave);
+    font-size: var(--fs-sm);
+  }
+
+  #tabla-productos td:nth-child(3)::before {
+    content: 'Stock ';
+  }
+
+  #tabla-productos td:nth-child(4) {
+    grid-area: precio;
+    font-weight: 700;
+    font-size: var(--fs-lg);
+  }
+
+  #tabla-productos td:nth-child(5) {
+    grid-area: estado;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--esp-1);
+    justify-content: flex-end;
+  }
+
+  #tabla-productos td.celda-acciones {
+    grid-area: acciones;
+    min-width: 0;
+    padding-top: var(--esp-1);
+  }
+
+  /* Fila de "no se encontraron productos": una sola celda a todo el ancho. */
+  #tabla-productos td[colspan] {
+    grid-area: auto;
+    grid-column: 1 / -1;
+  }
+}
+
+/* Panel de ventas: refinamientos --------------------------------------- */
+
+/* Buscador principal: es la accion mas frecuente del dia, asi que es el
+   campo mas grande de la pantalla. */
+.venta-layout .barra-herramientas .campo-busqueda input {
+  min-height: 52px;
+  font-size: var(--fs-lg);
+}
+
+/* Pago / Fiado como control segmentado (solo en esta pantalla: superadmin
+   usa .tabs-pago como barra de pestanas). */
+.venta-layout .tabs-pago {
+  background: var(--color-neutro-fondo);
+  padding: var(--esp-1);
+  gap: var(--esp-1);
+  border-radius: calc(var(--radio-sm) + var(--esp-1));
+}
+
+.venta-layout .tabs-pago button {
+  border: none;
+  background: transparent;
+}
+
+.venta-layout .tabs-pago button.activo {
+  background: var(--color-superficie);
+  color: var(--color-primario);
+  box-shadow: var(--sombra-1);
+}
+
+/* Filas de metodo de pago: la columna vacia de la primera fila no ocupa
+   lugar, y en celular "Quitar" pasa a su propia linea en vez de apretar el
+   selector (se cortaba "Transferencia"). */
+.metodo-pago-fila > div:empty {
+  display: none;
+}
+
+#btn-agregar-metodo {
+  margin-bottom: var(--esp-3);
+}
+
+@media (max-width: 479px) {
+  .metodo-pago-fila {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .metodo-pago-fila > .boton-chico,
+  #btn-agregar-metodo {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+#btn-confirmar-venta {
+  min-height: 52px;
+  margin-top: var(--esp-2);
+  font-size: var(--fs-lg);
+}
+
+/* Celular: el carrito pasa de tabla de 5 columnas (obligaba a deslizar de
+   costado) a una tarjeta por producto:
+     nombre ......................... [Quitar]
+     [cantidad]  x $precio ........ $subtotal
+   Sin tocar el HTML: se reacomoda con grid segun el orden de las celdas.
+   Rige hasta 1399px (no solo en celular): desde 700px el carrito comparte la
+   fila con el panel de pago y, con el menu lateral fijo, la tabla de 5
+   columnas no entra y obligaba a deslizar de costado. */
+@media (max-width: 1399px) {
+  #tabla-carrito,
+  #tabla-carrito tbody {
+    display: block;
+  }
+
+  #tabla-carrito thead {
+    display: none;
+  }
+
+  #tabla-carrito tr {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'nombre nombre quitar'
+      'cant precio subtotal';
+    align-items: center;
+    gap: var(--esp-2) var(--esp-3);
+    padding: var(--esp-3) 0;
+    border-bottom: 1px solid var(--color-borde);
+  }
+
+  #tabla-carrito tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  #tabla-carrito tbody tr:hover {
+    background: none;
+  }
+
+  #tabla-carrito td {
+    display: block;
+    padding: 0;
+    border: none;
+    white-space: normal;
+  }
+
+  #tabla-carrito td:nth-child(1) {
+    grid-area: nombre;
+    font-weight: 600;
+  }
+
+  #tabla-carrito td:nth-child(2) {
+    grid-area: cant;
+  }
+
+  #tabla-carrito td:nth-child(3) {
+    grid-area: precio;
+    color: var(--color-texto-suave);
+  }
+
+  #tabla-carrito td:nth-child(3)::before {
+    content: '\00d7\00a0';
+  }
+
+  #tabla-carrito td:nth-child(4) {
+    grid-area: subtotal;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  #tabla-carrito td:nth-child(5) {
+    grid-area: quitar;
+  }
+
+  /* Buscar ocupa toda la fila y "Escanear codigo" la siguiente, grande. */
+  .venta-layout .barra-herramientas .campo-busqueda {
+    flex-basis: 100%;
+  }
+
+  .venta-layout .barra-herramientas #btn-escanear {
+    flex: 1 1 100%;
+  }
+}
+
+/* Cobros de la organizacion (panel.html): en celular, una tarjeta por
+   periodo -- "Subir comprobante" es un boton ancho y no cabe en una tabla.
+     Periodo .............. [Estado]
+     $Monto ........ [Subir comprobante] */
+@media (max-width: 699px) {
+  #tabla-cobros,
+  #tabla-cobros tbody {
+    display: block;
+  }
+
+  #tabla-cobros thead {
+    display: none;
+  }
+
+  #tabla-cobros tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'periodo estado'
+      'monto accion';
+    align-items: center;
+    gap: var(--esp-2) var(--esp-3);
+    padding: var(--esp-3) 0;
+    border-bottom: 1px solid var(--color-borde);
+  }
+
+  #tabla-cobros tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  #tabla-cobros tbody tr:hover {
+    background: none;
+  }
+
+  #tabla-cobros td {
+    display: block;
+    padding: 0;
+    border: none;
+    white-space: normal;
+  }
+
+  #tabla-cobros td:nth-child(1) {
+    grid-area: periodo;
+    font-weight: 600;
+  }
+
+  #tabla-cobros td:nth-child(2) {
+    grid-area: monto;
+    font-weight: 700;
+    font-size: var(--fs-lg);
+  }
+
+  #tabla-cobros td:nth-child(3) {
+    grid-area: estado;
+    justify-self: end;
+  }
+
+  #tabla-cobros td:nth-child(4) {
+    grid-area: accion;
+    justify-self: end;
+  }
+
+  #tabla-cobros td.celda-acciones:empty {
+    display: none;
+  }
+}
+
 /* Cuenta corriente de clientes ------------------------------------------- */
 
 .resumen-saldos {
   display: flex;
-  gap: 16px;
+  gap: var(--esp-3);
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: var(--esp-5);
 }
 
 .resumen-saldos .tarjeta-resumen {
-  flex: 1;
-  min-width: 180px;
-  background: var(--color-fondo);
-  border-radius: var(--radio-sm);
-  padding: 14px 16px;
+  flex: 1 1 140px;
+  background: var(--color-superficie-alt);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: var(--esp-4);
 }
 
 .resumen-saldos .tarjeta-resumen .etiqueta-resumen {
   display: block;
   color: var(--color-texto-suave);
   font-size: var(--fs-xs);
-  margin-bottom: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--esp-1);
 }
 
 .resumen-saldos .tarjeta-resumen .valor-resumen {
+  display: block;
   font-size: var(--fs-xl);
   font-weight: 700;
+}
+
+/* Lo que te deben (ambar: hay plata por cobrar) y lo que tenes a favor de
+   clientes (verde). */
+#resumen-debe {
+  color: var(--color-aviso-texto);
+}
+
+#resumen-favor {
+  color: var(--color-exito-texto);
 }
 
 .etiqueta.saldo-debe {
@@ -1289,11 +2702,13 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
-  background: var(--color-fondo);
+  padding: var(--esp-3) var(--esp-4);
+  background: var(--color-superficie-alt);
+  border: 1px solid var(--color-borde);
   border-radius: var(--radio-sm);
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--esp-1) var(--esp-3);
+  font-variant-numeric: tabular-nums;
 }
 
 .lista-movimientos .info-movimiento {
@@ -1313,20 +2728,6 @@ button {
 }
 
 /* Comprobante no fiscal ---------------------------------------------------- */
-
-.comprobante-acciones {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  max-width: 380px;
-  margin: 24px auto 0;
-  padding: 0 16px;
-}
-
-.comprobante-acciones .boton-secundario,
-.comprobante-acciones .boton-primario {
-  width: auto;
-}
 
 .comprobante {
   max-width: 380px;
@@ -1471,11 +2872,12 @@ button {
 /* Caja (cierre de turno / dia / mes) ------------------------------------ */
 
 .subtitulo-historial {
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
+  font-weight: 700;
   color: var(--color-texto-suave);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin: 18px 0 8px;
+  letter-spacing: 0.06em;
+  margin: var(--esp-5) 0 var(--esp-2);
 }
 
 .subtitulo-historial:first-of-type {
@@ -1495,16 +2897,23 @@ button {
 /* Menu hamburguesa ---------------------------------------------------- */
 
 .boton-hamburguesa {
+  flex: none;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
-  width: 36px;
-  height: 32px;
-  padding: 0;
+  gap: 5px;
+  width: var(--alto-control);
+  height: var(--alto-control);
+  padding: 0 var(--esp-3);
   border: none;
+  border-radius: var(--radio-sm);
   background: transparent;
   cursor: pointer;
+  transition: background-color var(--transicion);
+}
+
+.boton-hamburguesa:hover {
+  background: var(--color-superficie-alt);
 }
 
 .boton-hamburguesa span {
@@ -1519,6 +2928,16 @@ button {
   inset: 0;
   background: var(--color-overlay);
   z-index: 200;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+/* Con el menu abierto (celular / tablet) la pagina de atras no se desplaza.
+   En escritorio el menu es un sidebar siempre visible: no aplica. */
+@media (max-width: 1099px) {
+  body:has(.menu-drawer:not([hidden])) {
+    overflow: hidden;
+  }
 }
 
 .menu-drawer {
@@ -1539,26 +2958,63 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 18px 12px;
+  gap: var(--esp-2);
+  padding: var(--esp-4) var(--esp-4) var(--esp-3) var(--esp-5);
+  border-bottom: 1px solid var(--color-menu-borde);
 }
 
 .menu-drawer-header h2 {
-  font-size: var(--fs-md);
+  min-width: 0;
   margin: 0;
+  font-size: var(--fs-lg);
+  line-height: 1.25;
   color: var(--color-menu-texto);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Marca como "sobretitulo" del nombre del local (sin tocar el JS del menu). */
+.menu-drawer-header h2::before {
+  content: 'chaupapel';
+  display: block;
+  margin-bottom: 2px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-menu-acento);
 }
 
 .menu-drawer-header button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--alto-control);
+  height: var(--alto-control);
+  margin-right: calc(var(--esp-2) * -1);
   background: none;
   border: none;
+  border-radius: var(--radio-sm);
   font-size: var(--fs-xl);
   line-height: 1;
   color: var(--color-menu-texto-suave);
-  padding: 4px;
+  padding: 0;
+  transition: background-color var(--transicion), color var(--transicion);
+}
+
+.menu-drawer-header button:hover {
+  background: var(--color-menu-hover);
+  color: var(--color-menu-texto);
+}
+
+/* El anillo de foco global (verde) no se ve sobre el fondo oscuro. */
+.menu-drawer :focus-visible {
+  outline-color: var(--color-menu-acento);
 }
 
 .menu-selector-local {
-  padding: 0 18px 14px;
+  padding: var(--esp-3) var(--esp-4) var(--esp-1) var(--esp-5);
 }
 
 .menu-selector-local label {
@@ -1570,20 +3026,27 @@ button {
 
 .menu-selector-local select {
   width: 100%;
+  min-height: var(--alto-control);
   padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--color-menu-borde);
   border-radius: var(--radio-sm);
+  font-family: inherit;
   font-size: var(--fs-base);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--color-menu-campo);
   color: var(--color-menu-texto);
 }
 
+/* Columna: los items arriba y, empujados al fondo por el margen automatico
+   del separador, "Cerrar sesion" abajo -- siempre al alcance del pulgar y
+   lejos de los links de navegacion. */
 .menu-lista {
   list-style: none;
   margin: 0;
-  padding: 8px 0;
+  padding: var(--esp-2) 0 calc(var(--esp-2) + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .menu-lista li a,
@@ -1596,6 +3059,7 @@ button {
   color: var(--color-menu-texto);
   text-decoration: none;
   font-size: var(--fs-base);
+  transition: background-color var(--transicion);
 }
 
 .menu-lista li a:hover {
@@ -1605,9 +3069,9 @@ button {
 /* Estado activo (seccion actual): mismo verde de los botones principales,
    como fondo suave + borde izquierdo, texto mas claro que el resto. */
 .menu-lista li a.activo {
-  background: var(--color-primario-suave);
-  border-left-color: var(--color-primario);
-  color: #ffffff;
+  background: var(--color-menu-activo-fondo);
+  border-left-color: var(--color-menu-acento);
+  color: var(--color-menu-texto);
   font-weight: 600;
 }
 
@@ -1621,8 +3085,9 @@ button {
 }
 
 .menu-lista li.menu-separador {
-  margin: 10px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  margin: auto 0 var(--esp-2);
+  padding-top: 0;
+  border-top: 1px solid var(--color-menu-borde);
 }
 
 .menu-lista li.menu-cerrar-sesion button {
@@ -1634,35 +3099,33 @@ button {
   border-radius: var(--radio-sm);
   background: none;
   border: none;
-  color: var(--color-error);
+  color: var(--color-menu-peligro);
+  font-family: inherit;
   font-size: var(--fs-base);
+  transition: background-color var(--transicion);
 }
 
 .menu-lista li.menu-cerrar-sesion button:hover {
-  background: rgba(179, 38, 30, 0.2);
+  background: var(--color-menu-peligro-hover);
 }
 
 .menu-lista li.menu-instalar-app button {
   display: block;
   width: calc(100% - 16px);
-  margin: 2px 8px;
+  margin: 2px 8px var(--esp-2);
   text-align: left;
   padding: 14px 10px;
   border-radius: var(--radio-sm);
   background: none;
-  border: none;
-  color: #6fcf9d;
+  border: 1px dashed var(--color-menu-acento);
+  color: var(--color-menu-acento);
+  font-family: inherit;
   font-size: var(--fs-base);
+  transition: background-color var(--transicion);
 }
 
 .menu-lista li.menu-instalar-app button:hover {
-  background: var(--color-primario-suave);
-}
-
-.menu-lista li a,
-.menu-lista li.menu-cerrar-sesion button,
-.menu-lista li.menu-instalar-app button {
-  transition: background-color var(--transicion);
+  background: var(--color-menu-activo-fondo);
 }
 
 .menu-overlay:not([hidden]) {
@@ -1724,42 +3187,26 @@ button {
  * camara: en pantallas tactiles los controles no bajan de ~44px de alto
  * y el padding de las secciones se ajusta para ganar ancho util. */
 
-@media (pointer: coarse) {
-  .boton-chico,
-  .boton-secundario.boton-inline,
-  .dropdown-menu button,
-  .tabs-pago button,
-  .aviso .acciones button,
-  .buscador-resultados button {
-    min-height: 44px;
-  }
-
-  .tabla input.input-cantidad {
-    min-height: 40px;
-    font-size: var(--fs-md);
-  }
-}
+/* Los 44px de alto tactil ya salen de --alto-control en cada componente
+   (botones, campos, tabs, items de menu y de resultados); no hace falta una
+   regla aparte para pantallas tactiles. */
 
 @media (max-width: 600px) {
   .app-main {
-    padding: 16px;
-    gap: 16px;
+    padding: var(--esp-4);
+    gap: var(--esp-4);
   }
 
   .panel-seccion {
-    padding: 16px;
+    padding: var(--esp-4);
   }
 
   .app-header {
-    padding: 10px 16px;
-  }
-
-  .modal {
-    padding: 20px;
+    padding: var(--esp-3) var(--esp-4);
   }
 
   .tarjeta {
-    padding: 24px 20px;
+    padding: var(--esp-6) var(--esp-5);
   }
 
   .modal-acciones {
