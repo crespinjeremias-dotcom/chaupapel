@@ -2,34 +2,21 @@
 // libreria de CDN actualizandose sola en produccion es justamente lo que
 // rompio el escaner de codigo de barras.
 import * as XLSX from 'https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs';
+import { celdasDeHoja, construirHojaProductos, construirHojaPlantilla, construirHojaInstrucciones } from './importacion.js';
 
-export const COLUMNAS = [
-  'Nombre',
-  'Presentación',
-  'Unidad',
-  'Categoría',
-  'Perecedero (SI/NO)',
-  'Stock actual',
-  'Stock mínimo',
-  'Precio de venta',
-  'Código de barras',
-];
+// Fecha local (no UTC) para el nombre del archivo: YYYY-MM-DD
+function fechaParaArchivo() {
+  const h = new Date();
+  return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`;
+}
 
-export function exportarProductos(productos, nombreArchivo = 'productos.xlsx') {
-  const filas = productos.map((p) => ({
-    Nombre: p.nombre,
-    Presentación: p.presentacion || '',
-    Unidad: p.unidad_medida || '',
-    Categoría: p.categorias?.nombre || '',
-    'Perecedero (SI/NO)': p.perecedero ? 'SI' : 'NO',
-    'Stock actual': p.stock_actual,
-    'Stock mínimo': p.stock_minimo,
-    'Precio de venta': p.precio_venta_actual,
-    'Código de barras': p.codigo_barras || '',
-  }));
-  const hoja = XLSX.utils.json_to_sheet(filas, { header: COLUMNAS });
+// Exporta con las mismas columnas y titulos que usa la importacion (ver
+// js/importacion.js), asi el archivo vuelve a importarse sin cambios. Incluye
+// el ID de cada producto: al reimportar, las filas con ID actualizan ese
+// producto en vez de crear uno nuevo.
+export function exportarProductos(productos, nombreArchivo = `productos-${fechaParaArchivo()}.xlsx`) {
   const libro = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(libro, hoja, 'Productos');
+  XLSX.utils.book_append_sheet(libro, construirHojaProductos(XLSX.utils, productos), 'Productos');
   XLSX.writeFile(libro, nombreArchivo);
 }
 
@@ -71,18 +58,22 @@ export function exportarCierres(cierresDiarios, cierresMensuales, nombreArchivo 
   XLSX.writeFile(libro, nombreArchivo);
 }
 
+// Plantilla vacia con los mismos titulos que la importacion. La importacion
+// lee solo la primera hoja ("Productos"); la segunda explica cada columna.
 export function descargarPlantilla() {
-  const hoja = XLSX.utils.json_to_sheet([], { header: COLUMNAS });
   const libro = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(libro, hoja, 'Productos');
+  XLSX.utils.book_append_sheet(libro, construirHojaPlantilla(XLSX.utils), 'Productos');
+  XLSX.utils.book_append_sheet(libro, construirHojaInstrucciones(XLSX.utils), 'Instrucciones');
   XLSX.writeFile(libro, 'plantilla-productos.xlsx');
 }
 
-// Devuelve las filas crudas del Excel (una por producto), tal cual las
-// columnas de COLUMNAS. La pagina se encarga de mapear/validar cada fila.
+// Lee la primera hoja del Excel como matriz de celdas (con su tipo y el texto
+// tal como se ve en Excel, que hace falta para detectar codigos de barras en
+// notacion cientifica). El mapeo por nombre de columna y la validacion de
+// cada fila estan en js/importacion.js.
 export async function leerArchivoProductos(file) {
   const buffer = await file.arrayBuffer();
   const libro = XLSX.read(buffer, { type: 'array' });
   const hoja = libro.Sheets[libro.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(hoja, { defval: '' });
+  return celdasDeHoja(hoja, XLSX.utils);
 }

@@ -1,5 +1,5 @@
 import { obtenerVentaConDetalle } from './ventas.js';
-import { escapeHtml } from './utils.js';
+import { escapeHtml, nombreConPresentacion } from './utils.js';
 
 const ETIQUETA_METODO = { efectivo: 'Efectivo', transferencia: 'Transferencia' };
 
@@ -85,7 +85,7 @@ export async function mostrarComprobante(ventaId, { nombreLocal = '' } = {}) {
       .map(
         (it) => `
         <tr>
-          <td>${escapeHtml(it.productos?.nombre || 'Producto eliminado')}</td>
+          <td>${escapeHtml(it.productos ? nombreConPresentacion(it.productos) : 'Producto eliminado')}</td>
           <td>${it.cantidad}</td>
           <td>$${Number(it.precio_unitario).toLocaleString('es-AR')}</td>
           <td>$${Number(it.subtotal).toLocaleString('es-AR')}</td>

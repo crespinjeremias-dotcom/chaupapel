@@ -226,7 +226,7 @@
   import { buscarClientes, crearClienteRapido } from './js/clientes.js';
   import { montarMenu } from './js/menu.js';
   import { mostrarComprobante } from './js/comprobante.js';
-  import { mostrarError, escapeHtml, parseCantidad } from './js/utils.js';
+  import { mostrarError, escapeHtml, parseCantidad, nombreConPresentacion } from './js/utils.js';
 
   const ETIQUETA_ESTADO = { activa: 'Activa', editada: 'Editada', anulada: 'Anulada' };
   const ETIQUETA_METODO = { efectivo: 'Efectivo', transferencia: 'Transferencia' };
@@ -425,7 +425,7 @@
       document.getElementById('detalle-items').innerHTML = items
         .map(
           (it) =>
-            `<li><span>${escapeHtml(it.productos?.nombre || 'Producto eliminado')} × ${it.cantidad}</span><span>$${Number(
+            `<li><span>${escapeHtml(it.productos ? nombreConPresentacion(it.productos) : 'Producto eliminado')} × ${it.cantidad}</span><span>$${Number(
               it.subtotal
             ).toLocaleString('es-AR')}</span></li>`
         )
@@ -490,7 +490,7 @@
     selectItem.innerHTML = itemsDetalleActual
       .map(
         (it, i) =>
-          `<option value="${i}">${escapeHtml(it.productos?.nombre || 'Producto eliminado')} (vendidos: ${it.cantidad}, $${Number(
+          `<option value="${i}">${escapeHtml(it.productos ? nombreConPresentacion(it.productos) : 'Producto eliminado')} (vendidos: ${it.cantidad}, $${Number(
             it.precio_unitario
           ).toLocaleString('es-AR')} c/u)</option>`
       )
@@ -517,7 +517,7 @@
           : productos
               .map(
                 (p) => `<button type="button" data-id="${p.id}">
-                  <span>${escapeHtml(p.nombre)}</span>
+                  <span>${escapeHtml(nombreConPresentacion(p))}</span>
                   <span class="texto-suave">$${Number(p.precio_venta_actual).toLocaleString('es-AR')}</span>
                 </button>`
               )
@@ -694,7 +694,7 @@
       ventaEnEdicion = venta;
       itemsEdicion = items.map((it) => ({
         productoId: it.producto_id,
-        nombre: it.productos?.nombre || 'Producto eliminado',
+        nombre: it.productos ? nombreConPresentacion(it.productos) : 'Producto eliminado',
         permiteCantidadDecimal: it.productos?.permite_cantidad_decimal !== false,
         cantidad: Number(it.cantidad),
         precioUnitario: Number(it.precio_unitario),
@@ -736,7 +736,7 @@
           : productos
               .map(
                 (p) => `<button type="button" data-id="${p.id}">
-                  <span>${escapeHtml(p.nombre)}</span>
+                  <span>${escapeHtml(nombreConPresentacion(p))}</span>
                   <span class="texto-suave">$${Number(p.precio_venta_actual).toLocaleString('es-AR')}</span>
                 </button>`
               )
@@ -749,7 +749,7 @@
           else
             itemsEdicion.push({
               productoId: p.id,
-              nombre: p.nombre,
+              nombre: nombreConPresentacion(p),
               permiteCantidadDecimal: p.permite_cantidad_decimal !== false,
               cantidad: 1,
               precioUnitario: Number(p.precio_venta_actual),

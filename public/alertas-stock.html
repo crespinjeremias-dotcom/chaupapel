@@ -49,7 +49,7 @@
   import { requireSession, obtenerUsuarioActual, logout, localNoOperable } from './js/auth.js';
   import { listarProductos, esStockBajo } from './js/productos.js';
   import { montarMenu } from './js/menu.js';
-  import { mostrarError, escapeHtml } from './js/utils.js';
+  import { mostrarError, escapeHtml, nombreConPresentacion } from './js/utils.js';
 
   document.getElementById('btn-logout').addEventListener('click', async () => {
     await logout();
@@ -84,7 +84,7 @@
               .map(
                 (p) => `
               <tr>
-                <td>${escapeHtml(p.nombre)}${p.presentacion ? ' · ' + escapeHtml(p.presentacion) : ''}</td>
+                <td>${escapeHtml(nombreConPresentacion(p))}</td>
                 <td>${escapeHtml(p.categorias?.nombre || '—')}</td>
                 <td><span class="etiqueta stock-bajo">${p.stock_actual} ${escapeHtml(p.unidad_medida || '')}</span></td>
                 <td>${p.stock_minimo}</td>

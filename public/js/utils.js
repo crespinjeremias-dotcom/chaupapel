@@ -36,6 +36,16 @@ export function parseCantidad(texto, permiteDecimal) {
   return n > 0 ? n : null;
 }
 
+// Nombre de un producto junto con su presentacion (el tamano del envase):
+// "Coca-Cola · 1,5 L". Un solo lugar para armar ese texto, asi se ve igual en
+// la lista, la busqueda, ventas, comprobantes, alertas y reportes. Sin
+// presentacion devuelve solo el nombre (sin separador ni espacios de mas).
+export function nombreConPresentacion(producto) {
+  const nombre = String(producto?.nombre ?? '').trim();
+  const presentacion = String(producto?.presentacion ?? '').trim();
+  return presentacion ? `${nombre} · ${presentacion}` : nombre;
+}
+
 export function mostrarError(el, mensaje) {
   el.textContent = mensaje;
   el.hidden = !mensaje;

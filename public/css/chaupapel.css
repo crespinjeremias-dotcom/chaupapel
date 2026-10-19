@@ -2361,6 +2361,135 @@ code {
   }
 }
 
+/* Seleccion multiple de productos (solo admin) -------------------------- */
+
+.fila-seleccion-productos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2) var(--esp-3);
+  margin-bottom: var(--esp-3);
+}
+
+/* Casilla dentro de la celda del nombre: toda la etiqueta es tocable (44px). */
+.seleccion-producto {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-3);
+  min-height: var(--alto-control);
+  cursor: pointer;
+}
+
+.seleccion-producto input[type="checkbox"] {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--color-primario);
+  cursor: pointer;
+}
+
+.tabla tbody tr.fila-seleccionada {
+  background: var(--color-primario-suave);
+}
+
+/* Barra de acciones: queda pegada abajo de la pantalla mientras haya algo
+   tildado, para no tener que volver arriba a buscar los botones. */
+.barra-acciones-seleccion {
+  position: sticky;
+  bottom: var(--esp-3);
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2) var(--esp-3);
+  margin-top: var(--esp-4);
+  padding: var(--esp-3) var(--esp-4);
+  background: var(--color-superficie);
+  border: 1px solid var(--color-primario);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-2);
+}
+
+.barra-acciones-seleccion strong {
+  flex: 1 1 100%;
+}
+
+@media (min-width: 700px) {
+  .barra-acciones-seleccion strong {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 599px) {
+  /* 2 x 2: botones grandes y sin tapar media pantalla */
+  .barra-acciones-seleccion .boton-chico {
+    flex: 1 1 calc(50% - var(--esp-2));
+  }
+}
+
+/* Lista de lo que se va a eliminar, en el modal de confirmacion. */
+.lista-confirmar-eliminar {
+  margin: 0 0 var(--esp-4);
+  padding: var(--esp-3) var(--esp-4) var(--esp-3) var(--esp-8);
+  max-height: 30vh;
+  overflow-y: auto;
+  background: var(--color-error-fondo);
+  border-left: 4px solid var(--color-error);
+  border-radius: var(--radio-sm);
+  font-weight: 600;
+}
+
+/* Aviso con "Deshacer": abajo, por encima de todo, unos segundos. */
+.toast-deshacer {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--esp-4) + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  gap: var(--esp-4);
+  width: max-content;
+  max-width: calc(100vw - var(--esp-8));
+  padding: var(--esp-3) var(--esp-4);
+  background: var(--color-texto);
+  color: var(--color-sobre-primario);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-2);
+  font-size: var(--fs-base);
+  animation: modal-aparece 180ms ease;
+}
+
+.toast-deshacer button {
+  flex: none;
+  min-height: var(--alto-control);
+  padding: 0 var(--esp-4);
+  border: 1px solid var(--color-menu-acento);
+  border-radius: var(--radio-sm);
+  background: transparent;
+  color: var(--color-menu-acento);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.toast-deshacer button:hover:not(:disabled) {
+  background: var(--color-menu-activo-fondo);
+}
+
+.toast-deshacer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Vista previa de la importacion de productos: la lista de filas con error
+   tiene scroll propio, para que los botones de abajo no se pierdan. */
+.lista-errores-importacion {
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
 /* Productos y barras de herramientas: refinamientos --------------------- */
 
 @media (max-width: 599px) {

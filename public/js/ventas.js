@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient.js';
+import { nombreConPresentacion } from './utils.js';
 
 const VENTANA_EDICION_MS = 15 * 60 * 1000; // 10-15 min, seccion 7 -- se usa el limite superior
 
@@ -77,7 +78,7 @@ export async function listarVentas({ desde, hasta, query, usuarioId } = {}) {
 export async function obtenerVentaConDetalle(id) {
   const [{ data: venta, error: errorVenta }, { data: items, error: errorItems }, { data: pagos, error: errorPagos }] = await Promise.all([
     supabase.from('ventas').select('*, usuarios:usuarios!usuario_id(nombre), clientes(nombre)').eq('id', id).single(),
-    supabase.from('venta_items').select('*, productos(nombre, unidad_medida, permite_cantidad_decimal)').eq('venta_id', id).order('created_at'),
+    supabase.from('venta_items').select('*, productos(nombre, presentacion, unidad_medida, permite_cantidad_decimal)').eq('venta_id', id).order('created_at'),
     supabase.from('venta_pagos').select('*').eq('venta_id', id),
   ]);
   if (errorVenta) throw errorVenta;
@@ -102,7 +103,23 @@ export async function productosMasVendidos({ desde, hasta, horaDesde, horaHasta 
   });
   if (error) throw error;
 
-  return data.map((r) => ({ nombre: r.nombre, cantidad: Number(r.cantidad) }));
+  // El RPC devuelve solo el nombre: la presentacion se trae aparte (sin tocar
+  // la funcion de la base) para distinguir "Coca-Cola · 500 ml" de "· 1,5 L".
+  const ids = [...new Set(data.map((r) => r.producto_id).filter(Boolean))];
+  const presentaciones = new Map();
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data: productos, error: errorProductos } = await supabase
+      .from('productos')
+      .select('id, presentacion')
+      .in('id', ids.slice(i, i + 100));
+    if (errorProductos) throw errorProductos;
+    productos.forEach((p) => presentaciones.set(p.id, p.presentacion));
+  }
+
+  return data.map((r) => ({
+    nombre: nombreConPresentacion({ nombre: r.nombre, presentacion: presentaciones.get(r.producto_id) }),
+    cantidad: Number(r.cantidad),
+  }));
 }
 
 // Reemplaza items y pagos por completo (borra + inserta de nuevo) en vez de

@@ -40,6 +40,12 @@
       <input type="file" id="input-importar" class="input-archivo" accept=".xlsx,.xls" />
     </div>
 
+    <!-- Seleccion multiple (solo admin): ver "Seleccion multiple" en el script -->
+    <div class="fila-seleccion-productos" id="fila-seleccion" hidden>
+      <button type="button" class="boton-chico secundario" id="btn-seleccionar-todos">Seleccionar todos</button>
+      <span class="texto-suave" id="seleccion-ayuda">Tildá los productos que quieras eliminar, desactivar o reactivar.</span>
+    </div>
+
     <p class="mensaje-error" id="error-lista" hidden></p>
     <p class="mensaje-exito" id="exito-importar" hidden></p>
     <p class="texto-suave" id="cargando">Cargando productos...</p>
@@ -59,8 +65,21 @@
         <tbody id="tbody-productos"></tbody>
       </table>
     </div>
+
+    <div class="barra-acciones-seleccion" id="barra-acciones-seleccion" role="region" aria-label="Acciones sobre los productos seleccionados" hidden>
+      <strong id="seleccion-contador"></strong>
+      <button type="button" class="boton-chico secundario" id="btn-desactivar-seleccion">Desactivar</button>
+      <button type="button" class="boton-chico secundario" id="btn-reactivar-seleccion">Reactivar</button>
+      <button type="button" class="boton-chico peligro" id="btn-eliminar-seleccion">Eliminar</button>
+      <button type="button" class="boton-chico" id="btn-deseleccionar">Deseleccionar todos</button>
+    </div>
   </div>
 </main>
+
+<div class="toast-deshacer" id="toast-deshacer" role="status" aria-live="polite" hidden>
+  <span id="toast-texto"></span>
+  <button type="button" id="btn-deshacer">Deshacer</button>
+</div>
 
 <div class="modal-overlay" id="modal-producto" hidden>
   <div class="modal">
@@ -220,6 +239,36 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-importar" hidden>
+  <div class="modal ancho">
+    <h2>Importar productos</h2>
+    <p class="texto-suave" id="importar-archivo"></p>
+    <p class="mensaje-error" id="error-importar" hidden></p>
+    <dl class="lista-metricas" id="importar-resumen"></dl>
+    <div id="importar-columnas"></div>
+    <div id="importar-avisos"></div>
+    <div id="importar-errores"></div>
+    <div class="modal-acciones">
+      <button type="button" class="boton-secundario" id="btn-cancelar-importar">Cancelar</button>
+      <button type="button" class="boton-primario" id="btn-confirmar-importar" disabled>Importar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-eliminar-masivo" hidden>
+  <div class="modal">
+    <h2 id="titulo-eliminar-masivo">Eliminar productos</h2>
+    <p class="mensaje-error" id="error-eliminar-masivo" hidden></p>
+    <p id="texto-eliminar-masivo"></p>
+    <ul class="lista-confirmar-eliminar" id="lista-eliminar-masivo"></ul>
+    <p class="texto-suave">Desaparecen de la lista, de la búsqueda y de ventas. El historial de ventas y reposiciones donde aparecen se conserva. Vas a poder deshacerlo unos segundos con el botón "Deshacer".</p>
+    <div class="modal-acciones">
+      <button type="button" class="boton-secundario" id="btn-cancelar-eliminar-masivo">Cancelar</button>
+      <button type="button" class="boton-peligro" id="btn-confirmar-eliminar-masivo">Eliminar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-eliminar" hidden>
   <div class="modal">
     <h2>Eliminar producto</h2>
@@ -255,6 +304,12 @@
     listarCategorias,
     crearCategoria,
     listarProductos,
+    listarProductosDelLocal,
+    eliminarProductos,
+    restaurarProductos,
+    establecerActivoProductos,
+    crearProductosEnLote,
+    actualizarProductosEnLote,
     crearProducto,
     actualizarProducto,
     establecerActivo,
@@ -266,9 +321,10 @@
   import { obtenerLocalActivo } from './js/localActivo.js';
   import { registrarReposicion } from './js/reposiciones.js';
   import { exportarProductos, descargarPlantilla, leerArchivoProductos } from './js/excel.js';
+  import { analizarImportacion, UNIDADES_VALIDAS } from './js/importacion.js';
   import { montarMenu } from './js/menu.js';
   import { tieneFeature } from './js/planes.js';
-  import { mostrarError, escapeHtml, parseCantidad } from './js/utils.js';
+  import { mostrarError, escapeHtml, parseCantidad, nombreConPresentacion } from './js/utils.js';
 
   let usuario = null;
   // El admin no tiene un local propio (ve todos los de su organizacion).
@@ -281,6 +337,7 @@
   let productoParaAjuste = null;
   let productoParaReponer = null;
   let productoParaEliminar = null;
+  let seleccion = new Set(); // ids tildados (solo productos del local activo, solo admin)
   let destinoEscaneo = null; // 'buscador' | 'form'
   let tieneVencimientoActivo = true;
 
@@ -335,10 +392,14 @@
 
     document.getElementById('buscador').addEventListener('input', debounce(() => cargarProductos(), 300));
     document.getElementById('btn-nuevo').addEventListener('click', () => abrirModalProducto());
-    document.getElementById('btn-exportar').addEventListener('click', () => exportarProductos(productos));
+    // Solo los productos del local activo: la importacion tambien trabaja por local,
+    // asi lo exportado vuelve a importarse sin errores de ID.
+    document.getElementById('btn-exportar').addEventListener('click', () => exportarProductos(productos.filter((p) => p.local_id === localIdActivo)));
     document.getElementById('btn-plantilla').addEventListener('click', () => descargarPlantilla());
     document.getElementById('btn-importar').addEventListener('click', () => document.getElementById('input-importar').click());
     document.getElementById('input-importar').addEventListener('change', manejarImportacion);
+    document.getElementById('btn-cancelar-importar').addEventListener('click', cerrarVistaPreviaImportacion);
+    document.getElementById('btn-confirmar-importar').addEventListener('click', confirmarImportacion);
 
     // Dropdown "Excel" agrupa exportar/plantilla/importar -- mismas 3
     // acciones de siempre, solo se juntan en un solo botón para no competir
@@ -391,6 +452,16 @@
       document.getElementById('modal-eliminar').hidden = true;
     });
     document.getElementById('btn-confirmar-eliminar').addEventListener('click', confirmarEliminar);
+
+    if (usuario.role === 'admin') {
+      document.getElementById('btn-seleccionar-todos').addEventListener('click', seleccionarTodos);
+      document.getElementById('btn-deseleccionar').addEventListener('click', deseleccionarTodos);
+      document.getElementById('btn-eliminar-seleccion').addEventListener('click', abrirConfirmarEliminarMasivo);
+      document.getElementById('btn-desactivar-seleccion').addEventListener('click', () => cambiarActivoSeleccion(false));
+      document.getElementById('btn-reactivar-seleccion').addEventListener('click', () => cambiarActivoSeleccion(true));
+      document.getElementById('btn-cancelar-eliminar-masivo').addEventListener('click', cerrarConfirmarEliminarMasivo);
+      document.getElementById('btn-confirmar-eliminar-masivo').addEventListener('click', confirmarEliminarMasivo);
+    }
   }
 
   function debounce(fn, ms) {
@@ -452,6 +523,7 @@
     const tbody = document.getElementById('tbody-productos');
     if (productos.length === 0) {
       tbody.innerHTML = '<tr><td colspan="6" class="texto-suave">No se encontraron productos.</td></tr>';
+      actualizarBarraSeleccion();
       return;
     }
 
@@ -470,9 +542,14 @@
           );
           acciones.push(`<button type="button" class="boton-chico peligro" data-eliminar="${p.id}">Eliminar</button>`);
         }
+        // casilla solo para el admin y solo en productos del local activo
+        const seleccionable = usuario.role === 'admin' && p.local_id === localIdActivo;
+        const nombreHtml = seleccionable
+          ? `<label class="seleccion-producto"><input type="checkbox" data-seleccionar="${p.id}" ${seleccion.has(p.id) ? 'checked' : ''} aria-label="Seleccionar ${escapeHtml(nombreConPresentacion(p))}" /><span>${escapeHtml(nombreConPresentacion(p))}</span></label>`
+          : escapeHtml(nombreConPresentacion(p));
         return `
-          <tr class="${p.activo ? '' : 'fila-inactiva'}">
-            <td>${escapeHtml(p.nombre)}${p.presentacion ? ' · ' + escapeHtml(p.presentacion) : ''}</td>
+          <tr class="${[p.activo ? '' : 'fila-inactiva', seleccion.has(p.id) ? 'fila-seleccionada' : ''].filter(Boolean).join(' ')}" data-fila="${p.id}">
+            <td>${nombreHtml}</td>
             <td>${escapeHtml(p.categorias?.nombre || '—')}</td>
             <td>${p.stock_actual} ${escapeHtml(p.unidad_medida || '')}</td>
             <td>$${Number(p.precio_venta_actual).toLocaleString('es-AR')}</td>
@@ -497,6 +574,170 @@
     tbody.querySelectorAll('[data-eliminar]').forEach((btn) =>
       btn.addEventListener('click', () => abrirConfirmarEliminar(productos.find((p) => p.id === btn.dataset.eliminar)))
     );
+    tbody.querySelectorAll('[data-seleccionar]').forEach((chk) =>
+      chk.addEventListener('change', () => alternarSeleccion(chk.dataset.seleccionar, chk.checked))
+    );
+    actualizarBarraSeleccion();
+  }
+
+  // Seleccion multiple (solo admin) ------------------------------------------
+  // Se trabaja sobre los productos que se estan VIENDO (respeta la busqueda) y
+  // que son del local activo. La base vuelve a validar rol, organizacion y local.
+
+  function productosSeleccionables() {
+    return usuario.role === 'admin' ? productos.filter((p) => p.local_id === localIdActivo) : [];
+  }
+
+  function alternarSeleccion(id, marcado) {
+    if (marcado) seleccion.add(id);
+    else seleccion.delete(id);
+    document.querySelector(`[data-fila="${id}"]`)?.classList.toggle('fila-seleccionada', marcado);
+    actualizarBarraSeleccion();
+  }
+
+  function seleccionarTodos() {
+    productosSeleccionables().forEach((p) => seleccion.add(p.id));
+    renderTabla();
+  }
+
+  function deseleccionarTodos() {
+    seleccion.clear();
+    renderTabla();
+  }
+
+  function actualizarBarraSeleccion() {
+    const seleccionables = productosSeleccionables();
+    document.getElementById('fila-seleccion').hidden = seleccionables.length === 0;
+    // si cambio la busqueda, lo tildado que ya no se ve se descarta: nunca se
+    // actua sobre productos que no estan en pantalla
+    const visibles = new Set(seleccionables.map((p) => p.id));
+    for (const id of [...seleccion]) if (!visibles.has(id)) seleccion.delete(id);
+
+    const cantidad = seleccion.size;
+    const barra = document.getElementById('barra-acciones-seleccion');
+    barra.hidden = cantidad === 0;
+    document.getElementById('seleccion-contador').textContent = `${cantidad} producto${cantidad === 1 ? '' : 's'} seleccionado${cantidad === 1 ? '' : 's'}`;
+    const seleccionados = productos.filter((p) => seleccion.has(p.id));
+    document.getElementById('btn-desactivar-seleccion').hidden = !seleccionados.some((p) => p.activo);
+    document.getElementById('btn-reactivar-seleccion').hidden = !seleccionados.some((p) => !p.activo);
+    const todos = seleccionables.length > 0 && cantidad === seleccionables.length;
+    const btnTodos = document.getElementById('btn-seleccionar-todos');
+    btnTodos.disabled = todos;
+    btnTodos.textContent = todos ? `Todos seleccionados (${cantidad})` : `Seleccionar todos (${seleccionables.length})`;
+  }
+
+  function productosTildados() {
+    return productos.filter((p) => seleccion.has(p.id) && p.local_id === localIdActivo);
+  }
+
+  // --- eliminar (con confirmacion) ---
+  function abrirConfirmarEliminarMasivo() {
+    const tildados = productosTildados();
+    if (tildados.length === 0) return;
+    const maximo = 10;
+    document.getElementById('titulo-eliminar-masivo').textContent = `Eliminar ${tildados.length} producto${tildados.length === 1 ? '' : 's'}`;
+    document.getElementById('texto-eliminar-masivo').textContent =
+      tildados.length === 1 ? '¿Seguro que querés eliminar este producto?' : `¿Seguro que querés eliminar estos ${tildados.length} productos?`;
+    document.getElementById('lista-eliminar-masivo').innerHTML =
+      tildados.slice(0, maximo).map((p) => `<li>${escapeHtml(nombreConPresentacion(p))}</li>`).join('') +
+      (tildados.length > maximo ? `<li class="texto-suave">… y ${tildados.length - maximo} más</li>` : '');
+    const btn = document.getElementById('btn-confirmar-eliminar-masivo');
+    btn.disabled = false;
+    btn.textContent = `Eliminar ${tildados.length} producto${tildados.length === 1 ? '' : 's'}`;
+    mostrarError(document.getElementById('error-eliminar-masivo'), '');
+    document.getElementById('modal-eliminar-masivo').hidden = false;
+  }
+
+  function cerrarConfirmarEliminarMasivo() {
+    document.getElementById('modal-eliminar-masivo').hidden = true;
+  }
+
+  async function confirmarEliminarMasivo() {
+    const ids = productosTildados().map((p) => p.id);
+    const btn = document.getElementById('btn-confirmar-eliminar-masivo');
+    btn.disabled = true;
+    btn.textContent = 'Eliminando...';
+    try {
+      const eliminados = await eliminarProductos(localIdActivo, ids);
+      cerrarConfirmarEliminarMasivo();
+      seleccion.clear();
+      await cargarProductos();
+      const omitidos = ids.length - eliminados.length;
+      mostrarToast(
+        `Se eliminaron ${eliminados.length} producto${eliminados.length === 1 ? '' : 's'}.${omitidos ? ` ${omitidos} no se eliminaron (ya no existían).` : ''}`,
+        eliminados.length ? () => deshacerEliminacion(eliminados) : null
+      );
+    } catch (err) {
+      // la operacion es atomica: si falla, no se elimino nada
+      mostrarError(document.getElementById('error-eliminar-masivo'), 'No se eliminó nada: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Reintentar';
+    }
+  }
+
+  async function deshacerEliminacion(ids) {
+    const restaurados = await restaurarProductos(localIdActivo, ids);
+    await cargarProductos();
+    const faltan = ids.length - restaurados.length;
+    mostrarToast(
+      `Se restauraron ${restaurados.length} producto${restaurados.length === 1 ? '' : 's'}.` +
+        (faltan ? ` ${faltan} no se ${faltan === 1 ? 'pudo' : 'pudieron'} restaurar (su código de barras ya lo usa otro producto, o pasaron más de 15 minutos).` : '')
+    );
+  }
+
+  // --- desactivar / reactivar ---
+  async function cambiarActivoSeleccion(activo) {
+    // solo los que cambian de estado; recuerdo el estado anterior para deshacer
+    const afectados = productosTildados().filter((p) => p.activo !== activo);
+    if (afectados.length === 0) return;
+    const errorEl = document.getElementById('error-lista');
+    mostrarError(errorEl, '');
+    const botones = ['btn-desactivar-seleccion', 'btn-reactivar-seleccion', 'btn-eliminar-seleccion', 'btn-deseleccionar'].map((id) => document.getElementById(id));
+    botones.forEach((b) => (b.disabled = true));
+    try {
+      const cambiados = await establecerActivoProductos(localIdActivo, afectados.map((p) => p.id), activo);
+      seleccion.clear();
+      await cargarProductos();
+      mostrarToast(
+        `Se ${activo ? 'reactivaron' : 'desactivaron'} ${cambiados.length} producto${cambiados.length === 1 ? '' : 's'}.`,
+        cambiados.length ? () => deshacerCambioActivo(cambiados, activo) : null
+      );
+    } catch (err) {
+      mostrarError(errorEl, 'No se cambió nada: ' + err.message);
+    } finally {
+      botones.forEach((b) => (b.disabled = false));
+    }
+  }
+
+  async function deshacerCambioActivo(ids, activoNuevo) {
+    // todos los afectados estaban en el estado contrario al nuevo
+    const revertidos = await establecerActivoProductos(localIdActivo, ids, !activoNuevo);
+    await cargarProductos();
+    mostrarToast(`Se revirtieron ${revertidos.length} producto${revertidos.length === 1 ? '' : 's'}.`);
+  }
+
+  // --- aviso con "Deshacer" (unos segundos) ---
+  let temporizadorToast = null;
+  function mostrarToast(texto, alDeshacer = null) {
+    const toast = document.getElementById('toast-deshacer');
+    const btn = document.getElementById('btn-deshacer');
+    clearTimeout(temporizadorToast);
+    document.getElementById('toast-texto').textContent = texto;
+    btn.hidden = !alDeshacer;
+    btn.disabled = false;
+    btn.onclick = alDeshacer
+      ? async () => {
+          btn.disabled = true;
+          clearTimeout(temporizadorToast);
+          try {
+            await alDeshacer();
+          } catch (err) {
+            mostrarToast('No se pudo deshacer: ' + err.message);
+          }
+        }
+      : null;
+    toast.hidden = false;
+    temporizadorToast = setTimeout(() => (toast.hidden = true), alDeshacer ? 15000 : 7000);
   }
 
   async function alternarActivo(producto) {
@@ -516,7 +757,7 @@
     productoParaEliminar = producto;
     mostrarError(document.getElementById('error-eliminar'), '');
     document.getElementById('eliminar-texto').textContent =
-      `¿Seguro que querés eliminar "${producto.nombre}"? No vas a poder deshacer esto, pero el historial de ventas y reposiciones donde aparece se va a conservar.`;
+      `¿Seguro que querés eliminar "${nombreConPresentacion(producto)}"? No vas a poder deshacer esto, pero el historial de ventas y reposiciones donde aparece se va a conservar.`;
     document.getElementById('modal-eliminar').hidden = false;
   }
 
@@ -633,7 +874,7 @@
   function abrirModalAjuste(producto) {
     productoParaAjuste = producto;
     mostrarError(document.getElementById('error-ajuste'), '');
-    document.getElementById('ajuste-producto-nombre').textContent = producto.nombre;
+    document.getElementById('ajuste-producto-nombre').textContent = nombreConPresentacion(producto);
     document.getElementById('ajuste-stock-actual').textContent = `${producto.stock_actual} ${producto.unidad_medida || ''}`;
     document.getElementById('a-direccion').value = 'sumar';
     const inputCantidad = document.getElementById('a-cantidad');
@@ -686,7 +927,7 @@
   function abrirModalReponer(producto) {
     productoParaReponer = producto;
     mostrarError(document.getElementById('error-reponer'), '');
-    document.getElementById('reponer-contexto').textContent = producto.nombre;
+    document.getElementById('reponer-contexto').textContent = nombreConPresentacion(producto);
     document.getElementById('form-reponer').reset();
     document.getElementById('rp-cantidad').inputMode = producto.permite_cantidad_decimal === false ? 'numeric' : 'decimal';
     document.getElementById('modal-reponer').hidden = false;
@@ -767,6 +1008,11 @@
   }
 
   // Importar Excel -----------------------------------------------------
+  // Dos pasos: (1) se lee el archivo y se muestra una vista previa de lo que
+  // pasaria -- no se guarda nada --; (2) recien al confirmar se guarda. El
+  // mapeo de columnas y todas las validaciones estan en js/importacion.js.
+
+  let importacionPendiente = null; // { analisis, nombreArchivo }
 
   async function manejarImportacion(e) {
     const archivo = e.target.files[0];
@@ -779,52 +1025,126 @@
     exitoEl.hidden = true;
 
     try {
-      const filas = await leerArchivoProductos(archivo);
-      let creados = 0;
-      let errores = 0;
-
-      for (const fila of filas) {
-        const nombre = String(fila['Nombre'] || '').trim();
-        if (!nombre) continue;
-
-        try {
-          let categoriaId = null;
-          const nombreCategoria = String(fila['Categoría'] || '').trim();
-          if (nombreCategoria) {
-            let cat = categorias.find((c) => c.nombre.toLowerCase() === nombreCategoria.toLowerCase());
-            if (!cat) {
-              cat = await crearCategoria(nombreCategoria, localIdActivo, usuario.organization_id);
-              categorias.push(cat);
-            }
-            categoriaId = cat.id;
-          }
-
-          await crearProducto({
-            local_id: localIdActivo,
-            organization_id: usuario.organization_id,
-            nombre,
-            presentacion: String(fila['Presentación'] || '').trim() || null,
-            unidad_medida: String(fila['Unidad'] || '').trim() || null,
-            categoria_id: categoriaId,
-            codigo_barras: String(fila['Código de barras'] || '').trim() || null,
-            precio_venta_actual: Number(fila['Precio de venta']) || 0,
-            stock_minimo: Number(fila['Stock mínimo']) || 0,
-            stock_actual: Number(fila['Stock actual']) || 0,
-            perecedero: String(fila['Perecedero (SI/NO)'] || '').trim().toUpperCase() === 'SI',
-          });
-          creados++;
-        } catch (err) {
-          console.error('Fila de importación salteada:', fila, err);
-          errores++;
-        }
+      const celdas = await leerArchivoProductos(archivo);
+      const [productosDelLocal, todasLasCategorias] = await Promise.all([
+        listarProductosDelLocal(localIdActivo),
+        listarCategorias(),
+      ]);
+      // las categorias son por local: solo sirven las del local donde se importa
+      const analisis = analizarImportacion(celdas, {
+        productos: productosDelLocal,
+        categorias: todasLasCategorias.filter((c) => c.local_id === localIdActivo),
+      });
+      if (analisis.errorGlobal) {
+        mostrarError(errorEl, `No se pudo importar "${archivo.name}": ${analisis.errorGlobal}`);
+        return;
       }
-
-      llenarSelectCategorias();
-      exitoEl.hidden = false;
-      exitoEl.textContent = `Se importaron ${creados} productos.${errores ? ` ${errores} filas con error se saltearon.` : ''}`;
-      await cargarProductos();
+      importacionPendiente = { analisis, nombreArchivo: archivo.name };
+      mostrarVistaPreviaImportacion();
     } catch (err) {
       mostrarError(errorEl, 'No se pudo leer el archivo: ' + err.message);
+    }
+  }
+
+  function mostrarVistaPreviaImportacion() {
+    const { analisis, nombreArchivo } = importacionPendiente;
+    const { resumen, columnas, advertencias, filas, categoriasFaltantes } = analisis;
+
+    document.getElementById('importar-archivo').textContent = `Archivo: ${nombreArchivo}. Revisá lo que va a pasar: todavía no se guardó nada.`;
+    mostrarError(document.getElementById('error-importar'), '');
+
+    const fila = (rotulo, valor, clase = '') => `<div><dt>${rotulo}</dt><dd class="${clase}">${valor}</dd></div>`;
+    document.getElementById('importar-resumen').innerHTML =
+      fila('Filas leídas', resumen.leidas) +
+      fila('Productos nuevos a crear', resumen.aCrear) +
+      fila('Productos existentes a actualizar', resumen.aActualizar) +
+      (resumen.sinCambios ? fila('Ya estaban igual (sin cambios)', resumen.sinCambios) : '') +
+      fila('Filas con error (no se importan)', resumen.conError, resumen.conError ? 'monto-positivo' : '') +
+      (resumen.ignoradasSinNombre ? fila('Ignoradas por no tener nombre', resumen.ignoradasSinNombre) : '');
+
+    const reconocidas = columnas.reconocidas
+      .map((c) => (c.titulo === c.tituloEstandar ? escapeHtml(c.titulo) : `${escapeHtml(c.titulo)} → ${escapeHtml(c.tituloEstandar)}`))
+      .join(' · ');
+    const ausentes = columnas.opcionalesAusentes.length
+      ? ` No vinieron: ${columnas.opcionalesAusentes.map(escapeHtml).join(', ')} (quedan vacías o con su valor por defecto).`
+      : '';
+    document.getElementById('importar-columnas').innerHTML = `<p class="texto-suave"><strong>Columnas reconocidas:</strong> ${reconocidas}.${ausentes}</p>`;
+
+    document.getElementById('importar-avisos').innerHTML = advertencias.map((a) => `<p class="aviso">${escapeHtml(a)}</p>`).join('');
+
+    const conError = filas.filter((f) => f.accion === 'error');
+    let erroresHtml = '';
+    if (categoriasFaltantes.length) {
+      erroresHtml += `<p class="aviso">Categorías que no existen en este local: <strong>${categoriasFaltantes.map(escapeHtml).join(', ')}</strong>. Creálas desde "Nuevo producto → + Nueva" o corregí el nombre en el archivo, y volvé a importar.</p>`;
+    }
+    if (conError.some((f) => f.errores.some((m) => m.startsWith('Unidad de medida')))) {
+      erroresHtml += `<p class="aviso">Unidades de medida válidas: <strong>${UNIDADES_VALIDAS.join(', ')}</strong>.</p>`;
+    }
+    if (conError.length) {
+      erroresHtml += `<h3>Filas con error</h3><ul class="lista-movimientos lista-errores-importacion">${conError
+        .map((f) => `<li><span class="info-movimiento"><strong>Fila ${f.numero} · ${escapeHtml(f.nombre)}</strong><span class="monto-positivo">${f.errores.map(escapeHtml).join('. ')}</span></span></li>`)
+        .join('')}</ul>`;
+    }
+    document.getElementById('importar-errores').innerHTML = erroresHtml;
+
+    const total = resumen.aCrear + resumen.aActualizar;
+    const btn = document.getElementById('btn-confirmar-importar');
+    btn.disabled = total === 0;
+    btn.textContent = total === 0 ? 'Nada para importar' : `Importar ${total} producto${total === 1 ? '' : 's'}`;
+    document.getElementById('modal-importar').hidden = false;
+  }
+
+  function cerrarVistaPreviaImportacion() {
+    document.getElementById('modal-importar').hidden = true;
+    importacionPendiente = null;
+  }
+
+  async function confirmarImportacion() {
+    if (!importacionPendiente) return;
+    const { analisis } = importacionPendiente;
+    const btn = document.getElementById('btn-confirmar-importar');
+    btn.disabled = true;
+    btn.textContent = 'Importando...';
+    mostrarError(document.getElementById('error-importar'), '');
+
+    try {
+      const creaciones = analisis.filas
+        .filter((f) => f.accion === 'crear')
+        .map((f) => ({ numero: f.numero, datos: { ...f.datos, local_id: localIdActivo, organization_id: usuario.organization_id } }));
+      const actualizaciones = analisis.filas
+        .filter((f) => f.accion === 'actualizar')
+        .map((f) => ({ numero: f.numero, id: f.objetivoId, datos: f.datos }));
+
+      const creado = await crearProductosEnLote(creaciones);
+      const actualizado = await actualizarProductosEnLote(actualizaciones);
+      const fallidas = [...creado.errores, ...actualizado.errores];
+
+      cerrarVistaPreviaImportacion();
+      const { resumen } = analisis;
+      const partes = [`Se crearon ${creado.creados} producto${creado.creados === 1 ? '' : 's'}`, `se actualizaron ${actualizado.actualizados}`];
+      if (resumen.sinCambios) partes.push(`${resumen.sinCambios} ya estaban igual`);
+      const exitoEl = document.getElementById('exito-importar');
+      exitoEl.hidden = false;
+      exitoEl.textContent = partes.join(', ') + '.' + (resumen.conError ? ` ${resumen.conError} fila(s) con error no se importaron.` : '');
+      if (fallidas.length) {
+        mostrarError(
+          document.getElementById('error-lista'),
+          `No se pudieron guardar ${fallidas.length} fila(s): ` + fallidas.slice(0, 5).map((f) => `fila ${f.numero} (${f.mensaje})`).join('; ') + (fallidas.length > 5 ? '…' : '')
+        );
+      }
+      categorias = await listarCategorias();
+      llenarSelectCategorias();
+      await cargarProductos();
+    } catch (err) {
+      // No se ofrece "reintentar": si ya se habian creado productos, repetir
+      // el mismo archivo los duplicaria. Se cierra, se avisa y se recarga la
+      // lista para que se vea hasta donde llego.
+      cerrarVistaPreviaImportacion();
+      mostrarError(
+        document.getElementById('error-lista'),
+        'La importación se interrumpió: ' + err.message + '. Revisá la lista de productos antes de volver a importar el archivo.'
+      );
+      await cargarProductos();
     }
   }
 

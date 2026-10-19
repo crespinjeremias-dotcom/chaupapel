@@ -177,7 +177,7 @@
   import { iniciarEscaneo, detenerEscaneo } from './js/barcode.js';
   import { montarMenu } from './js/menu.js';
   import { tieneFeature } from './js/planes.js';
-  import { mostrarError, escapeHtml, parseCantidad } from './js/utils.js';
+  import { mostrarError, escapeHtml, parseCantidad, nombreConPresentacion } from './js/utils.js';
 
   let usuario = null;
   // El admin no tiene local_id propio (ve todos los de su organizacion) --
@@ -364,7 +364,7 @@
           .map(
             (p) => `
             <button type="button" data-id="${p.id}">
-              <span>${escapeHtml(p.nombre)}${p.presentacion ? ' · ' + escapeHtml(p.presentacion) : ''}</span>
+              <span>${escapeHtml(nombreConPresentacion(p))}</span>
               <span class="texto-suave">$${Number(p.precio_venta_actual).toLocaleString('es-AR')} · stock ${p.stock_actual}</span>
             </button>`
           )
@@ -405,7 +405,7 @@
       // producto y no se puede editar desde aca.
       carrito.push({
         productoId: producto.id,
-        nombre: producto.nombre + (producto.presentacion ? ' · ' + producto.presentacion : ''),
+        nombre: nombreConPresentacion(producto),
         unidadMedida: producto.unidad_medida || '',
         stockActual: producto.stock_actual,
         permiteCantidadDecimal: producto.permite_cantidad_decimal !== false,

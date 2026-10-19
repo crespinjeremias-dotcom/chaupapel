@@ -219,7 +219,7 @@
     obtenerUltimaSolicitudPlan,
   } from './js/planes.js';
   import { listarPreciosPlanes, listarCobrosOrganizacion, subirComprobante, ESTADO_COBRO_LABEL, ESTADO_COBRO_CLASE } from './js/cobros.js';
-  import { mostrarError, escapeHtml } from './js/utils.js';
+  import { mostrarError, escapeHtml, nombreConPresentacion } from './js/utils.js';
 
   const formatoMoneda = (n) => `$${Number(n).toLocaleString('es-AR')}`;
 
@@ -362,13 +362,13 @@
       const porVencer = conVencimiento.filter((v) => v.dias >= 0 && v.producto.alerta_vencimiento_dias != null && v.dias <= v.producto.alerta_vencimiento_dias);
 
       document.getElementById('lista-stock-bajo').innerHTML = stockBajo
-        .map((p) => `<li>📉 <a href="productos.html">${escapeHtml(p.nombre)}</a> — stock ${p.stock_actual}/${p.stock_minimo}</li>`)
+        .map((p) => `<li>📉 <a href="productos.html">${escapeHtml(nombreConPresentacion(p))}</a> — stock ${p.stock_actual}/${p.stock_minimo}</li>`)
         .join('');
       document.getElementById('lista-vencidos').innerHTML = vencidos
-        .map(({ producto: p, dias }) => `<li>⚠️ <a href="productos.html">${escapeHtml(p.nombre)}</a> — vencido hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? '' : 's'}</li>`)
+        .map(({ producto: p, dias }) => `<li>⚠️ <a href="productos.html">${escapeHtml(nombreConPresentacion(p))}</a> — vencido hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? '' : 's'}</li>`)
         .join('');
       document.getElementById('lista-por-vencer').innerHTML = porVencer
-        .map(({ producto: p }) => `<li>⏳ <a href="productos.html">${escapeHtml(p.nombre)}</a> — vence ${new Date(p.fecha_vencimiento).toLocaleDateString('es-AR')}</li>`)
+        .map(({ producto: p }) => `<li>⏳ <a href="productos.html">${escapeHtml(nombreConPresentacion(p))}</a> — vence ${new Date(p.fecha_vencimiento).toLocaleDateString('es-AR')}</li>`)
         .join('');
       document.getElementById('alertas-vacio').hidden = stockBajo.length + vencidos.length + porVencer.length > 0;
     } catch (err) {

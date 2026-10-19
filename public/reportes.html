@@ -132,7 +132,7 @@
   import { exportarVentas, exportarCierres, exportarProductos } from './js/excel.js';
   import { montarMenu } from './js/menu.js';
   import { tieneFeature } from './js/planes.js';
-  import { mostrarError, escapeHtml } from './js/utils.js';
+  import { mostrarError, escapeHtml, nombreConPresentacion } from './js/utils.js';
 
   const ETIQUETA_MOTIVO = Object.fromEntries(MOTIVOS_AJUSTE.map((m) => [m.value, m.label]));
 
@@ -279,7 +279,7 @@
           (a) => `
           <tr>
             <td>${new Date(a.created_at).toLocaleDateString('es-AR')}</td>
-            <td>${escapeHtml(a.productos?.nombre || 'Producto eliminado')}</td>
+            <td>${escapeHtml(a.productos ? nombreConPresentacion(a.productos) : 'Producto eliminado')}</td>
             <td class="${a.cantidad > 0 ? 'monto-negativo' : 'monto-positivo'}">${a.cantidad > 0 ? '+' : ''}${a.cantidad}</td>
             <td>${ETIQUETA_MOTIVO[a.motivo] || a.motivo}</td>
             <td>${escapeHtml(a.comentario || '—')}</td>
